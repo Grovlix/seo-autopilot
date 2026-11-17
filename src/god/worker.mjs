@@ -22,7 +22,10 @@ export async function runOnce({ store, handlers, worker = "worker-1", timeoutMs 
     const output = await Promise.race([handler(job, { worker, budgetUsd: Math.max(0, budget - prior) }), new Promise((_, rej) => setTimeout(() => rej(new Error(`timed out after ${timeoutMs} ms`)), timeoutMs).unref?.())]);
     // Keep what was produced (the agency approves exactly this) and what it cost, before anything else can fail.
     const costUsd = Math.max(0, Number(output.costUsd) || 0);
-    const recorded = { proposal: output.proposal ?? null, changes: output.changes || [], claims: output.claims || [], questions: output.questions || [], evidence: output.evidence || [] };
+    let recorded = { proposal: output.proposal ?? null, changes: output.changes || [], claims: output.claims || [], questions: output.questions || [], evidence: output.evidence || [] };
+    // A retry that produced nothing (cut off, refused) keeps the earlier attempt's work for the person who decides,
+    // with the reason it was sent back (production 2026-11-16: four reports were lost this way).
+    if (!recorded.proposal && !recorded.changes.length && job.outputs?.proposal) recorded = { ...job.outputs, evidence: [...(job.outputs.evidence || []), ...recorded.evidence] };
     await store.recordOutput?.(job.id, { outputs: recorded, costUsd, note: job.kind });
     const spent = prior + costUsd, overBudget = spent > budget + 1e-9;
     // A handler that cannot or must not continue (no key, budget too small, model refusal) hands the job to a person
@@ -47,10 +50,13 @@ export async function runOnce({ store, handlers, worker = "worker-1", timeoutMs 
       // Changes asked for are retried within the attempt cap (at most 2 attempts for AI work, D62: each one is paid);
       // the retry gets the reviewer's reasons. After the cap, or on a hard failure, the job stops and goes to a person.
       const cap = Math.min(job.maxAttempts ?? 3, fromAI ? AI_MAX_ATTEMPTS : Infinity);
-      const retry = review.verdict === "needs_changes" && (job.attempts ?? 0) < cap;
+      // A retry needs about what the first attempt cost; with less left it would be cut off and lose the work, so the
+      // job goes to a person with this attempt's output instead.
+      const roomForRetry = !fromAI || budget - spent >= costUsd * 0.8;
+      const retry = review.verdict === "needs_changes" && (job.attempts ?? 0) < cap && roomForRetry;
       if (retry) await store.recordOutput?.(job.id, { outputs: { ...recorded, reviewFeedback: review.reasons.slice(0, 20) } });
       await store.transition(job.id, retry ? "queued" : "failed", review.reviewer, review.reasons.join("; "));
-      if (!retry) await store.transition(job.id, "escalated", "system", review.verdict === "needs_changes" ? "review still asks for changes after the last attempt" : "the review failed this work: a person decides");
+      if (!retry) await store.transition(job.id, "escalated", "system", review.verdict === "needs_changes" ? ((job.attempts ?? 0) < cap && !roomForRetry ? "review asks for changes; not enough of the job's budget left for another attempt" : "review still asks for changes after the last attempt") : "the review failed this work: a person decides");
       log(`review ${review.verdict} ${job.kind}`); return { job: job.id, outcome: `review_${review.verdict}`, reasons: review.reasons };
     }
     if (job.requiresApproval || output.adopt) { await store.transition(job.id, "awaiting_approval", review.reviewer, output.adopt ? "reviewed; waiting for the agency to adopt it" : "reviewed; waiting for the agency"); return { job: job.id, outcome: "awaiting_approval" }; }

@@ -146,6 +146,11 @@ test("B3: the gate checks advice: on-site addresses, evidence, sourced numbers, 
   assert.equal(v(out([rec({ title: "After a person approves: redirect /old-2 to /x" })])).verdict, "pass", "prefixed; digits inside paths are not numbers");
   assert.equal(v(out([rec({ why: "Search Console for 2026-10-18 to 2026-11-14 shows the page" })])).verdict, "pass", "a cited date window is not a claim");
   assert.match(v(out([rec({ why: "from 2026-10-18 it had 340 clicks" })])).reasons.join(), /340/, "numbers next to a date are still checked");
+  assert.equal(v(out([rec({ why: "Use ISO 8601 dates, HTTP 301 for moves, keep the title under 60 characters and the description near 155 chars" })])).verdict, "pass", "standards and length guidance are not claims");
+  assert.equal(v(out([rec({ title: "Differentiate the Farnworth page from the Bolton hub (do not merge them)" })])).verdict, "pass", "advice against merging is not a merge");
+  assert.equal(v(out([rec({ title: "Keep /x rather than redirecting it" })])).verdict, "pass", "rather than redirecting");
+  assert.match(v(out([rec({ title: "Hand to the technical fixer: noindex /es/" })])).reasons.join(), /After a person approves/, "a real noindex still needs the prefix");
+  assert.doesNotMatch(v(out([rec({ why: "it had 8, then 340 clicks" })])).reasons.join(), /8,,/, "a number before a comma is reported without the comma");
 });
 
 test("B4: without home-page signals the router does not assume missing markup; signals are kept from the scan", () => {
@@ -182,4 +187,30 @@ test("C2: the worker can never authorize an implement job (only an agency approv
   assert.equal(canMove(job, "authorized", { reviewed: true, actor: "worker" }).ok, false);
   assert.equal(canMove({ ...job, kind: "agent:seo-reporter" }, "authorized", { reviewed: true, actor: "worker" }).ok, true);
   assert.equal(canMove({ ...job, status: "awaiting_approval" }, "authorized", { actor: "agency" }).ok, true);
+});
+
+test("B3: no retry without budget for it; a retry that produces nothing keeps the first attempt's work", async () => {
+  const bad = { summary: "Traffic fell 340% last month.", recommendations: [{ title: "Check /x", url: "https://example.com/x", why: "it fell", evidence: ["search console"], effort: "small" }], claims: [], questions: [] };
+  const reply = (stop, text) => async () => new Response(JSON.stringify({ model: "claude-opus-5-5", stop_reason: stop, content: [{ type: "text", text }], usage: { input_tokens: 40000, output_tokens: 8000 } }), { status: 200 }); // about $0.32 a call
+  const setup = (budgetUsd, fetchImpl) => {
+    const st = store();
+    const j = st.createJob({ siteId: "s1", kind: "agent:seo-reporter", agent: "seo-reporter", title: "t", risk: "low", budgetUsd, inputs: { agent: "seo-reporter" } });
+    st.transition(j.id, "scoped", "x"); st.transition(j.id, "queued", "x");
+    return { st, j, handlers: { "agent:*": makeAgentHandler({ store: st, siteOf: async () => SITE, apiKey: "k", fetchImpl, promptOf: () => "# Reporter", knowledge: null, publishableOf: () => false }) } };
+  };
+  // Budget for about one attempt: changes asked for, but the job goes to a person with its output, no second paid call.
+  const one = setup(0.5, reply("end_turn", JSON.stringify(bad)));
+  await runOnce({ store: one.st, handlers: one.handlers, siteHostOf: () => "example.com" });
+  assert.equal(one.st.get(one.j.id).status, "escalated");
+  assert.ok(one.st.get(one.j.id).outputs.proposal, "the work is kept for the person");
+  assert.ok(one.st.events.some((e) => e.jobId === one.j.id && /not enough of the job's budget/.test(e.note || "")), "the reason says why");
+  // A retry cut off by its budget: the job stops, and the first attempt's work is still there.
+  let n = 0; const first = reply("end_turn", JSON.stringify(bad)), cut = reply("max_tokens", "{\"summary\": \"cut");
+  const two = setup(1, async (...a) => (n++ === 0 ? first(...a) : cut(...a)));
+  await runOnce({ store: two.st, handlers: two.handlers, siteHostOf: () => "example.com" });
+  await runOnce({ store: two.st, handlers: two.handlers, siteHostOf: () => "example.com" });
+  const job = two.st.get(two.j.id);
+  assert.equal(job.status, "escalated");
+  assert.match(job.outputs.proposal.summary, /340%/, "first attempt kept");
+  assert.ok(job.outputs.reviewFeedback?.length, "with the reason it was sent back");
 });
