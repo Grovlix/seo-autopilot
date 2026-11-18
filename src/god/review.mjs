@@ -31,12 +31,19 @@ export function reviewOutput(job, output = {}, { siteHost = null, maxChanges = {
   return { reviewer: REVIEWER, producer, verdict, reasons };
 }
 
-const DESTRUCTIVE = /\b(remov(e|es|ing)|delet(e|es|ing)|no-?index(es|ing)?|de-?index|redirect(s|ing)?|merg(e|es|ing)|disavow|unpublish)\b/i;
+const DESTRUCTIVE = /\b(remov(e|es|ing)|delet(e|es|ing)|no-?index(es|ing)?|de-?index|redirect(s|ing)?|merg(e|es|ing)|disavow|unpublish)\b/gi;
+// "do not merge", "instead of redirecting", "rather than removing": advice against the action is not the action.
+const NEGATED = /\b(?:not|never|don['’]?t|no|without|instead of|rather than|avoid(?:ing)?|against)\s+(?:\w+\s+){0,2}$/i;
+const destructive = (title) => [...String(title || "").matchAll(DESTRUCTIVE)].some((m) => !NEGATED.test(title.slice(Math.max(0, m.index - 40), m.index)));
 const APPROVAL_PREFIX = /^After a person approves:/i;
 const sameHost = (a, b) => a.replace(/^www\./, "") === b.replace(/^www\./, "");
-// Numbers in prose, without the ones inside addresses and paths ("/page-2", "https://x/2026/") and calendar dates
-// ("2026-10-18", the data window an agent cites: production run 2026-11-16 was sent back twice for "18").
-const numbersIn = (text) => String(text || "").replace(/https?:\/\/\S+/g, " ").replace(/(^|\s)\/\S*/g, " ").replace(/\b\d{4}-\d{2}-\d{2}\b/g, " ").match(/(?<![\w/])\d[\d,]*(?:\.\d+)?/g) || [];
+// Numbers in prose, without the ones inside addresses and paths ("/page-2", "https://x/2026/"), calendar dates
+// ("2026-10-18", the data window an agent cites), names of standards ("ISO 8601", "HTTP 301", "WCAG 2.2") and
+// length guidance ("60 characters", "600 pixels"), none of which is a claim about the site (production 2026-11-16).
+const numbersIn = (text) => String(text || "").replace(/https?:\/\/\S+/g, " ").replace(/(^|\s)\/\S*/g, " ")
+  .replace(/\b\d{4}-\d{2}-\d{2}\b/g, " ").replace(/\b(?:ISO|RFC|HTTP|UTF|WCAG|TLS|IPv|PEP|ES|H)[- ]?\d[\d.]*\b/gi, " ")
+  .replace(/\b\d[\d,]*\s?(?:characters?|chars?|pixels?|px|words?)\b/gi, " ")
+  .match(/(?<![\w/])\d(?:[\d,]*\d)?(?:\.\d+)?/g) || [];
 const norm = (t) => String(t).toLowerCase().replace(/(\d),(\d)/g, "$1$2");
 
 /**
@@ -54,7 +61,7 @@ export function adviceProblems(output = {}, siteHost = null) {
   for (const r of recs) {
     if (r.url && siteHost) { try { if (!sameHost(new URL(r.url).hostname, siteHost)) out.push(`recommendation address not on this site: ${String(r.url).slice(0, 120)}`); } catch { out.push(`recommendation without a valid address: ${String(r.url).slice(0, 120)}`); } }
     if (!(r.evidence || []).some((e) => String(e).trim())) out.push(`recommendation without evidence: ${t(r)}`);
-    if (DESTRUCTIVE.test(String(r.title || "")) && !APPROVAL_PREFIX.test(String(r.title || "").trim())) out.push(`removing, noindexing, redirecting or merging must start with "After a person approves:": ${t(r)}`);
+    if (destructive(String(r.title || "")) && !APPROVAL_PREFIX.test(String(r.title || "").trim())) out.push(`removing, noindexing, redirecting or merging must start with "After a person approves:": ${t(r)}`);
   }
   const sourced = norm((output.claims || []).filter((c) => String(c.source || "").trim()).map((c) => c.text).join("\n"));
   const prose = [output.proposal.summary, ...recs.flatMap((r) => [r.title, r.why])].filter(Boolean).map(String);
