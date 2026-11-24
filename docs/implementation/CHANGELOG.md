@@ -2,6 +2,14 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-24 (D65 merged and deployed; D66 gate, retry and database guards; code change)
+- **Deployment:** #88 (D65) squash-merged as fb403ee; Worker deployed by deploy-seo-god run 23 (2026-11-24 19:19 UTC, success).
+- **Production evidence (read-only):** 24 runs a day, no run or tick errors in 4 days; 7 of 24 specialist reports escalated 2026-11-20 to 24 (reasons above in DECISIONS D66); 9 jobs awaiting agency approval; total AI spend $18.37. 0 gated jobs past approval without an approval row (checked before writing the guard).
+- **Code:** `src/god/review.mjs` (status codes, `dataNumbersOf`, `dataNumbers` accepted, exported `numbersIn`); `src/god/agent-runner.mjs` (reports `dataNumbers`, retries an unreadable verdict once); `src/god/worker.mjs` (`RETRY_HEADROOM` 1.25, gate gets the budget the job ran with); migration `cloud/portal/supabase/migrations/20261126000000_job_guards.sql`.
+- **Tests:** new `test/god-gate-d66.test.mjs` (6), `cloud/portal/supabase/test/rls32.sql` (in `run.sh`); `test/agent-runner.test.mjs` gives the fact-checker a real verdict.
+- **Checks:** `npm test` 722/722; `bash cloud/portal/supabase/test/run.sh` exit 0 (rls1-rls32); `node scripts/cf-local-e2e.mjs` exit 0, 56 checks, `runsWithErrors: 0`.
+- **Deployment of D66:** see STATUS (migration and Worker).
+
 ## 2026-11-20 (D65 planning resilience and budgets; code change)
 - **Production evidence:** AudioScriptor planning failed at every run from 2026-11-19 17:01 UTC with `transition_job: job needs agency approval first` (two hand-made gated jobs, $0 budget, no approval row). Repaired 2026-11-20 03:10 UTC at the owner's request (budget $0.50 each, back to awaiting_approval, approved through `approve_job` with a note naming the owner's chat request). Three "fact-checker could not review" / "budget too small" escalations 2026-11-16 to 18 read from `job_events`.
 - **Code:** `src/god/tick.mjs` (`advance` per-job isolation; `estimateCost(kind, { checked })`, `CHECKED_RUN_FACTOR`, `isChecked`, `jobBudget`; reservation and `runOnce` use `jobBudget`); `src/god/worker.mjs` (`runOnce({ budgetOf })`); `src/god/agent-runner.mjs` (`callNeedUsd`, review reserve before the agent's call, combined escalation message); `cloud/worker/src/app.mjs` (`workerAgents()` carries `publishable`; `runJob` passes `budgetOf`).

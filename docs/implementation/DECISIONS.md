@@ -1067,3 +1067,25 @@ Tradeoff: reviewed runs cost up to half again as much per day and the agent's re
 no paid advice goes unchecked for lack of money. Rejected: a database trigger setting a default budget (duplicates the
 Worker setting in SQL); refusing $0 jobs (agency staff may leave the budget empty, and the job would never run).
 Not fixed here: who made the 2026-11-19 jobs is unknown; the database still accepts such rows from the service role.
+
+## D66 (2026-11-24): fewer false escalations; approval rule enforced on every write
+Context (production 2026-11-20 to 24): 7 of 24 specialist reports escalated. Causes read from `job_events`: the gate
+counted HTTP status codes ("returns 200", "a 301 redirect") and numbers copied from the site's own data ("+7,393" from
+the priorities report) as unsourced; three retries started with too little budget and were cut off; one fact-check
+reply was unreadable. Also found: since D65 a job with no stored budget runs with the standard one, but the gate still
+compared its spend with the stored $0 and would fail it as over budget. And the 2026-11-19 jobs were inserted and
+"authorized" by direct SQL (no "proposed" event, no audit row), which `private.move_job` cannot stop.
+Decision:
+- Gate: status codes next to "returns", "status", "a/one", or before "redirect", "status", "error", "URLs" are not
+  claims. A number that appears in the site data the agent read (`dataNumbersOf`, without ids, dates, URLs and the
+  gate's own feedback) counts as grounded. The gate checks spend against the budget the job ran with.
+- Retry: only with 1.25 times the first attempt's cost left (`RETRY_HEADROOM`; was 0.8).
+- Fact-checker: an unreadable verdict (not a refusal) is asked for once more, within the budget, before a person.
+- Database (`20261126000000_job_guards.sql`): a trigger refuses queued/running/authorized/deploying on gated work
+  without a latest "approve" row on any insert or status update; a deferred trigger gives a job inserted outside the
+  job functions an event and a `job.insert_direct` audit row naming the database role and client.
+Tradeoff: a number that happens to appear anywhere in the site data passes even if the agent used it wrongly; the
+fact-checker still reviews publishable text, and people approve. Fewer retries mean slightly more reports go to a
+person with the first attempt's output instead of a cut-off second one. Rejected: blocking direct inserts entirely
+(the owner and the service role can always write; tracing them is what helps).
+

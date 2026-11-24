@@ -4,6 +4,7 @@
 // Nothing is changed on any website. The user's own Anthropic key is used (rule 6); the call is plain fetch so the core
 // stays dependency-free (rule 5). Cost is computed from the API's own usage report and capped by the job's budget before
 // the call is made. Site text is wrapped as data and never treated as instructions (rule 3).
+import { dataNumbersOf } from "./review.mjs";
 import { readFileSync } from "node:fs";
 import { listAgents, isPublishable } from "../core/agents.mjs";
 import { NO_FAKE_RULES } from "../lib/llm.mjs";
@@ -221,17 +222,25 @@ export function makeAgentHandler({ store, siteOf, apiKey = globalThis.process?.e
     const result = {
       evidence, proposal: { agent: name, mode: "advise", summary: out.summary, recommendations: out.recommendations, knowledge: kn.used },
       claims: out.claims, questions: out.questions, actions: out.recommendations.map((x) => x.title), costUsd,
+      // Numbers in the site data this run read: the quality gate accepts them as grounded (D66). Not stored on the job.
+      dataNumbers: dataNumbersOf(user.replace(/<review_feedback>[\s\S]*?<\/review_feedback>/g, " ")), // the gate's own reasons are not data
     };
     if (!checked) return result;
     // Second opinion: the fact-checker reads the same site data and this advice. If it cannot run, a person checks.
     const advice = JSON.stringify({ agent: name, summary: out.summary, recommendations: out.recommendations, claims: out.claims }).replace(/<\/?advice_to_review>/gi, "");
-    const second = rp ? await callModel({ ...call, system: reviewSystem, user: `${user.replace(/\n(<review_feedback>|Do the task above)[\s\S]*$/, "")}\n<advice_to_review>\n${advice}\n</advice_to_review>\nReview the advice and reply with the JSON object.`, budget: budget - costUsd, minTokens: 1500 }) : null;
+    const reviewUser = `${user.replace(/\n(<review_feedback>|Do the task above)[\s\S]*$/, "")}\n<advice_to_review>\n${advice}\n</advice_to_review>\nReview the advice and reply with the JSON object.`;
+    const second = rp ? await callModel({ ...call, system: reviewSystem, user: reviewUser, budget: budget - costUsd, minTokens: REVIEW_MIN_TOKENS }) : null;
     if (!second || second.short) return { ...result, escalate: `the fact-checker could not review this advice (${!second ? "reviewer missing" : `needs about $${second.needs.toFixed(2)} more budget`}); a person must check it` };
     costUsd += second.costUsd;
-    const v = second.r.stop_reason === "refusal" ? null : parseVerdict(second.text);
-    evidence.push(`second opinion by ${REVIEWER_AGENT}: ${v ? v.verdict : "unreadable"}, $${second.costUsd.toFixed(4)}`);
+    let v = second.r.stop_reason === "refusal" ? null : parseVerdict(second.text), reviewCost = second.costUsd;
+    // D66: an unreadable verdict (not a refusal) is asked for once more when the budget allows, before a person gets it.
+    if (!v && second.r.stop_reason !== "refusal") {
+      const again = await callModel({ ...call, system: reviewSystem, user: `${reviewUser}\nReply with the JSON object only, nothing before or after it.`, budget: budget - costUsd, minTokens: REVIEW_MIN_TOKENS });
+      if (!again.short) { costUsd += again.costUsd; reviewCost += again.costUsd; v = again.r.stop_reason === "refusal" ? null : parseVerdict(again.text); }
+    }
+    evidence.push(`second opinion by ${REVIEWER_AGENT}: ${v ? v.verdict : "unreadable"}, $${reviewCost.toFixed(4)}`);
     if (!v) return { ...result, costUsd, escalate: "the fact-checker's review was unreadable; a person must check this advice" };
-    return { ...result, costUsd, secondReview: { reviewer: REVIEWER_AGENT, verdict: v.verdict, reasons: v.reasons, evidence: { summary: v.summary, costUsd: second.costUsd } } };
+    return { ...result, costUsd, secondReview: { reviewer: REVIEWER_AGENT, verdict: v.verdict, reasons: v.reasons, evidence: { summary: v.summary, costUsd: reviewCost } } };
   };
 }
 

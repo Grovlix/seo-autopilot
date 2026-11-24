@@ -48,7 +48,8 @@ test("reply parsing keeps only the expected shape", () => {
 
 test("handler: calls the user's key with fallbacks, budget-bounded max_tokens, and returns an advise-only proposal", async () => {
   const store = memoryStore(), calls = [];
-  const h = makeAgentHandler({ store, siteOf: async () => SITE, apiKey: "user-key", fetchImpl: fakeFetch(reply(GOOD), calls) });
+  // The fact-checker answers with a verdict (D66: an unreadable one is asked for again).
+  const h = makeAgentHandler({ store, siteOf: async () => SITE, apiKey: "user-key", fetchImpl: async (url, o) => { calls.push({ url, headers: o.headers, body: JSON.parse(o.body) }); return new Response(JSON.stringify(calls.length === 1 ? reply(GOOD) : reply({ verdict: "pass", problems: [], summary: "ok" })), { status: 200 }); } });
   const out = await h({ siteId: "A", kind: "agent:seo-snippet-optimizer", title: "Fix titles", inputs: { agent: "seo-snippet-optimizer" }, budgetUsd: 0.5 }, { budgetUsd: 0.5 });
   const c = calls[0];
   assert.equal(c.headers["x-api-key"], "user-key");
