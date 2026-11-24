@@ -5,6 +5,8 @@ import { reviewOutput } from "./review.mjs";
 
 /** AI work (agents, client requests) runs at most this many times: a retry after "needs changes" is paid again (D62). */
 export const AI_MAX_ATTEMPTS = 2;
+/** A retry of AI work starts only with this multiple of the first attempt's cost left in the job's budget (D66). */
+export const RETRY_HEADROOM = 1.25;
 
 /**
  * store: MemoryStore or SupabaseStore. handlers: { [kind or "agent:*"]: async (job, ctx) => output }. output: { evidence,
@@ -43,7 +45,7 @@ export async function runOnce({ store, handlers, worker = "worker-1", timeoutMs 
       log(`completed ${job.kind}`); return { job: job.id, outcome: "completed" };
     }
     await store.transition(job.id, "awaiting_review", worker, "ready for review", { evidence: output.evidence || [], changes: (output.changes || []).length });
-    let review = reviewOutput(job, { ...output, costUsd: spent }, { siteHost: await siteHostOf(job) });
+    let review = reviewOutput({ ...job, budgetUsd: budget }, { ...output, costUsd: spent }, { siteHost: await siteHostOf(job) });
     await store.recordReview(job.id, review);
     // A second opinion from a reviewer agent (publishable text and high-risk work, D63) counts only when the gate passed.
     if (review.verdict === "pass" && output.secondReview) { review = { ...output.secondReview, producer: job.agent || job.kind }; await store.recordReview(job.id, review); }
@@ -51,9 +53,10 @@ export async function runOnce({ store, handlers, worker = "worker-1", timeoutMs 
       // Changes asked for are retried within the attempt cap (at most 2 attempts for AI work, D62: each one is paid);
       // the retry gets the reviewer's reasons. After the cap, or on a hard failure, the job stops and goes to a person.
       const cap = Math.min(job.maxAttempts ?? 3, fromAI ? AI_MAX_ATTEMPTS : Infinity);
-      // A retry needs about what the first attempt cost; with less left it would be cut off and lose the work, so the
-      // job goes to a person with this attempt's output instead.
-      const roomForRetry = !fromAI || budget - spent >= costUsd * 0.8;
+      // A retry costs more than the first attempt (it also reads the reviewer's reasons and usually answers at more
+      // length); with less than 1.25 times the first attempt left it is cut off and only adds cost (production
+      // 2026-11-20 to 24: 3 retries cut off), so the job goes to a person with this attempt's output instead (D66).
+      const roomForRetry = !fromAI || budget - spent >= costUsd * RETRY_HEADROOM;
       const retry = review.verdict === "needs_changes" && (job.attempts ?? 0) < cap && roomForRetry;
       if (retry) await store.recordOutput?.(job.id, { outputs: { ...recorded, reviewFeedback: review.reasons.slice(0, 20) } });
       await store.transition(job.id, retry ? "queued" : "failed", review.reviewer, review.reasons.join("; "));

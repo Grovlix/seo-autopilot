@@ -40,10 +40,23 @@ const sameHost = (a, b) => a.replace(/^www\./, "") === b.replace(/^www\./, "");
 // Numbers in prose, without the ones inside addresses and paths ("/page-2", "https://x/2026/"), calendar dates
 // ("2026-10-18", the data window an agent cites), names of standards ("ISO 8601", "HTTP 301", "WCAG 2.2") and
 // length guidance ("60 characters", "600 pixels"), none of which is a claim about the site (production 2026-11-16).
-const numbersIn = (text) => String(text || "").replace(/https?:\/\/\S+/g, " ").replace(/(^|\s)\/\S*/g, " ")
+export const numbersIn = (text) => String(text || "").replace(/https?:\/\/\S+/g, " ").replace(/(^|\s)\/\S*/g, " ")
   .replace(/\b\d{4}-\d{2}-\d{2}\b/g, " ").replace(/\b(?:ISO|RFC|HTTP|UTF|WCAG|TLS|IPv|PEP|ES|H)[- ]?\d[\d.]*\b/gi, " ")
   .replace(/\b\d[\d,]*\s?(?:characters?|chars?|pixels?|px|words?)\b/gi, " ")
+  // HTTP status codes in technical advice ("returns 200", "a 301 redirect", "200-status URLs", "404 errors"), D66.
+  .replace(/\b(?:returns?|returning|status(?: code)?|code|answers? with|in (?:one|a single)|an?|one)\s+[1-5]\d\d\b/gi, " ")
+  .replace(/\b[1-5]\d\d(?=[- ](?:status|response|redirects?|errors?|codes?|URLs?|pages?|chains?)\b)/gi, " ")
   .match(/(?<![\w/])\d(?:[\d,]*\d)?(?:\.\d+)?/g) || [];
+/**
+ * The numbers stated in the site data an agent read (its JSON input), for the gate to accept as grounded (D66).
+ * Identifiers and timestamps are not data: ids, dates and times are removed first, and a number glued to letters,
+ * dots, slashes or hyphens ("3f2a", "v2", "/page-2", "1.2.3") is not taken.
+ */
+export const dataNumbersOf = (text) => [...new Set((String(text || "")
+  .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, " ")
+  .replace(/\b\d{4}-\d{2}-\d{2}(?:[T ][\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?\b/g, " ")
+  .replace(/https?:\/\/[^\s"]+/g, " ")
+  .match(/(?<![\w./-])\d+(?:,\d{3})*(?:\.\d+)?(?![\w/-]|\.\d)/g) || []).map((n) => n.replace(/,/g, "")))];
 const norm = (t) => String(t).toLowerCase().replace(/(\d),(\d)/g, "$1$2");
 
 /**
@@ -63,11 +76,14 @@ export function adviceProblems(output = {}, siteHost = null) {
     if (!(r.evidence || []).some((e) => String(e).trim())) out.push(`recommendation without evidence: ${t(r)}`);
     if (destructive(String(r.title || "")) && !APPROVAL_PREFIX.test(String(r.title || "").trim())) out.push(`removing, noindexing, redirecting or merging must start with "After a person approves:": ${t(r)}`);
   }
+  // A number is grounded when a sourced claim states it, or when it appears in the site data the agent was given
+  // (output.dataNumbers, set by the agent runner from its own input; D66: "+7,393" from the priorities report).
   const sourced = norm((output.claims || []).filter((c) => String(c.source || "").trim()).map((c) => c.text).join("\n"));
+  const inData = new Set((output.dataNumbers || []).map(norm));
   const prose = [output.proposal.summary, ...recs.flatMap((r) => [r.title, r.why])].filter(Boolean).map(String);
   const missing = new Set();
   for (const text of prose) {
-    for (const n of numbersIn(text)) if (!sourced.includes(norm(n))) missing.add(n);
+    for (const n of numbersIn(text)) if (!sourced.includes(norm(n)) && !inData.has(norm(n).replace(/^\+/, ""))) missing.add(n);
     for (const c of findClaims(text)) if (!/\d/.test(c.claim) && !sourced.includes(norm(c.claim))) missing.add(c.claim);
   }
   if (missing.size) out.push(`numbers or claims without a sourced claim: ${[...missing].slice(0, 8).join(", ")}`);
