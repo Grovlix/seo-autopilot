@@ -1089,3 +1089,19 @@ fact-checker still reviews publishable text, and people approve. Fewer retries m
 person with the first attempt's output instead of a cut-off second one. Rejected: blocking direct inserts entirely
 (the owner and the service role can always write; tracing them is what helps).
 
+## D67 (2026-11-24): pilot with 2 to 3 invited clients, advice only, invoiced by hand
+Context: the owner asked to start pilot work. Much of what a pilot needs exists already: invite-only sign-up, client
+users who see no costs, per-site daily budgets with monthly cost on Operations (D50), alerts, the daily digest, the
+monthly work report ("Work in <month>", printable) and the email sender (D40; it waits only for SMTP secrets). Missing
+for a paying pilot: search results in the client report, numbers to invoice from, a measure of AI quality, terms and
+privacy text, and a runbook.
+Decision: no billing system and no self-serve sign-up yet. Add: (1) clicks and impressions from Google to the monthly
+report, this month to date against the same days of the month before, from the stored Search Console history; (2)
+`agency_usage(month)` and a CSV download on Operations (AI cost and work done per website); (3) `agency_quality(days)`
+and an "AI report quality" card (share of AI reports needing a person, this week against the last); (4) draft terms and
+privacy notice in `docs/pilot/` with bracketed items only the owner can fill; (5) `docs/pilot/PILOT-RUNBOOK.md`.
+Tradeoff: invoicing by hand does not scale, but keeps the pilot free of payment code until the advice is shown to be
+worth paying for. Month-to-date against the same days of the month before is fair early in a month but small samples
+swing; the report states the days and the source. Rejected: Stripe now (price undecided, no proof yet); publishing the
+legal drafts with invented company details.
+

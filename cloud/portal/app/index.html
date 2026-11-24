@@ -1070,9 +1070,34 @@ let OPS = null;
 async function loadOps() {
   const [overview, health, gsc, alerts] = await Promise.all([rpc("agency_overview").catch((e) => ({ error: e.message })), rpc("platform_health", { p_days: 1 }).catch((e) => (/not allowed/i.test(e.message) ? null : { error: e.message })), rpc("gsc_sites").catch(() => null), rpc("ops_alerts").catch((e) => ({ error: e.message }))]);
   const [googleConflicts, invites] = Array.isArray(gsc) ? await Promise.all([rpc("google_conflicts").catch(() => null), rpc("invite_requests_list").catch(() => null)]) : [null, null]; // D56, D59: platform admins
-  OPS = { overview, health, gsc, alerts, googleConflicts, invites }; // health, gsc and invites are null for everyone who is not a platform admin
+  const quality = await rpc("agency_quality", { p_days: 7 }).catch(() => null); // D67: before the migration, simply not shown
+  OPS = { overview, health, gsc, alerts, googleConflicts, invites, quality }; // health, gsc and invites are null for everyone who is not a platform admin
 }
 const ago = (t) => { if (!t) return "never"; const m = Math.round((Date.now() - Date.parse(t)) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
+// D67: how often an AI report needed a person, this week against the week before.
+function qualityCard(q) {
+  if (!q || !q.now) return "";
+  const rate = (x) => { const t = Number(x.finished || 0) + Number(x.escalated || 0); return t ? Math.round((Number(x.escalated || 0) / t) * 100) : null; };
+  const r = rate(q.now), r0 = rate(q.before), t = Number(q.now.finished || 0) + Number(q.now.escalated || 0);
+  return `<div class="card"><div class="ch"><h2>AI report quality</h2><p>Last ${fmt(q.days)} days</p></div><div class="grid g4">
+    ${kpi("Reports finished", fmt(Number(q.now.finished || 0)), null, "Reviewed by the checks and handed to you, or accepted.")}
+    ${kpi("Needed a person", fmt(Number(q.now.escalated || 0)), null, "Stopped by the checks or the budget: see Needs a person.")}
+    ${kpi("Share needing a person", r == null ? "–" : `${r}%`, r0 == null ? '<span class="muted">no reports the week before</span>' : `<span class="muted">${r0}% the ${fmt(q.days)} days before</span>`, t ? `Of ${fmt(t)} AI reports.` : "No AI reports in this window.")}</div></div>`;
+}
+// D67: one row per website and month (AI cost and work done) as a CSV file, for invoicing a pilot by hand.
+const monthStr = (d) => d.toISOString().slice(0, 7);
+function usageCard() {
+  const now = new Date(), last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  return `<div class="card"><div class="ch"><h2>Usage for invoicing</h2><p>Agency only</p></div><p class="xs muted" style="margin:0 0 8px">AI cost and work done per website for a month, as a spreadsheet file. Clients never see costs.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-usage="${monthStr(now)}">This month (CSV)</button><button class="btn" data-usage="${monthStr(last)}">${esc(monthLabel(monthStr(last)))} (CSV)</button></div><div class="err" id="usage-err"></div></div>`;
+}
+const csvCell = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+async function downloadUsage(month) {
+  const rows = await rpc("agency_usage", { p_month: `${month}-01` });
+  const cols = [["month", "Month"], ["client", "Client"], ["site", "Website"], ["url", "Address"], ["status", "Status"], ["aiCostUsd", "AI cost (USD)"], ["agentRuns", "AI specialist runs"], ["adviceAccepted", "Advice accepted"], ["workCompleted", "Work completed"], ["waitingNow", "Waiting for approval now"]];
+  const csv = [cols.map((c) => csvCell(c[1])).join(","), ...(rows || []).map((r) => cols.map((c) => csvCell(r[c[0]])).join(","))].join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `seo-autopilot-usage-${month}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 function pOps() {
   const o = OPS?.overview, h = OPS?.health;
   const head = `<div><h1>Operations</h1><p class="lead">Every website's SEO God at a glance: what needs you, what is stuck, and what it costs.</p></div>`;
@@ -1083,6 +1108,7 @@ function pOps() {
   <div class="card pad0"><div class="ch"><h2>Websites</h2></div><div class="list">${o.map((s) => { const p = STRAT_PILL[s.strategy] || ["No strategy yet", ""]; return `<div class="row" style="flex-wrap:wrap;gap:8px">
     <div style="flex:1;min-width:200px"><div class="t"><a href="#/s/${esc(s.id)}/god">${esc(s.name)}</a></div><div class="s">${esc(host(s.url))} · planned ${esc(ago(s.lastPlanned))}${s.lastError ? ` · <span style="color:var(--bad,#c33)">${esc(s.lastError)}</span>` : ""}</div></div>
     <span class="pill ${p[1]}">${p[0]}</span>${Number(s.waiting) ? `<span class="pill warn">${fmt(s.waiting)} waiting</span>` : ""}${Number(s.requests) ? `<span class="pill info"><a href="#/s/${esc(s.id)}/requests">${fmt(s.requests)} requests</a></span>` : ""}${Number(s.escalated) ? `<span class="pill bad">${fmt(s.escalated)} stuck</span>` : ""}${s.status === "paused" ? '<span class="pill">paused</span>' : ""}<span class="xs muted">${usd(s.spendMonth)} this month · ${usd(s.spendLastMonth || 0)} last month · budget ${s.budgetUsd != null ? `${usd(s.budgetUsd)}/day` : `default${s.appliedBudgetUsd != null ? ` (${usd(s.appliedBudgetUsd)}/day)` : ""}`}</span>${s.canSetBudget ? `<button class="btn" data-budget="${esc(s.id)}" data-current="${s.budgetUsd ?? ""}">Daily budget</button>` : ""}</div>`; }).join("") || '<div class="empty">No websites yet.</div>'}</div></div>`;
+  html += qualityCard(OPS.quality) + usageCard();
   if (h?.error) html += `<div class="card"><div class="ch"><h2>Scheduler (platform)</h2></div>${failNote("The scheduler's health", h.error)}</div>`;
   else if (h) {
     const c = h.control || {}, u = h.usage || {}, pct = ((Number(u.invocations || 0) / 100000) * 100).toFixed(2);
@@ -1646,6 +1672,7 @@ function wire(s) {
     try { await rpc("set_platform_paused", { p_paused: paused, p_reason: reason }); toast(paused ? "Paused from the next run." : "Resumed."); await loadOps(); render(); } catch (e) { toast(e.message); }
   };
   const op = $("#ops-pause"); if (op) op.onclick = () => opsSet(true);
+  document.querySelectorAll("[data-usage]").forEach((b) => (b.onclick = () => downloadUsage(b.dataset.usage).catch((e) => { const el = $("#usage-err"); if (el) el.textContent = e.message; })));
   const orz = $("#ops-resume"); if (orz) orz.onclick = () => opsSet(false);
   document.querySelectorAll("[data-budget]").forEach((b) => (b.onclick = async () => {
     const v = prompt("Daily AI budget for this website in US dollars (0 to 100). Leave empty for the default.", b.dataset.current || "");
@@ -1740,12 +1767,20 @@ const monthLabel = (ym) => { const [y, m] = String(ym || "").split("-").map(Numb
 const shiftMonth = (ym, d) => { const [y, m] = String(ym).split("-").map(Number); const x = new Date(Date.UTC(y, m - 1 + d, 1)); return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, "0")}`; };
 async function loadWork(s) { try { s.work = await rpc("site_work_report", { p_site: s.id, p_month: s.workMonth ? `${s.workMonth}-01` : null }); } catch { s.work = null; } }
 const sevTotal = (a) => (a?.bySeverity ? Object.values(a.bySeverity).reduce((x, y) => x + (Number(y) || 0), 0) : null);
+// D67: clicks and impressions from Google this month to date, against the same days of the month before.
+function searchHtml(x) {
+  if (!x) return "";
+  const n = x.now || {}, b = x.before || {}, days = Number(n.days || 0);
+  const vs = (a, c) => { const A = Number(a || 0), C = Number(c || 0); if (!Number(b.days)) return '<span class="muted">no data for the month before</span>'; if (!C) return '<span class="muted">none the month before</span>'; const p = Math.round(((A - C) / C) * 100); return p ? `<span class="${p > 0 ? "up" : "down"}">${p > 0 ? "▲" : "▼"} ${Math.abs(p)}%</span> <span class="muted">vs the same days last month</span>` : '<span class="muted">no change</span>'; };
+  return `<div class="grid g2" style="margin-bottom:10px">${kpi("Clicks from Google", fmt(Number(n.clicks || 0)), vs(n.clicks, b.clicks), `${fmt(days)} day${days === 1 ? "" : "s"} with data, ${esc(String(x.from))} to ${esc(String(x.to))}. Source: ${esc(x.source || "Google Search Console")}.`)}${kpi("Times shown in Google", fmt(Number(n.impressions || 0)), vs(n.impressions, b.impressions), "Impressions in search results over the same days.")}</div>`;
+}
 function workHtml(s) {
   const w = s.work; if (!w) return "";
   const now = new Date().toISOString().slice(0, 7), before = sevTotal(w.auditBefore), after = sevTotal(w.audit);
   const verified = (w.changes || []).filter((c) => c.status === "completed").length;
   return `<div class="card work-report"><div class="ch" style="flex-wrap:wrap;gap:8px"><h2>Work in ${esc(monthLabel(w.month))}</h2><span class="no-print" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-wmonth="${esc(shiftMonth(w.month, -1))}">Previous month</button>${w.month < now ? `<button class="btn" data-wmonth="${esc(shiftMonth(w.month, 1))}">Next month</button>` : ""}<button class="btn" id="print-report">Print or save as PDF</button></span></div>
     <p class="xs muted" style="margin-top:0">${esc(w.site?.name || "")} · ${esc(w.site?.url || "")}${w.brand?.name ? ` · prepared by ${esc(w.brand.name)}` : ""}</p>
+    ${searchHtml(w.search)}
     <div class="grid g4">${kpi("Advice accepted", fmt((w.advice || []).length), null, "Recommendations your SEO team reviewed and accepted.")}${kpi("Website changes", fmt((w.changes || []).length), null, `${fmt(verified)} verified on the live site; the rest are in progress or stopped.`)}${kpi("Requests answered", fmt((w.requests || []).length), null, "Requests you sent that the team decided on.")}${kpi("Site problems", after == null ? "–" : fmt(after), null, before == null ? "Found by the latest audit this month." : `${fmt(before)} at the start of the month.`)}</div>
     ${w.strategy ? `<p class="xs" style="margin:10px 0 0"><b>Strategy:</b> ${w.strategy.approved ? "approved" : "being prepared"}${w.strategy.objective ? ` · ${esc(w.strategy.objective)}` : ""}</p>` : ""}
     ${(w.changes || []).length ? `<h3 style="margin:14px 0 6px">Changes to the website</h3><ul class="xs" style="margin:0 0 0 18px;padding:0">${w.changes.map((c) => `<li><b>${esc(c.title)}</b>${c.page ? ` · ${esc(c.page)}` : ""}<br><span class="muted">${esc(c.verification || (c.status === "completed" ? "done" : c.status === "escalated" ? "stopped: the team is looking at it" : "in progress"))}</span></li>`).join("")}</ul>` : ""}

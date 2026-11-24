@@ -2,6 +2,13 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-24 (D66 deployed; D67 pilot reports; code change)
+- **Deployment:** #89 (D66) squash-merged as 739f7c3; migration `20261126000000_job_guards.sql` applied to production (both triggers present); Worker deployed by deploy-seo-god run 24 (success, 19:49 UTC). Run at 20:00 UTC: no errors; no job refused by the new guard; no direct inserts recorded.
+- **Code (D67):** migration `cloud/portal/supabase/migrations/20261127000000_pilot_reports.sql` (`site_work_report` gains `search`; `agency_usage`; `agency_quality`; `private.history_sum`); portal `cloud/portal/app/index.html` (search results in the monthly report, AI report quality card and usage CSV on Operations).
+- **Documentation:** `docs/pilot/PILOT-RUNBOOK.md`, `docs/pilot/TERMS-DRAFT.md`, `docs/pilot/PRIVACY-DRAFT.md` (drafts; owner fills bracketed items; not published).
+- **Tests:** `cloud/portal/supabase/test/rls33.sql` (in `run.sh`).
+- **Checks:** see the PR; migration not applied to production in this entry.
+
 ## 2026-11-24 (D65 merged and deployed; D66 gate, retry and database guards; code change)
 - **Deployment:** #88 (D65) squash-merged as fb403ee; Worker deployed by deploy-seo-god run 23 (2026-11-24 19:19 UTC, success).
 - **Production evidence (read-only):** 24 runs a day, no run or tick errors in 4 days; 7 of 24 specialist reports escalated 2026-11-20 to 24 (reasons above in DECISIONS D66); 9 jobs awaiting agency approval; total AI spend $18.37. 0 gated jobs past approval without an approval row (checked before writing the guard).
