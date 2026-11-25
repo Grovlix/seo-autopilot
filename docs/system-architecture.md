@@ -1,5 +1,7 @@
 # System architecture
 
+> **History:** this document describes the hosted stack (Supabase portal, Cloudflare Worker, hosted SEO God) that was removed from this fork in the strip commit. Nothing it names under `cloud/`, `src/god/` or `src/hosted/` exists any more; the content is kept as history.
+
 Verified against the code and the deployed services on 2026-11-07 (audit branch `claude/audit-refinement`). What is
 deployed and what is only built is in [deployment-status.md](deployment-status.md); every job and agent is in
 [registry.md](registry.md).

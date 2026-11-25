@@ -1,5 +1,7 @@
 # Test matrix
 
+> **History:** this document describes the hosted stack (Supabase portal, Cloudflare Worker, hosted SEO God) that was removed from this fork in the strip commit. Nothing it names under `cloud/`, `src/god/` or `src/hosted/` exists any more; the content is kept as history.
+
 What is tested, how, and with what result. "Mocked" tests replace the network with recorded or fake responses: they
 prove the logic, not the live integration. Last full run: 2026-11-07 on the audit branch.
 

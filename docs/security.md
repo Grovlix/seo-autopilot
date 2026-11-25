@@ -1,5 +1,7 @@
 # Security model
 
+> **History:** this document describes the hosted stack (Supabase portal, Cloudflare Worker, hosted SEO God) that was removed from this fork in the strip commit. Nothing it names under `cloud/`, `src/god/` or `src/hosted/` exists any more; the content is kept as history.
+
 Status as of 2026-11-07. Report vulnerabilities as in [SECURITY.md](../SECURITY.md).
 
 ## Principals and what each may do

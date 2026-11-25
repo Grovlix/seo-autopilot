@@ -5,24 +5,21 @@ Instructions for AI coding agents (Claude Code, Codex, Cursor and others) workin
 
 ## What this repository is
 SEO Autopilot: a dependency-free Node.js SEO engine (jobs, audit, research), 38 agent definitions, GitHub Actions
-templates that run it on a website's own repository, and a hosted agency/client portal on Supabase (`cloud/portal`).
+templates that run it on a website's own repository.
 Architecture: [docs/system-architecture.md](docs/system-architecture.md). Every job, agent, skill and MCP tool, with its
 trigger, credentials, permissions and verification level: [docs/registry.md](docs/registry.md) (generated; do not edit).
 
 ## Start of every session
 1. Read `docs/implementation/STATUS.md`, then `git status` and `git log`. Do not overwrite uncommitted work.
 2. Check open pull requests before starting overlapping work.
-3. Reconcile what docs claim with the code and the deployed state ([docs/deployment-status.md](docs/deployment-status.md)).
+3. Reconcile what docs claim with the code (docs/deployment-status.md describes a hosted stack that was removed; treat it as history).
 
 ## Commands
 | Purpose | Command |
 |---|---|
 | All tests (must pass before any commit) | `npm test` |
-| Portal SQL checks (Postgres 16, run as a database superuser) | `bash cloud/portal/supabase/test/run.sh` |
 | Regenerate the registry after changing jobs, agents or workflows | `node scripts/build-registry.mjs` |
 | Rebuild the landing site | `node scripts/build-site.mjs` |
-| Build the portal page | `PORTAL_SUPABASE_URL=… PORTAL_SUPABASE_KEY=<anon key> node cloud/portal/build.mjs` |
-| Copy modules into the scan function | `node cloud/portal/build-scan.mjs` |
 
 ## Rules that must not be broken
 1. Automated checks approve routine changes; a person approves risky ones (D17). Never merge, publish, send outreach or
@@ -33,9 +30,7 @@ trigger, credentials, permissions and verification level: [docs/registry.md](doc
 5. The core stays dependency-free.
 6. Users bring their own keys. Never commit or print a secret; never put one in `.mcp.json`, a workflow or a doc.
 7. Never commit a site's restored state or site-specific content to this repository.
-8. Anything that fetches an address a user typed goes through `src/hosted/safe-fetch.mjs` ([docs/security.md](docs/security.md)).
-9. Production (Supabase project, Hostinger portal, site repositories) changes only with the owner's explicit go-ahead,
-   recorded in `docs/implementation/CHANGELOG.md`.
+8. Production (site repositories) changes only with the owner's explicit go-ahead, recorded in `docs/implementation/CHANGELOG.md`.
 
 ## Before you finish
 - `npm test` green; registry regenerated if jobs, agents or workflows changed; SQL checks green if a migration changed.

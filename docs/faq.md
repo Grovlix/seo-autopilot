@@ -31,7 +31,7 @@ Use `sitemap` mode for everything read-only. Drafted pages arrive as pull reques
 Add the service account's email as a user on the exact property named in `searchConsoleProperty`, with Full permission ([google-setup.md](google-setup.md)).
 
 **Can I use it from Claude or ChatGPT?**
-Yes. `seo-autopilot mcp` is an MCP server for Claude Code and Claude Desktop. The hosted connector (`cloud/connector`) lets claude.ai and ChatGPT read your reports after a GitHub sign-in. See [mcp.md](mcp.md).
+Yes. `seo-autopilot mcp` is an MCP server for Claude Code and Claude Desktop. The remote connector for claude.ai and ChatGPT is not part of this repository. See [mcp.md](mcp.md).
 
 **How does it compare with Ahrefs or Semrush?**
 It acts on your own site with your own data. They have web-scale data of their own. See [compare.md](compare.md).

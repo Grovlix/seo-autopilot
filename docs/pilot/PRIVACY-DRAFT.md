@@ -1,5 +1,7 @@
 # Privacy notice (DRAFT, not legal advice, not published)
 
+> **History:** this document describes the hosted stack (Supabase portal, Cloudflare Worker, hosted SEO God) that was removed from this fork in the strip commit. Nothing it names under `cloud/`, `src/god/` or `src/hosted/` exists any more; the content is kept as history.
+
 Status: draft for the owner and a legal reviewer. Every `[BRACKETED]` item must be filled in by the owner. Nothing here
 is published until the owner approves it. The facts below describe what the system does today (checked against the code
 on 2026-11-24); if the system changes, this draft must change with it.

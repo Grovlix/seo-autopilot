@@ -1,5 +1,5 @@
 // The client portal snapshot: one JSON document per site, built from the reports the other jobs already wrote, that the
-// hosted portal (cloud/portal) shows to the agency and to the client. Pure: the job reads the files and passes them in.
+// client portal shows to the agency and to the client. Pure: the job reads the files and passes them in.
 // Plain numbers only, each traceable to a report; nothing here estimates or invents. Missing reports give empty sections.
 
 export const SNAPSHOT_VERSION = 1;
