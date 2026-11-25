@@ -112,6 +112,63 @@ test("a reworded heading is a warning, not a failure; a heading gone with nothin
   assert.equal(run(base, base.replace("## Watering", "## **Watering**")).failed, 0, "formatting is not a change of text");
 });
 
+test("the limit is compared unrounded: a 15.04% drop fails at a 15% limit", () => {
+  const page = (n) => md("Readable", Array.from({ length: n }, (_, i) => `word${i}`).join(" "));
+  const r = run(page(9999), page(8495)); // 10,000 -> 8,496 words with the title: 15.04%
+  assert.equal(r.pages[0].words.dropPercent, 15.04);
+  assert.equal(r.failed, 1);
+  assert.equal(run(page(9999), page(8500)).failed, 0, "15.00% is at the limit, not over it");
+});
+
+test("a deleted section with a tiny unrelated H2 put in its place counts as a removed heading", () => {
+  const base = md("Plans", "## Our pricing plans\n\nThree plans, billed monthly or yearly, each with a free trial.\n\n## Support\n\nEmail and chat on weekdays.\n\n[More](/help)");
+  const r = run(base, base.replace("## Our pricing plans", "## More"));
+  assert.equal(r.failed, 1);
+  assert.match(r.pages[0].reasons.join(" "), /heading\(s\) removed: H2 "Our pricing plans"/);
+  assert.equal(run(base, base.replace("## Our pricing plans", "## Our plans and pricing")).failed, 0, "a real rewording still passes");
+});
+
+test("hidden or commented-out text does not count: MDX comments, hidden elements, Liquid and HTML comments", () => {
+  const body = article(EN, 600);
+  const base = md("Guide", body);
+  for (const [name, wrap] of [
+    ["MDX {/* */}", (b) => `{/*\n${b}\n*/}\n\nShort.`],
+    ["<div hidden>", (b) => `<div hidden>\n\n${b}\n\n</div>\n\nShort.`],
+    ["style display:none", (b) => `<section style="display: none">\n\n${b}\n\n</section>\n\nShort.`],
+    ["class sr-only", (b) => `<div class="note sr-only">\n\n${b}\n\n</div>\n\nShort.`],
+    ["Jekyll {% comment %}", (b) => `{% comment %}\n${b}\n{% endcomment %}\n\nShort.`],
+    ["HTML <!-- -->", (b) => `<!--\n${b}\n-->\n\nShort.`],
+  ]) {
+    const r = run(base, md("Guide", wrap(body)), "content/blog/guide.mdx");
+    assert.equal(r.failed, 1, name);
+    assert.ok(r.pages[0].words.after < 20, `${name}: ${r.pages[0].words.after} words counted`);
+  }
+  assert.equal(run(base, md("Guide", `<div class="hidden md:block">\n\n${body}\n\n</div>`)).failed, 0, "shown on wider screens: counts");
+});
+
+test("page settings: draft, noindex, canonical, permalink and slug changes fail (front matter, HTML head, JSON)", () => {
+  const body = article(EN, 400);
+  const base = md("Guide", body, "canonical: https://example.test/blog/guide\npermalink: /blog/guide/\n");
+  for (const [name, after] of [
+    ["draft: true", md("Guide", body, "canonical: https://example.test/blog/guide\npermalink: /blog/guide/\ndraft: true\n")],
+    ["noindex: true", md("Guide", body, "canonical: https://example.test/blog/guide\npermalink: /blog/guide/\nnoindex: true\n")],
+    ["canonical elsewhere", md("Guide", body, "canonical: https://other.test/guide\npermalink: /blog/guide/\n")],
+    ["permalink", md("Guide", body, "canonical: https://example.test/blog/guide\npermalink: /blog/old-guide/\n")],
+    ["slug", md("Guide", body, "canonical: https://example.test/blog/guide\npermalink: /blog/guide/\n").replace("slug: guide", "slug: guide-2")],
+  ]) {
+    const r = run(base, after);
+    assert.equal(r.failed, 1, name);
+    assert.match(r.pages[0].reasons.join(" "), /page settings changed/, name);
+  }
+  const html = (head) => `<html><head><title>Guide</title>${head}</head><body><h1>Guide</h1><p>${body}</p></body></html>`;
+  assert.equal(run(html(""), html('<meta name="robots" content="noindex">'), "guide.html").failed, 1, "meta robots noindex");
+  assert.equal(run(html('<link rel="canonical" href="https://example.test/guide">'), html('<link rel="canonical" href="https://other.test/">'), "guide.html").failed, 1, "link canonical");
+  const page = (extra) => JSON.stringify([{ slug: "guide", title: "Guide", body: EN.join(" "), ...extra }], null, 2);
+  assert.equal(run(page({}), page({ draft: true }), "data/pages.json").failed, 1, "JSON draft");
+  assert.equal(run(page({ status: "published" }), page({ status: "draft" }), "data/pages.json").failed, 1, "JSON status draft");
+  assert.equal(run(page({ status: "published" }), page({ status: "published" }), "data/pages.json").failed, 0, "unchanged");
+});
+
 test("internal links: relative, root and same-host absolute links count (www ignored); external, anchors and mail do not", () => {
   assert.equal(internalLink("/a/b/", SITE), "/a/b");
   assert.equal(internalLink("https://www.example.test/a#top", SITE), "/a");
@@ -218,60 +275,140 @@ function repo() {
   writeFileSync(join(root, "seo-autopilot.config.json"), JSON.stringify({ sites: [{ id: "ex", name: "Ex", url: SITE, searchConsoleProperty: SITE, sitemap: SITE + "sitemap.xml", content: { type: "markdown", dir: "content/blog", urlPattern: "/blog/{slug}" } }] }, null, 2));
   return root;
 }
+// Runs the guard the way seo-check does: from a folder outside the checkout holding the BASE branch's config, --repo
+// pointing at the checkout.
 async function guard(root, flags) {
   const { run: job } = await import("../src/jobs/content-guard.mjs");
   const { loadConfig } = await import("../src/core/config.mjs");
-  const cfg = loadConfig({ cwd: root });
+  const out = mkdtempSync(join(tmpdir(), "seo-guard-run-"));
+  writeFileSync(join(out, "seo-autopilot.config.json"), git(root, "show", `${flags.base || "main"}:seo-autopilot.config.json`));
+  const cfg = loadConfig({ cwd: out });
   const log = console.log; console.log = () => {}; process.exitCode = 0;
-  try { await job({ site: cfg.sites[0], cfg, flags }); return { code: process.exitCode, report: JSON.parse(readFileSync(join(root, ".seo-autopilot", "ex", "content-guard.json"), "utf8")) }; }
+  try { await job({ site: cfg.sites[0], cfg, flags: { repo: root, ...flags } }); return { code: process.exitCode, report: JSON.parse(readFileSync(join(out, ".seo-autopilot", "ex", "content-guard.json"), "utf8")) }; }
   finally { console.log = log; process.exitCode = 0; }
 }
 
-test("job: reads base and head from git, fails the shrink, keeps settings from the BASE config, accepts an exact seo-watch undo", async () => {
+const later = (iso, sec) => new Date(Date.parse(iso) + sec * 1000).toISOString();
+const headTime = (root) => git(root, "log", "-1", "--format=%cI", "HEAD");
+const write = (root, path, text) => { mkdirSync(join(root, path, ".."), { recursive: true }); writeFileSync(join(root, path), text); };
+
+test("job: fails the shrink; every guard input (limit, site address, skipped folders) comes from the BASE config", async () => {
   const root = repo();
-  writeFileSync(join(root, "content", "blog", "guide.md"), md("How to choose a running shoe", article(EN, 2000)));
+  write(root, "content/blog/guide.md", md("How to choose a running shoe", article(EN, 2000)));
   git(root, "add", "-A"); git(root, "commit", "-qm", "base");
   git(root, "checkout", "-qb", "seo/issue-7");
-  writeFileSync(join(root, "content", "blog", "guide.md"), md("How to choose a running shoe", article(EN, 300)));
-  // The pull request also tries to loosen its own check: ignored, the base config decides.
-  const cfg = JSON.parse(readFileSync(join(root, "seo-autopilot.config.json"), "utf8")); cfg.sites[0].contentGuard = { maxWordDropPercent: 100 };
+  write(root, "content/blog/guide.md", md("How to choose a running shoe", article(EN, 300)));
+  // The pull request also tries to loosen its own check: limit 100, its content folder declared as the data folder (which
+  // is skipped), and another site address (so its internal links would look external). All ignored: the base decides.
+  const cfg = JSON.parse(readFileSync(join(root, "seo-autopilot.config.json"), "utf8"));
+  cfg.dataDir = "content"; cfg.stateDir = "content/blog"; cfg.sites[0].contentGuard = { maxWordDropPercent: 100 }; cfg.sites[0].url = "https://elsewhere.test/";
   writeFileSync(join(root, "seo-autopilot.config.json"), JSON.stringify(cfg));
   git(root, "commit", "-qam", "shrink");
   const r = await guard(root, { base: "main", branch: "seo/issue-7" });
   assert.equal(r.code, 1, "exit 1 blocks the check");
-  assert.equal(r.report.failed, 1); assert.equal(r.report.settings.maxWordDropPercent, 15);
-  assert.ok(readFileSync(join(root, ".seo-autopilot", "ex", "content-guard.md"), "utf8").includes("| FAIL | content/blog/guide.md |"));
-  // Override by a person who is not the author.
-  const events = join(root, "ev.jsonl"); writeFileSync(events, JSON.stringify({ event: "labeled", label: "allow-content-shrink", actor: "editor", type: "User" }) + "\n");
-  assert.equal((await guard(root, { base: "main", branch: "seo/issue-7", labels: "allow-content-shrink", events, author: "seo-bot" })).code, 0);
-  assert.equal((await guard(root, { base: "main", branch: "seo/issue-7", labels: "allow-content-shrink", events, author: "editor" })).code, 1, "the author cannot override");
+  assert.equal(r.report.checked, 1); assert.equal(r.report.failed, 1);
+  assert.equal(r.report.settings.maxWordDropPercent, 15); assert.equal(r.report.settings.siteUrl, SITE);
+  assert.ok(!r.report.settings.skipDirs.includes("content"), "the pull request's dataDir is not used");
+  assert.equal(r.report.pages[0].file, "content/blog/guide.md"); assert.equal(r.report.pages[0].status, "fail");
+});
 
-  // A merged refresh, then seo-watch's revert of it on seo/revert-<n>: restoring the previous version passes, but only when
-  // the pull request was opened and labelled seo-revert by the watch's account.
-  git(root, "checkout", "-q", "main");
-  writeFileSync(join(root, "content", "blog", "guide.md"), md("How to choose a running shoe", article(EN, 2000) + "\n\n## Extra section\n\nMore detail with [a link](/guides/extra).\n"));
-  git(root, "commit", "-qam", "refresh (#9)");
+test("job: an Arabic (non-ASCII) file name is checked like any other (git quotes such names unless told not to)", async () => {
+  const root = repo();
+  const path = "content/blog/دليل-العناية-بالنباتات.md";
+  write(root, path, md("دليل العناية بالنباتات المنزلية", article(AR, 300, { h2: "قسم" })));
+  git(root, "add", "-A"); git(root, "commit", "-qm", "base");
+  git(root, "checkout", "-qb", "seo/issue-8");
+  write(root, path, md("دليل العناية بالنباتات المنزلية", "كلمتان فقط"));
+  git(root, "commit", "-qam", "shrink");
+  const r = await guard(root, { base: "main", branch: "seo/issue-8" });
+  assert.equal(r.report.checked, 1, "the page was found"); assert.equal(r.code, 1);
+  assert.equal(r.report.pages[0].file, path);
+});
+
+test("job: the override needs a person who is not the author, added AFTER the latest commit", async () => {
+  const root = repo();
+  write(root, "content/blog/guide.md", md("Guide", article(EN, 600)));
+  git(root, "add", "-A"); git(root, "commit", "-qm", "base");
+  git(root, "checkout", "-qb", "seo/issue-11");
+  write(root, "content/blog/guide.md", md("Guide", article(EN, 200)));
+  git(root, "commit", "-qam", "prune");
+  const t = headTime(root);
+  const events = (actor, at) => { const f = join(root, `ev-${actor}-${Date.parse(at)}.jsonl`); writeFileSync(f, JSON.stringify({ event: "labeled", label: "allow-content-shrink", actor, type: "User", created_at: at }) + "\n"); return f; };
+  const flags = (actor, at, author = "seo-bot") => ({ base: "main", branch: "seo/issue-11", labels: "allow-content-shrink", events: events(actor, at), author });
+  assert.equal((await guard(root, flags("editor", later(t, 60)))).code, 0, "a person, after the last push");
+  assert.equal((await guard(root, flags("editor", later(t, 60), "editor"))).code, 1, "the author cannot override");
+  const stale = await guard(root, flags("editor", later(t, -60)));
+  assert.equal(stale.code, 1, "a label added before the latest push does not carry over"); assert.match(stale.report.override.reason, /before the latest commit/);
+  const f = join(root, "ev-nodate.jsonl"); writeFileSync(f, JSON.stringify({ event: "labeled", label: "allow-content-shrink", actor: "editor", type: "User" }) + "\n");
+  assert.equal((await guard(root, { base: "main", branch: "seo/issue-11", labels: "allow-content-shrink", events: f, author: "seo-bot" })).code, 1, "no time on the event: fail closed");
+});
+
+// A merged seo/* pull request (a real merge commit, GitHub's default), then revert branches for it.
+function mergedRefresh() {
+  const root = repo();
+  write(root, "content/blog/guide.md", md("How to choose a running shoe", article(EN, 1200)));
+  write(root, "content/blog/other.md", md("Trail shoes", article(EN, 800)));
+  git(root, "add", "-A"); git(root, "commit", "-qm", "base");
+  git(root, "checkout", "-qb", "seo/issue-9");
+  write(root, "content/blog/guide.md", md("How to choose a running shoe", article(EN, 1200) + "\n\n## Extra section\n\nMore detail with [a link](/guides/extra).\n"));
+  git(root, "commit", "-qam", "refresh the guide");
+  git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "Merge pull request #9 from example/seo/issue-9", "seo/issue-9");
   const merged = git(root, "rev-parse", "HEAD");
-  git(root, "checkout", "-qb", "seo/revert-9"); git(root, "revert", "--no-edit", merged);
-  const bot = "github-actions[bot]";
-  const ev = (actor, type = "Bot") => { const f = join(root, `ev-${actor.replace(/\W/g, "")}.jsonl`); writeFileSync(f, JSON.stringify({ event: "labeled", label: "seo-revert", actor, type }) + "\n"); return f; };
-  const undo = await guard(root, { base: "main", branch: "seo/revert-9", author: bot, labels: "seo-revert", events: ev(bot) });
-  assert.equal(undo.code, 0); assert.equal(undo.report.pages[0].status, "restore"); assert.equal(undo.report.revert.trusted, true);
-  // Spoofed: the branch name alone (no pull request found), another author, the label added by someone else, no label.
+  const pr = (extra = {}) => { const info = join(root, "..", `revert-of-${Math.random().toString(36).slice(2)}.json`); writeFileSync(info, JSON.stringify({ number: 9, merged: true, mergeCommit: merged, headRefName: "seo/issue-9", commits: ["refresh the guide"], ...extra })); return info; };
+  return { root, merged, pr };
+}
+const BOT = "github-actions[bot]";
+const botFlags = (root, extra = {}) => { const f = join(root, `ev-bot-${Math.random().toString(36).slice(2)}.jsonl`); writeFileSync(f, JSON.stringify({ event: "labeled", label: "seo-revert", actor: BOT, type: "Bot", created_at: new Date().toISOString() }) + "\n"); return { base: "main", author: BOT, labels: "seo-revert", events: f, ...extra }; };
+
+test("job: a seo-watch undo passes only when it is the exact inverse of a merged seo/* pull request, opened and labelled by the bot", async () => {
+  const { root, merged, pr } = mergedRefresh();
+  git(root, "checkout", "-qb", "seo/revert-9"); git(root, "revert", "--no-edit", "-m", "1", merged);
+  const ok = await guard(root, botFlags(root, { branch: "seo/revert-9", "revert-of": pr() }));
+  assert.equal(ok.code, 0); assert.equal(ok.report.revert.trusted, true); assert.equal(ok.report.pages[0].status, "restore");
+  // Spoofs: each fails.
   const spoofs = [
-    { flags: {}, why: /could not be found/ },
-    { flags: { author: "drafting-agent", labels: "seo-revert", events: ev("drafting-agent", "User") }, why: /not by the seo-watch job/ },
-    { flags: { author: bot, labels: "seo-revert", events: ev("someone", "User") }, why: /added by someone, not by the account that opened/ },
-    { flags: { author: bot, labels: "", events: ev(bot) }, why: /no "seo-revert" label/ },
-    { flags: { author: bot, labels: "seo-revert" }, why: /could not be confirmed/ },
+    [{ branch: "seo/revert-9" }, { author: "", labels: "", events: "" }, /could not be found/],
+    [{ branch: "seo/revert-9", "revert-of": pr() }, { author: "drafting-agent" }, /not by the seo-watch job/],
+    [{ branch: "seo/revert-9" }, {}, /#9 \(the one being reverted\) could not be read/],
+    [{ branch: "seo/revert-9", "revert-of": pr({ headRefName: "feature/x" }) }, {}, /not from a seo\/\* branch/],
+    [{ branch: "seo/revert-9", "revert-of": pr({ merged: false }) }, {}, /never merged/],
+    [{ branch: "seo/revert-9", "revert-of": pr({ number: 8 }) }, {}, /could not be read/],
   ];
-  for (const { flags, why } of spoofs) {
-    const r2 = await guard(root, { base: "main", branch: "seo/revert-9", ...flags });
-    assert.equal(r2.code, 1, `spoofed revert must fail: ${JSON.stringify(flags)}`);
-    assert.equal(r2.report.revert.trusted, false); assert.match(r2.report.revert.reason, why);
-    assert.equal(r2.report.pages[0].status, "fail");
+  for (const [flags, over, why] of spoofs) {
+    const r = await guard(root, { ...botFlags(root, flags), ...over });
+    assert.equal(r.code, 1, JSON.stringify(over) + JSON.stringify(flags)); assert.equal(r.report.revert.trusted, false); assert.match(r.report.revert.reason, why);
   }
-  // The same removal on a normal seo/* branch fails (the added section and link are lost).
-  git(root, "checkout", "-q", "main"); git(root, "checkout", "-qb", "seo/issue-10"); git(root, "revert", "--no-edit", merged);
+  // The drafter (same bot account) names a branch seo/revert-9 and also cuts another page: not the exact inverse.
+  git(root, "checkout", "-q", "main"); git(root, "checkout", "-qb", "seo/revert-9b");
+  git(root, "revert", "--no-edit", "-m", "1", merged);
+  write(root, "content/blog/other.md", md("Trail shoes", article(EN, 100))); git(root, "commit", "-qam", "and cut another page");
+  const fake = await guard(root, botFlags(root, { branch: "seo/revert-9", "revert-of": pr() }));
+  assert.equal(fake.code, 1); assert.equal(fake.report.revert.trusted, false);
+  // The same undo on a normal seo/* branch fails (the added section and link are lost).
+  git(root, "checkout", "-q", "main"); git(root, "checkout", "-qb", "seo/issue-10"); git(root, "revert", "--no-edit", "-m", "1", merged);
   assert.equal((await guard(root, { base: "main", branch: "seo/issue-10" })).code, 1);
+});
+
+test("job: a seo-watch unpublish passes only when it is exactly the adapter's draft + hold on the page the pull request added", async () => {
+  const root = repo();
+  write(root, "content/blog/old.md", md("Old", article(EN, 400)));
+  git(root, "add", "-A"); git(root, "commit", "-qm", "base");
+  git(root, "checkout", "-qb", "seo/topic-12");
+  write(root, "content/blog/new.md", md("New page", article(EN, 400))); git(root, "add", "-A"); git(root, "commit", "-qm", "new page");
+  git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--squash", "seo/topic-12"); git(root, "commit", "-qm", "New page (#12)");
+  const sha = git(root, "rev-parse", "HEAD");
+  const info = join(root, "..", `rv12-${Date.now()}.json`); writeFileSync(info, JSON.stringify({ number: 12, merged: true, mergeCommit: sha, headRefName: "seo/topic-12", commits: ["new page"] }));
+  git(root, "checkout", "-qb", "seo/revert-12");
+  const { unpublishText } = await import("../src/adapters/index.mjs");
+  const now = readFileSync(join(root, "content/blog/new.md"), "utf8");
+  write(root, "content/blog/new.md", unpublishText("content/blog/new.md", now, ["content/blog/new.md"], { field: "draft", value: true }).out);
+  git(root, "commit", "-qam", "Unpublish the new page from #12 (seo-watch)");
+  const ok = await guard(root, botFlags(root, { branch: "seo/revert-12", "revert-of": info }));
+  assert.equal(ok.code, 0, JSON.stringify(ok.report.revert)); assert.equal(ok.report.pages[0].status, "restore");
+  // Without the bot's provenance the same draft: true is a page-setting change and fails.
+  assert.equal((await guard(root, { base: "main", branch: "seo/revert-12" })).code, 1);
+  // With anything else changed in the file, it is not the adapter's unpublish.
+  write(root, "content/blog/new.md", readFileSync(join(root, "content/blog/new.md"), "utf8").replace("# New page", "# New page\n\nAnd a sneaky extra line."));
+  git(root, "commit", "-qam", "extra");
+  assert.equal((await guard(root, botFlags(root, { branch: "seo/revert-12", "revert-of": info }))).code, 1);
 });

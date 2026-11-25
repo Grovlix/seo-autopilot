@@ -179,7 +179,7 @@ test("seo-check guard blocks a shrinking refresh; seo-watch reverts a harmful re
     return Object.fromEntries(readFileSync(out, "utf8").trim().split("\n").map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]));
   };
   const first = await outputs({ prs: join(tmp, "prs.json"), content: join(tmp, "content.json"), reverts: join(tmp, "reverts.json") });
-  assert.equal(first.revert, `5 ${sha5} refresh`, "the refresh is reverted first (git revert of its merge commit)");
+  assert.equal(first.revert, `5 ${sha5} refresh`, "the refresh is reverted first (the revert job runs watch --git-revert on its merge commit)");
   assert.match(first.reason, /clicks fell/);
   const list = JSON.parse(readFileSync(join(p.state(), "watch-content.json"), "utf8")).entries;
   assert.deepEqual(list.map((e) => [e.pr, e.kind, e.status]), [[5, "refresh", "revert"], [6, "new-page", "revert"]], "a person's own branch (#7) is not watched");
@@ -197,8 +197,16 @@ test("seo-check guard blocks a shrinking refresh; seo-watch reverts a harmful re
   assert.match(after, /^---\ntitle: Trail running shoes for beginners\nslug: trail-beginners\nkeyword: trail running shoes\ndraft: true\nhold: true\n---/, "draft and hold set; file, slug and text kept");
   git("commit", "-qam", "Unpublish the new page from #6 (seo-watch)");
   globalThis.fetch = base;
-  // 4. The unpublish pull request passes the content-loss guard (no words, headings, links or images lost).
+  // 4. The unpublish pull request passes the content-loss guard only as what seo-watch made: opened and labelled by the
+  //    bot, and exactly the adapter's unpublish of the page #6 added. On its own, draft: true is a page-setting change.
   process.exitCode = 0;
   await runJob("content-guard", { cwd: p.dir, flags: { base: "main", branch: "seo/revert-6" } });
+  assert.equal(process.exitCode, 1, "without the bot's provenance the unpublish is checked like any change");
+  const bot = "github-actions[bot]";
+  writeFileSync(join(tmp, "events.jsonl"), JSON.stringify({ event: "labeled", label: "seo-revert", actor: bot, type: "Bot", created_at: new Date().toISOString() }) + "\n");
+  writeFileSync(join(tmp, "revert-of.json"), JSON.stringify({ number: 6, merged: true, mergeCommit: sha6, headRefName: "seo/issue-6", commits: ["New page (#6)"] }));
+  process.exitCode = 0;
+  await runJob("content-guard", { cwd: p.dir, flags: { base: "main", branch: "seo/revert-6", author: bot, labels: "seo-revert", events: join(tmp, "events.jsonl"), "revert-of": join(tmp, "revert-of.json") } });
   assert.equal(process.exitCode, 0);
+  process.exitCode = 0;
 });

@@ -1089,7 +1089,7 @@
   },
   {
    "name": "content-guard",
-   "purpose": "Content-loss guard: fail a pull request whose changed pages lose words (>15%), headings, internal links, images or structured data",
+   "purpose": "Content-loss guard: fail a pull request whose changed pages lose words (>15%), headings, internal links, images, structured data or page settings",
    "source": "src/jobs/content-guard.mjs",
    "owner": "maintainers (product core)",
    "mode": "scheduled (on by default)",

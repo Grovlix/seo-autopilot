@@ -86,7 +86,16 @@ test("the autopilot loop is opt-in and pausable, and the build check it calls ne
 test("watch and undo: reverts go through a pull request and a no-secrets build, the pause leaves the merge to a person", () => {
   const t = text("seo-watch.yml");
   assert.match(t, /vars\.SEO_AUTOPILOT == 'true'/);
-  assert.match(t, /git revert --no-edit/);
+  // The revert goes through the tool: -m 1 for a merge commit, the whole range for a rebase merge (a plain git revert of a
+  // merge commit fails).
+  assert.match(t, /run watch --git-revert "\$n" --sha "\$sha" --commits/);
+  assert.ok(!/git revert --no-edit "\$sha"/.test(t));
+  // Merged unpublishes are checked: the reverts list carries state and merge time; a still-live page opens an issue.
+  assert.match(t, /--json headRefName,state,mergedAt/);
+  assert.match(t, /failed: \$\{\{ steps\.watch\.outputs\.failed \}\}/);
+  const failed = t.slice(t.indexOf("\n  unpublish-failed:"), t.indexOf("\n  revert:"));
+  assert.match(failed, /gh issue create/); assert.match(failed, /issues: write/); assert.match(failed, /SEO_AUTOPILOT_PAUSED != 'true'/);
+  assert.match(t, /--json number,mergedAt,mergeCommit,files,headRefName,labels,commits/, "commits, to read rebase merges");
   assert.ok(!/git push origin (main|master|HEAD)\b/.test(t) && !/git push\s*$/m.test(t), "never pushes to the default branch");
   const check = t.slice(t.indexOf("\n  check:"), t.indexOf("\n  merge:"));
   assert.match(check, /seo-check\.yml/); assert.ok(!/secrets/.test(check));
@@ -142,6 +151,18 @@ test("content-loss guard: runs in seo-check before install and build, and the ov
   const g = t.indexOf("run content-guard");
   assert.ok(g > 0 && g < t.indexOf("name: Install") && g < t.indexOf("run: npm run build"), "before any pull-request code runs");
   assert.match(t, /--base "origin\/\$BASE"/);
+  // Runs from outside the checkout (no .npmrc, package.json or node_modules of the pull request is read), with the BASE
+  // branch's config, pointing --repo at the checkout.
+  const step = t.slice(t.indexOf("- name: Content-loss guard"), t.indexOf("- name: Install"));
+  assert.match(step, /guard="\$RUNNER_TEMP\/content-guard"/);
+  assert.match(step, /git -C "\$GITHUB_WORKSPACE" show "origin\/\$BASE:seo-autopilot\.config\.json" > "\$guard\/seo-autopilot\.config\.json"/);
+  const cd = step.indexOf('cd "$guard"'), npx = step.indexOf("npx --yes");
+  assert.ok(cd > 0 && cd < npx && step.indexOf("npx", 0) === npx, "the only npx runs after cd to the temp folder");
+  assert.match(step, /--repo "\$GITHUB_WORKSPACE"/);
+  // The override is tied to the latest push (event time), and a revert is checked against the pull request it undoes.
+  assert.match(step, /created_at\}/);
+  assert.match(step, /repos\/\$GH_REPO\/pulls\/\$n" --jq '\{number, merged, mergeCommit: \.merge_commit_sha, headRefName: \.head\.ref\}'/);
+  assert.match(step, /--revert-of="\$revert_of"/);
   assert.match(t, /issues\/\$PR\/events/);
   assert.match(t, /contents: read/);
   for (const f of ["seo-implement.yml", "seo-autopilot.yml", "seo-automerge.yml", "seo-review.yml", "seo-agent.yml"]) assert.ok(!/allow-content-shrink/.test(text(f)), `${f} never applies the override`);

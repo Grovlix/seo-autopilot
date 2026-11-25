@@ -45,18 +45,35 @@ function clickHarm(urls, date, { series = {}, today, watched = new Set() }, o, r
  * change: { pr, mergedAt, urls, addedNoindex }. live: { url: { status, noindex } } fetched today. series: page-daily.json.
  * Returns { pr, verdict: "revert" | "watch" | "keep", reasons, done } where done means the watch window is over.
  */
+/**
+ * A page failing (error status, or a noindex the change added) must fail on two check days in a row before anything is
+ * reverted: one failed fetch can be a network error, a firewall (403) or a short outage (503). prev: { days, last } kept
+ * by the job; a second run on the same day does not count twice. Returns the new state.
+ */
+export function failStreak(prev, failing, today) {
+  if (!failing) return { days: 0, last: "" };
+  const p = prev && prev.days ? prev : { days: 0, last: "" };
+  return p.last === today ? p : { days: p.days + 1, last: today };
+}
+export const FAIL_DAYS = 2;
+const failLines = (urls, live, addedNoindex) => [
+  ...urls.filter((u) => (live[u]?.status ?? 200) >= 400).map((u) => `${u} answers ${live[u].status}`),
+  ...(addedNoindex && urls.some((u) => live[u]?.noindex) ? ["the change added a noindex and the page now carries it"] : []),
+];
+
 export function judgeChange(change, { live = {}, series = {}, today, watched = new Set() } = {}, o = WATCH_DEFAULTS) {
   const reasons = [], urls = change.urls || [];
-  const broken = urls.filter((u) => (live[u]?.status ?? 200) >= 400);
-  if (broken.length) return { pr: change.pr, verdict: "revert", reasons: broken.map((u) => `${u} now answers ${live[u].status}`), done: true };
-  if (change.addedNoindex && urls.some((u) => live[u]?.noindex)) return { pr: change.pr, verdict: "revert", reasons: ["the change added a noindex and the page now carries it"], done: true };
+  const fails = failLines(urls, live, change.addedNoindex);
+  const failing = failStreak(change.failing, fails.length > 0, today);
+  if (fails.length && failing.days >= FAIL_DAYS) return { pr: change.pr, verdict: "revert", reasons: [...fails, `on ${failing.days} check days in a row`], done: true, failing };
+  if (fails.length) return { pr: change.pr, verdict: "watch", reasons: [...fails, "checked again on the next run before anything is reverted (one failed check can be a network error, a firewall or a short outage)"], done: false, failing };
   const date = day(change.mergedAt);
   const end = addDays(addDays(date, o.lag), o.span - 1);
   if (!urls.length) return { pr: change.pr, verdict: "keep", reasons: ["no page URL is known for the changed files (set content.urlPattern), so only the build checks applied"], done: true };
-  if (today <= end) return { pr: change.pr, verdict: "watch", reasons: [`pages answer normally; traffic is compared after ${addDays(end, 1)}`], done: false };
+  if (today <= end) return { pr: change.pr, verdict: "watch", reasons: [`pages answer normally; traffic is compared after ${addDays(end, 1)}`], done: false, failing };
   const { lost, worst } = clickHarm(urls, date, { series, today, watched }, o, reasons);
-  if (lost) return { pr: change.pr, verdict: "revert", reasons: [`clicks fell ${Math.round(-worst * 100)}% more than the rest of the site (${lost} clicks lost over ${o.span} days)`, ...reasons], done: true };
-  return { pr: change.pr, verdict: "keep", reasons: reasons.length ? reasons : ["no regression found"], done: true };
+  if (lost) return { pr: change.pr, verdict: "revert", reasons: [`clicks fell ${Math.round(-worst * 100)}% more than the rest of the site (${lost} clicks lost over ${o.span} days)`, ...reasons], done: true, failing };
+  return { pr: change.pr, verdict: "keep", reasons: reasons.length ? reasons : ["no regression found"], done: true, failing };
 }
 
 // ------------------------------------------------------------------------------------------------------------------------
@@ -120,8 +137,11 @@ export function mergeWatchlist(list = [], found = [], today, o = CONTENT_WATCH_D
  * related: [url], addedNoindex }. Returns { verdict: "revert" | "watch" | "keep", reasons, done }.
  */
 export function judgeContent(entry, { live = {}, series = {}, today, watched = new Set() } = {}, o = CONTENT_WATCH_DEFAULTS, rules = WATCH_DEFAULTS) {
-  const date = day(entry.mergedAt);
-  const end = watchUntil(entry.mergedAt, o);
+  const isNew = entry.kind === "new-page";
+  // A new page is judged from the day it went live (its publish date, or the first check that found it live), not from
+  // the merge: a page queued for later has done nothing yet.
+  const date = isNew ? [day(entry.mergedAt), entry.publishAt ? day(entry.publishAt) : "", entry.liveSince || ""].filter(Boolean).sort().pop() : day(entry.mergedAt);
+  const end = addDays(date, o.lag + o.days);
   // Days of data after the lag, up to the last day Search Console has data for (it runs 2-3 days behind), so the window
   // after the change is never padded with days that simply have no data yet.
   let last = addDays(today, -1);
@@ -130,30 +150,37 @@ export function judgeContent(entry, { live = {}, series = {}, today, watched = n
   const asOf = addDays(date, o.lag + Math.max(span, 0)); // the day after the after-window, for evaluate()
   const r = { ...rules, lag: o.lag, span };
   const over = today > end;
-  if (entry.kind === "new-page") {
+  if (isNew) {
     const urls = (entry.newPages || []).map((p) => p.url).filter(Boolean);
-    if (!urls.length) return { verdict: "keep", reasons: ["no page URL is known for the new page (set content.urlPattern or a path), so it cannot be watched"], done: true };
-    const notLive = urls.filter((u) => (live[u]?.status ?? 200) >= 400);
-    const reasons = notLive.map((u) => `${u} answers ${live[u].status} (not published yet, or broken); nothing to unpublish`);
+    if (!urls.length) return { verdict: "keep", reasons: ["no page URL is known for the new page (set content.urlPattern or a path), so it cannot be watched"], done: true, until: end };
+    // A page that is not live (404, any error, a failed fetch, or noindex) is never unpublished: there is nothing to take
+    // off the site, and its window has not started. Given up 180 days after the merge.
+    const notLive = urls.filter((u) => (live[u]?.status ?? 200) >= 400 || live[u]?.noindex);
+    if (notLive.length) {
+      const gaveUp = today > addDays(day(entry.mergedAt), 180);
+      return { verdict: gaveUp ? "keep" : "watch", reasons: [...notLive.map((u) => `${u} ${live[u]?.noindex ? "carries a noindex" : `answers ${live[u].status}`}: not live (not published yet, or already off the site), so it is never unpublished`), ...(gaveUp ? ["still not live 180 days after the merge; no longer watched"] : [])], done: gaveUp, until: end, live: false };
+    }
+    const reasons = [];
     const related = entry.related || [];
-    if (!related.length) return { verdict: over ? "keep" : "watch", reasons: [...reasons, "no existing page shares its topic, so it cannot be taking their clicks"], done: over };
-    if (span < o.minSpan) return { verdict: "watch", reasons: [...reasons, `pages on the same topic (${related.join(", ")}) are compared after ${addDays(date, o.lag + o.minSpan)}`], done: false };
+    if (!related.length) return { verdict: over ? "keep" : "watch", reasons: [...reasons, "no existing page shares its topic, so it cannot be taking their clicks"], done: over, until: end, live: true };
+    if (span < o.minSpan) return { verdict: "watch", reasons: [...reasons, `pages on the same topic (${related.join(", ")}) are compared after ${addDays(date, o.lag + o.minSpan)}`], done: false, until: end, live: true };
     const lines = [];
     const { lost, worst } = clickHarm(related, date, { series, today: asOf, watched: new Set([...watched, ...urls, ...related]) }, r, lines);
     const from = addDays(date, o.lag), to = addDays(from, span - 1);
     const won = urls.reduce((n, u) => n + sumClicks(series[u], from, to), 0);
-    if (lost && won < lost) return { verdict: "revert", reasons: [`pages on the same topic lost ${lost} clicks (${Math.round(-worst * 100)}% more than the rest of the site) over ${span} days while the new page got ${won}: it looks like it is taking their place in search rather than adding to it`, ...reasons, ...lines], done: true };
+    if (lost && won < lost) return { verdict: "revert", reasons: [`pages on the same topic lost ${lost} clicks (${Math.round(-worst * 100)}% more than the rest of the site) over ${span} days while the new page got ${won}: it looks like it is taking their place in search rather than adding to it`, ...reasons, ...lines], done: true, until: end, live: true };
     if (lost) lines.unshift(`pages on the same topic lost ${lost} clicks, but the new page got ${won}: the clicks moved to it, so it stays`);
-    return { verdict: over ? "keep" : "watch", reasons: [...reasons, ...(lines.length ? lines : ["no regression found"])], done: over };
+    return { verdict: over ? "keep" : "watch", reasons: [...reasons, ...(lines.length ? lines : ["no regression found"])], done: over, until: end, live: true };
   }
   const urls = (entry.urls || []).slice(0, o.maxUrls);
   if (!urls.length) return { verdict: "keep", reasons: ["no page URL is known for the changed files (set content.urlPattern), so only the build checks applied"], done: true };
-  const broken = urls.filter((u) => (live[u]?.status ?? 200) >= 400);
-  if (broken.length) return { verdict: "revert", reasons: broken.map((u) => `${u} now answers ${live[u].status}`), done: true };
-  if (entry.addedNoindex && urls.some((u) => live[u]?.noindex)) return { verdict: "revert", reasons: ["the change added a noindex and the page now carries it"], done: true };
-  if (span < o.minSpan) return { verdict: "watch", reasons: [`pages answer normally; clicks are compared from ${addDays(date, o.lag + o.minSpan)} until ${end}`], done: false };
+  const fails = failLines(urls, live, entry.addedNoindex);
+  const failing = failStreak(entry.failing, fails.length > 0, today);
+  if (fails.length && failing.days >= FAIL_DAYS) return { verdict: "revert", reasons: [...fails, `on ${failing.days} check days in a row`], done: true, failing };
+  if (fails.length) return { verdict: "watch", reasons: [...fails, "checked again on the next run before anything is reverted (one failed check can be a network error, a firewall or a short outage)"], done: false, failing };
+  if (span < o.minSpan) return { verdict: "watch", reasons: [`pages answer normally; clicks are compared from ${addDays(date, o.lag + o.minSpan)} until ${end}`], done: false, failing };
   const lines = [];
   const { lost, worst } = clickHarm(urls, date, { series, today: asOf, watched }, r, lines);
-  if (lost) return { verdict: "revert", reasons: [`clicks fell ${Math.round(-worst * 100)}% more than the rest of the site (${lost} clicks lost over ${span} days after the refresh)`, ...lines], done: true };
-  return { verdict: over ? "keep" : "watch", reasons: lines.length ? lines : ["no regression found"], done: over };
+  if (lost) return { verdict: "revert", reasons: [`clicks fell ${Math.round(-worst * 100)}% more than the rest of the site (${lost} clicks lost over ${span} days after the refresh)`, ...lines], done: true, failing };
+  return { verdict: over ? "keep" : "watch", reasons: lines.length ? lines : ["no regression found"], done: over, failing };
 }
