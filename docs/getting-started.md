@@ -48,9 +48,9 @@ Commit and push. In GitHub: **Actions > seo-daily > Run workflow**. Open the run
 Optional extras:
 
 - **Dashboard and database:** [dashboard.md](dashboard.md).
-- **Drafting pages after you approve them:** install the Claude GitHub app and add the secret `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`).
+- **AI on your Claude subscription (drafting, review, weekly agents, judging and wording):** run `claude setup-token` on your computer, add the output as the secret `CLAUDE_CODE_OAUTH_TOKEN`, and install the Claude GitHub app. No API key is needed. Details: [jobs.md](jobs.md#run-everything-on-a-claude-subscription).
 - **Scheduled publishing:** [content-automation.md](content-automation.md).
-- **AI judging and wording:** add `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`).
+- **Pay-per-use instead:** `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY` for judging and wording only) works in place of the subscription token.
 - **Backlinks:** [backlinks.md](backlinks.md). They stay in dry-run mode until you set `BACKLINKS_LIVE=true`.
 
 ## Several sites in one repo

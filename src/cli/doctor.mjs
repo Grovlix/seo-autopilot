@@ -5,7 +5,7 @@ import { loadConfig } from "../core/config.mjs";
 import { readJson } from "../core/util.mjs";
 import { googleKeyAvailable, getToken, SCOPES, searchAnalytics } from "../lib/google-auth.mjs";
 import { loadPages } from "../adapters/index.mjs";
-import { llmAvailable } from "../lib/llm.mjs";
+import { selectProvider, configureLlm } from "../lib/llm.mjs";
 import { ingestEnabled } from "../lib/ingest.mjs";
 import { ghAvailable } from "../lib/gh.mjs";
 import { plan } from "./upgrade.mjs";
@@ -120,7 +120,7 @@ export async function doctor({ cwd = process.cwd() } = {}) {
   if (!gh) warn("GitHub CLI not available or not signed in: cannot check secrets. Check Settings > Secrets and variables > Actions yourself.");
   else {
     gh.secrets.has("GOOGLE_KEY_JSON") ? ok("GOOGLE_KEY_JSON secret set") : bad("GOOGLE_KEY_JSON secret is missing (the daily job cannot read Search Console)");
-    gh.secrets.has("CLAUDE_CODE_OAUTH_TOKEN") || gh.secrets.has("ANTHROPIC_API_KEY") ? ok("drafting login secret set (pages can be drafted)") : warn("no drafting secret (CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY): everything works except AI drafting, which is optional");
+    gh.secrets.has("CLAUDE_CODE_OAUTH_TOKEN") || gh.secrets.has("ANTHROPIC_API_KEY") ? ok("Claude login secret set (drafting, review and the weekly agents can run)") : warn("no Claude login secret (CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token` for your Claude subscription, or ANTHROPIC_API_KEY): everything works except AI drafting, review and the agents, which are optional");
     gh.secrets.has("PAGESPEED_API_KEY") ? ok("PAGESPEED_API_KEY set") : warn("no PAGESPEED_API_KEY: the speed job may hit Google's shared quota (free key, optional)");
     // Optional keys: each one switches on more of the research suite. Missing is fine.
     for (const [names, what] of OPTIONAL_KEYS) {
@@ -134,7 +134,9 @@ export async function doctor({ cwd = process.cwd() } = {}) {
 
   console.log("");
   ghAvailable() ? ok("GitHub token present (issues can be opened)") : warn("No GITHUB_TOKEN/GITHUB_REPOSITORY here: issues are skipped locally, fine in GitHub Actions");
-  llmAvailable() ? ok("AI provider configured") : warn("No AI key: everything runs rule-based (optional)");
+  configureLlm(cfg.llm);
+  const ai = selectProvider();
+  ai.provider !== "none" ? ok(`AI wording and judging: ${ai.provider} (${ai.reason})`) : warn(`AI wording and judging off here: ${ai.reason}. Everything runs rule-based (optional)`);
   console.log(failed ? `\n${failed} problem(s) to fix.` : "\nAll required checks passed.");
   return failed ? 1 : 0;
 }

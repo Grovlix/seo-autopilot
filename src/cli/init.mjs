@@ -167,7 +167,7 @@ Next steps
 2. Check everything:  GOOGLE_KEY_FILE=/path/outside/repo/key.json npx seo-autopilot doctor
 3. Edit seo-autopilot/topics.json (your industry's keywords), feeds.json and backlinks/profile.json (true, public facts only).
 4. Commit and push, then run Actions > seo-daily > Run workflow.
-5. Optional: IndexNow key (docs/indexnow.md), an AI key (ANTHROPIC_API_KEY or OPENAI_API_KEY), the implementer
-   (install the Claude GitHub app + CLAUDE_CODE_OAUTH_TOKEN).`);
+5. Optional: IndexNow key (docs/indexnow.md); AI on your Claude subscription for drafting, review, agents and wording
+   (install the Claude GitHub app + the secret CLAUDE_CODE_OAUTH_TOKEN from \`claude setup-token\`; no API key needed).`);
   return { config, cwd: resolve(cwd) };
 }

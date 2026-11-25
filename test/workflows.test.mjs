@@ -178,3 +178,61 @@ test("the autopilot picks nothing when the repository has no AI secret (no faili
   assert.match(pick, /HAS_AI: \$\{\{ secrets\.CLAUDE_CODE_OAUTH_TOKEN != '' \|\| secrets\.ANTHROPIC_API_KEY != '' \}\}/);
   assert.ok(pick.indexOf('if [ "$HAS_AI" != "true" ]') < pick.indexOf("gh issue list"), "checked before any work");
 });
+
+test("drafted pull requests start seo-check and seo-review by dispatch, from a job without the agent's token", () => {
+  const t = text("seo-implement.yml");
+  const checks = t.slice(t.indexOf("\n  checks:"));
+  assert.match(checks, /needs: implement/);
+  assert.match(checks, /actions: write/);
+  assert.match(checks, /gh workflow run seo-check\.yml --ref "seo\/issue-\$N" -f ref="seo\/issue-\$N" -f base="\$base"/);
+  assert.match(checks, /gh workflow run seo-review\.yml --ref "seo\/issue-\$N" -f pr="\$pr"/);
+  assert.match(checks, /format\('\{0\}', inputs\.start_checks\) != 'false'/, "the autopilot runs check and review itself; null (no input) must still run");
+  const code = t.replace(/#.*$/gm, ""), implement = code.slice(code.indexOf("\n  implement:"), code.indexOf("\n  checks:"));
+  assert.ok(!/actions: write/.test(code.slice(0, code.indexOf("\njobs:"))) && !/actions: write/.test(implement), "the drafting agent's token cannot start workflows");
+  for (const f of ["seo-check.yml", "seo-review.yml"]) assert.match(text(f), /workflow_dispatch:/, `${f} can be dispatched`);
+  const ap = text("seo-autopilot.yml");
+  assert.match(ap.slice(ap.indexOf("\n  draft:"), ap.indexOf("\n  locate:")), /start_checks: false/);
+});
+
+test("dispatched and called runs post commit statuses on the checked commit; the build job never holds a write token", () => {
+  const c = text("seo-check.yml");
+  const build = c.slice(c.indexOf("\n  build:"), c.indexOf("\n  status:"));
+  assert.ok(!/statuses|permissions:/.test(build), "the build job keeps the read-only workflow permissions");
+  const st = c.slice(c.indexOf("\n  status:"));
+  assert.match(st, /needs: build/);
+  assert.match(st, /statuses: write/);
+  assert.match(st, /context=seo-check/);
+  assert.ok(!/actions\/checkout/.test(st), "the status job never checks out pull request code");
+  const r = text("seo-review.yml");
+  assert.match(r, /statuses: write/);
+  assert.match(r, /context=seo-review -f description="Reviewer agent running"/);
+  assert.ok(r.indexOf("Reviewer agent running") < r.indexOf("anthropics/claude-code-action"), "pending is posted before the agent runs");
+  assert.match(r.slice(r.indexOf("Post the review result")), /if: always\(\)/);
+  const am = text("seo-automerge.yml");
+  assert.match(am, /statuses: read/);
+  assert.match(am, /commits\/\$SHA\/status/, "automerge reads the commit status on the exact commit");
+  assert.match(am, /ctx=seo-check; \[ "\$1" = review \] && ctx=seo-review/);
+});
+
+test("every model job runs on a Claude subscription token; API keys stay optional", () => {
+  // Drafting, review and the weekly agents: claude-code-action with the OAuth token.
+  for (const f of ["seo-implement.yml", "seo-review.yml", "seo-agent.yml"]) {
+    const t = text(f);
+    assert.match(t, /anthropics\/claude-code-action@[0-9a-f]{40}/, f);
+    assert.match(t, /claude_code_oauth_token: \$\{\{ secrets\.CLAUDE_CODE_OAUTH_TOKEN \}\}/, f);
+  }
+  // The Agent SDK is not used for subscription runs (its docs ask third-party products to use API keys).
+  const ag = text("seo-agent.yml");
+  assert.ok(!/claude-agent-sdk|setup-python/.test(ag));
+  assert.match(ag, /Write\(seo-agent-out\/\*\*\)/);
+  assert.ok(!/Bash/.test(ag.replace(/#.*$/gm, "")), "the weekly agents get no shell");
+  assert.match(ag, /--issue --report-file "seo-agent-out\/\{site\}\/strategist\.md"/);
+  assert.match(ag, /--issues --report-file "seo-agent-out\/\{site\}\/researcher\.md" --proposals-file "seo-agent-out\/\{site\}\/proposals\.json"/);
+  // In-process AI helpers: the Claude Code CLI, installed (pinned) only when the token is set, and the token passed to them.
+  for (const f of ["seo-daily.yml", "seo-weekly.yml"]) {
+    const t = text(f).replace(/#.*$/gm, "");
+    assert.match(t, /HAS_CLAUDE_TOKEN: \$\{\{ secrets\.CLAUDE_CODE_OAUTH_TOKEN != '' \}\}/, f);
+    assert.match(t, /if: env\.HAS_CLAUDE_TOKEN == 'true'\n\s+run: npm install -g @anthropic-ai\/claude-code@\d+\.\d+\.\d+\n/, f);
+    for (const block of t.split("\n      - name:").filter((b) => /ANTHROPIC_API_KEY/.test(b))) assert.match(block, /CLAUDE_CODE_OAUTH_TOKEN: \$\{\{ secrets\.CLAUDE_CODE_OAUTH_TOKEN \}\}/, `${f}: every AI step gets the subscription token`);
+  }
+});
