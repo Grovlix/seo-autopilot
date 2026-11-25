@@ -283,3 +283,46 @@ test("every request to api.dataforseo.com is made in src/lib/dataforseo.mjs and 
   walk(join(import.meta.dirname, "..", "src"));
   assert.deepEqual(hits, ["lib/dataforseo.mjs"], "a new DataForSEO caller must use createCostGuard / costGuardFor, not its own fetch");
 });
+
+// ---- SERP rows that come back as Google redirect links (seen live at Saudi Arabia, location 2682) ----------------------------------
+const GOTO = (n) => `https://google.com/goto?url=CAESZAHEIkXX${n}`;
+const REDIRECT_SERP = [
+  { type: "ai_overview", asynchronous_ai_overview: true, markdown: "text", items: [{ type: "ai_overview_element", references: [{ domain: "google.com", source: "cited.example", url: GOTO("a") }] }], references: [
+    { type: "ai_overview_reference", source: "Store apps", domain: "apps.example", url: "https://apps.example/ar" },
+    { type: "ai_overview_reference", source: "cited.example", domain: "google.com", url: GOTO("b") },
+    { type: "ai_overview_reference", source: "A blog title with spaces", domain: "google.com", url: GOTO("c") },
+  ] },
+  { type: "organic", rank_group: 1, rank_absolute: 2, domain: "google.com", url: GOTO("1"), title: "one", breadcrumb: "https://rival.example › blog › post" },
+  { type: "organic", rank_group: 2, rank_absolute: 3, domain: "google.com", url: GOTO("2"), title: "two", website_name: "other.example" },
+  { type: "organic", rank_group: 3, rank_absolute: 4, domain: "google.com", url: GOTO("3"), title: "three, nothing to say where it points" },
+  { type: "organic", rank_group: 4, rank_absolute: 5, domain: "www.plain.example", url: "https://www.plain.example/page", title: "four" },
+  { type: "people_also_ask", items: [{ domain: "google.com" }] },
+];
+
+test("SERP rows that are Google redirect links: the real domain is found in the item, rows that cannot be resolved are skipped, never counted as google.com", async () => {
+  const f = fakeDfs({ cost: 0.0035, items: REDIRECT_SERP });
+  const guard = createCostGuard({ job: "rank", env: DFS_ENV, fetch: f, ledger: memoryLedger(), notify: async () => ({}), now: () => new Date("2026-11-26T00:00:00Z") });
+  const r = await serp.search("q", SA_AR, { guard });
+  assert.deepEqual(r.results.map((x) => [x.position, x.domain]), [[2, "rival.example"], [3, "other.example"], [5, "plain.example"]]);
+  assert.ok(r.results.every((x) => !/google\./.test(x.domain) && !/goto/.test(x.url)));
+  assert.deepEqual(r.aiSources.map((s) => s.domain).sort(), ["apps.example", "cited.example"]);
+  assert.ok(!r.features.some((x) => x.domains.includes("google.com")));
+});
+
+test("realTarget: plain items keep their own domain and url, redirects fall back, nothing resolvable gives null", async () => {
+  const { realTarget } = await import("../src/lib/serp.mjs");
+  assert.deepEqual(realTarget({ domain: "www.a.test", url: "https://www.a.test/x" }), { url: "https://www.a.test/x", domain: "a.test" });
+  assert.deepEqual(realTarget({ domain: "google.com", url: "https://b.test/y" }), { url: "https://b.test/y", domain: "b.test" });
+  assert.equal(realTarget({ domain: "google.com", url: GOTO("z") }), null);
+  assert.equal(realTarget({ domain: "google.com", url: GOTO("z"), source: "not a host" }), null);
+});
+
+test("aiOverview option asks DataForSEO to load the AI Overview; the default does not", async () => {
+  const f = fakeDfs({ cost: 0.0035, items: [] });
+  const guard = createCostGuard({ job: "citations", env: DFS_ENV, fetch: f, ledger: memoryLedger(), notify: async () => ({}), now: () => new Date("2026-11-26T00:00:00Z") });
+  await serp.search("q", SA_AR, { guard });
+  await serp.search("q", SA_AR, { guard, aiOverview: true });
+  const [a, b] = f.paid().map((r) => r.body[0]);
+  assert.equal(a.load_async_ai_overview, undefined);
+  assert.equal(b.load_async_ai_overview, true);
+});

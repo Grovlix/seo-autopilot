@@ -34,7 +34,7 @@ export async function run({ site, flags = {} }, deps = {}) {
   for (const [i, { q, m }] of planned.entries()) {
     const market = marketLabel(m);
     if (i) await sleep(delay);
-    try { answers.push({ q, market, ...(await provider.search(q, m, { fetch: deps.fetch || globalThis.fetch, env, guard })) }); }
+    try { answers.push({ q, market, ...(await provider.search(q, m, { fetch: deps.fetch || globalThis.fetch, env, guard, aiOverview: true })) }); }
     catch (e) { answers.push({ q, market, error: e.message }); console.log(`citations: "${q}" failed: ${e.message}`); }
   }
   const r = analyseCitations({ domain, answers });
