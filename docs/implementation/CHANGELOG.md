@@ -2,6 +2,10 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (Unicode / Arabic tokens and slugs; code change)
+- **Code:** new `src/lib/text.mjs` (`normalizeArabic`, `tokens`, `slugify`); `src/adapters/index.mjs` (`tokens` re-exported from it, `makeCovered` normalises page text), `src/audit/links.mjs` (phrase matching no longer ASCII-only), `src/jobs/optimize.mjs` (slug via `slugify`, percent-encoded non-ASCII URL paths decoded first). `docs/cloudflare/runtime-matrix.json` regenerated (one more module in the import graph).
+- **Tests:** `test/text.test.mjs` (English tokens and Latin slugs identical to the old code; Arabic variants; coverage; slugs). Unit tests only; no external service involved.
+
 ## 2026-11-24 (D66 deployed; D67 pilot reports; code change)
 - **Deployment:** #89 (D66) squash-merged as 739f7c3; migration `20261126000000_job_guards.sql` applied to production (both triggers present); Worker deployed by deploy-seo-god run 24 (success, 19:49 UTC). Run at 20:00 UTC: no errors; no job refused by the new guard; no direct inserts recorded.
 - **Code (D67):** migration `cloud/portal/supabase/migrations/20261127000000_pilot_reports.sql` (`site_work_report` gains `search`; `agency_usage`; `agency_quality`; `private.history_sum`); portal `cloud/portal/app/index.html` (search results in the monthly report, AI report quality card and usage CSV on Operations).
