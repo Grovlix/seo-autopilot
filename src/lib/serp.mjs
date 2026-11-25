@@ -7,6 +7,7 @@
 // Request formats follow each provider's public documentation; they have not been exercised against the live services.
 
 import { requireMarket, googleGl } from "./market.mjs";
+import { requireGuard, dataforseoEnabled } from "./dataforseo.mjs";
 
 export const domainOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, "").toLowerCase(); } catch { return String(u || "").replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0].toLowerCase(); } };
 const norm = (url, title, position) => ({ url, domain: domainOf(url), title: title || "", position });
@@ -72,15 +73,12 @@ export const serpapi = {
 // (url, domain, title, rank_absolute) and ai_overview (references[].url/domain).
 export const dataforseo = {
   name: "dataforseo",
-  enabled: (env) => Boolean(env.DATAFORSEO_LOGIN && env.DATAFORSEO_PASSWORD),
-  async search(q, market, { fetch: f = fetch, env = process.env } = {}) {
+  enabled: (env) => dataforseoEnabled(env),
+  // `guard` (a cost guard from src/lib/dataforseo.mjs) is required: it checks the monthly cap and the balance before the request
+  // and records the cost after it. `fetch` and `env` are the guard's, not this call's.
+  async search(q, market, { guard } = {}) {
     const m = requireMarket(market, "dataforseo");
-    const auth = Buffer.from(`${env.DATAFORSEO_LOGIN}:${env.DATAFORSEO_PASSWORD}`).toString("base64");
-    const body = [{ keyword: q, location_code: m.locationCode, language_code: m.languageCode, depth: 20 }];
-    const j = await getJson(f, "dataforseo", "https://api.dataforseo.com/v3/serp/google/organic/live/advanced", { method: "POST", headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const task = j.tasks?.[0];
-    if (task && task.status_code && task.status_code !== 20000) throw new Error(`dataforseo: task status ${task.status_code}`);
-    const items = task?.result?.[0]?.items || [];
+    const { task, items } = await requireGuard(guard, "dataforseo").task("serp/google/organic/live/advanced", { keyword: q, location_code: m.locationCode, language_code: m.languageCode, depth: 20 });
     const results = items.filter((i) => i.type === "organic").map((i) => ({ url: i.url, domain: (i.domain || domainOf(i.url)).replace(/^www\./, "").toLowerCase(), title: i.title || "", position: i.rank_absolute ?? i.rank_group }));
     const refs = items.filter((i) => i.type === "ai_overview").flatMap((i) => [...(i.references || []), ...(i.items || []).flatMap((e) => e.references || [])]);
     const aiSources = dedupe(refs.map((r) => ({ url: r.url, domain: (r.domain || domainOf(r.url)).replace(/^www\./, "").toLowerCase() })));

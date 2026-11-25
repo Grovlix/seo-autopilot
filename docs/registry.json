@@ -984,11 +984,15 @@
     "BRAVE_API_KEY",
     "DATAFORSEO_LOGIN",
     "DATAFORSEO_PASSWORD",
-    "SERPAPI_KEY"
+    "SERPAPI_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID"
    ],
    "hosts": [
     "api.dataforseo.com",
     "api.search.brave.com",
+    "api.telegram.org",
     "brave.com",
     "dataforseo.com",
     "serpapi.com"
@@ -1441,12 +1445,16 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "brave.com",
     "dataforseo.com",
     "github.com",
@@ -1518,12 +1526,16 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "brave.com",
     "dataforseo.com",
     "github.com",
@@ -1582,12 +1594,16 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "brave.com",
     "dataforseo.com",
     "github.com",
@@ -1634,6 +1650,9 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
@@ -1641,6 +1660,7 @@
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "b.com",
     "brave.com",
     "dataforseo.com",
@@ -1694,7 +1714,10 @@
     "GEMINI_API_KEY",
     "OPENAI_API_KEY",
     "PERPLEXITY_API_KEY",
-    "SERPAPI_KEY"
+    "SERPAPI_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID"
    ],
    "hosts": [
     "api.anthropic.com",
@@ -1702,6 +1725,7 @@
     "api.openai.com",
     "api.perplexity.ai",
     "api.search.brave.com",
+    "api.telegram.org",
     "brave.com",
     "dataforseo.com",
     "generativelanguage.googleapis.com",
@@ -1741,11 +1765,15 @@
     "DATAFORSEO_LOGIN",
     "DATAFORSEO_PASSWORD",
     "OPENPAGERANK_API_KEY",
-    "SERPAPI_KEY"
+    "SERPAPI_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID"
    ],
    "hosts": [
     "api.dataforseo.com",
     "api.search.brave.com",
+    "api.telegram.org",
     "brave.com",
     "dataforseo.com",
     "openpagerank.com",
@@ -1890,6 +1918,9 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
@@ -1897,6 +1928,7 @@
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "b.com",
     "brave.com",
     "dataforseo.com",
@@ -1957,6 +1989,9 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
@@ -1964,6 +1999,7 @@
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "b.com",
     "brave.com",
     "dataforseo.com",
@@ -2023,6 +2059,9 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
@@ -2030,6 +2069,7 @@
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "b.com",
     "brave.com",
     "dataforseo.com",
@@ -2089,6 +2129,9 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
@@ -2096,6 +2139,7 @@
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "b.com",
     "brave.com",
     "dataforseo.com",
@@ -2235,6 +2279,9 @@
     "OPENPAGERANK_API_KEY",
     "SERPAPI_KEY",
     "STACKEXCHANGE_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID",
     "YOUTUBE_API_KEY"
    ],
    "hosts": [
@@ -2242,6 +2289,7 @@
     "api.dataforseo.com",
     "api.search.brave.com",
     "api.stackexchange.com",
+    "api.telegram.org",
     "b.com",
     "brave.com",
     "dataforseo.com",

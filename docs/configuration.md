@@ -62,6 +62,7 @@ One file, `seo-autopilot.config.json`, in the root of your repository. Paths are
 | `verticals` | specialist packs for this kind of business: `["local"]`, `["ecommerce"]`, both, or `[]` for none. Without it, packs are detected from the site profile (business or product markup, the shop platform, `local: true`). It also decides which pack agents `init` and `upgrade` install. See `departments/verticals/packs.json` |
 | `language` | language the site publishes in (`en`, `en-GB`, `es`...); queries clearly in another language are not proposed as topics |
 | `market` | **where and in which language the site is researched.** Required by every job that calls a search or keyword provider; see [Market](#market) below. There is no default |
+| `dataforseo` | cost guard for paid DataForSEO calls: `monthlyCapUsd` (default 8) and `minBalanceUsd` (default 10); see [DataForSEO cost guard](#dataforseo-cost-guard) |
 | `citations` | `market` is no longer read: use the site's `market` (see the migration note below) |
 | `ingest` | optional dashboard sync, see [dashboard.md](dashboard.md) |
 
@@ -133,3 +134,17 @@ See [content-automation.md](content-automation.md#watch-and-revert-after-merging
 ## Environment variables and secrets
 
 See [jobs.md](jobs.md). To run every AI job on a Claude subscription with the one secret `CLAUDE_CODE_OAUTH_TOKEN`, see [Run everything on a Claude subscription](jobs.md#run-everything-on-a-claude-subscription).
+
+## DataForSEO cost guard
+
+DataForSEO is pay as you go from one account balance, so every call to it (live search results, keyword ideas, ranked keywords and the competitor gap, referring domains) goes through a guard in `src/lib/dataforseo.mjs`. Nothing calls `api.dataforseo.com` without it.
+
+```json
+"dataforseo": { "monthlyCapUsd": 8, "minBalanceUsd": 10 }
+```
+
+- `monthlyCapUsd` (default 8): the most this site's jobs may spend in one calendar month (UTC). The guard adds a generous estimate for the call it is about to make to the month's recorded spend; if the sum would pass the cap, the call is refused.
+- `minBalanceUsd` (default 10): the guard reads the live balance from the free `GET /v3/appendix/user_data` (cached for 10 minutes per run). If the balance minus the estimate would fall under this, the call is refused. If the balance cannot be read, the call is refused too: no blind spending. The balance belongs to the account, so if several sites or tools share one account, the floor protects all of them while each site's cap counts only its own spend.
+- A refusal is a `BudgetError` thrown before any request. The job records it as a note (rank and keywords keep their Search Console results) and the next calls in the same run are refused without a request as well.
+- Ledger: after each paid call the response's own `cost` is added to `<state>/<site>/dataforseo-ledger.json`, per month, per job and per endpoint (`months["2026-11"].jobs.rank.endpoints["serp/google/organic/live/advanced"] = { usd, calls }`). When a response carries no cost, the estimate is recorded and counted in `estimatedCalls`. The state folder is what `seo-autopilot state save` keeps on the `seo-data` branch, so run `state restore` before a job, or the month's spend starts again from zero (the balance floor still holds, because it is read live).
+- Alert: when the guard refuses, one message per day per reason is sent through Telegram if `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are set (`TELEGRAM_THREAD_ID` selects a forum topic). The text is HTML-escaped and contains no secrets. Without those variables nothing is sent and the refusal is still reported in the job output. The "once per day" memory lives in the ledger.

@@ -11,6 +11,7 @@
 // Location and language always come from the market passed in (market.mjs); there is no default country or language.
 import { domainOf } from "./serp.mjs";
 import { requireMarket, googleGl } from "./market.mjs";
+import { requireGuard, dataforseoEnabled } from "./dataforseo.mjs";
 
 async function getJson(fetchFn, name, url, init = {}) {
   let r;
@@ -19,13 +20,8 @@ async function getJson(fetchFn, name, url, init = {}) {
   return r.json();
 }
 
-const dfsAuth = (env) => `Basic ${Buffer.from(`${env.DATAFORSEO_LOGIN}:${env.DATAFORSEO_PASSWORD}`).toString("base64")}`;
-async function dfs(f, env, path, task) {
-  const j = await getJson(f, "dataforseo", `https://api.dataforseo.com/v3/${path}`, { method: "POST", headers: { Authorization: dfsAuth(env), "Content-Type": "application/json" }, body: JSON.stringify([task]) });
-  const t = j.tasks?.[0];
-  if (t && t.status_code && t.status_code !== 20000) throw new Error(`dataforseo: task status ${t.status_code}`);
-  return t?.result?.[0]?.items || [];
-}
+// Every DataForSEO call goes through the cost guard (src/lib/dataforseo.mjs): monthly cap, balance floor, ledger, alert.
+const dfs = async (guard, path, task) => (await requireGuard(guard, "dataforseo").task(path, task)).items;
 
 export const bing = {
   name: "bing",
@@ -42,11 +38,12 @@ export const bing = {
 
 export const dataforseo = {
   name: "dataforseo",
-  enabled: (env) => Boolean(env.DATAFORSEO_LOGIN && env.DATAFORSEO_PASSWORD),
+  enabled: (env) => dataforseoEnabled(env),
+  // Every method below takes { guard } (a cost guard); fetch and env belong to the guard.
   /** Keyword ideas for seeds: [{ query, volume, cpc, competition, difficulty, intent, trend }]. Volumes are the provider's estimates. */
-  async ideas(seeds, m, { fetch: f = fetch, env = process.env, limit = 300 } = {}) {
+  async ideas(seeds, m, { guard, limit = 300 } = {}) {
     const mk = requireMarket(m, "dataforseo");
-    const items = await dfs(f, env, "dataforseo_labs/google/keyword_ideas/live", { keywords: seeds.slice(0, 20), location_code: mk.locationCode, language_code: mk.languageCode, limit });
+    const items = await dfs(guard, "dataforseo_labs/google/keyword_ideas/live", { keywords: seeds.slice(0, 20), location_code: mk.locationCode, language_code: mk.languageCode, limit });
     return items.map((i) => ({
       query: String(i.keyword || "").toLowerCase(), volume: i.keyword_info?.search_volume ?? null, cpc: i.keyword_info?.cpc ?? null,
       competition: i.keyword_info?.competition ?? null, difficulty: i.keyword_properties?.keyword_difficulty ?? null, intent: i.search_intent_info?.main_intent || null,
@@ -54,17 +51,17 @@ export const dataforseo = {
     })).filter((k) => k.query);
   },
   /** Keywords a domain ranks for: [{ query, position, url, volume, traffic, intent }]. Traffic is the provider's estimate. */
-  async ranked(domain, m, { fetch: f = fetch, env = process.env, limit = 500 } = {}) {
+  async ranked(domain, m, { guard, limit = 500 } = {}) {
     const mk = requireMarket(m, "dataforseo");
-    const items = await dfs(f, env, "dataforseo_labs/google/ranked_keywords/live", { target: domain, location_code: mk.locationCode, language_code: mk.languageCode, limit });
+    const items = await dfs(guard, "dataforseo_labs/google/ranked_keywords/live", { target: domain, location_code: mk.locationCode, language_code: mk.languageCode, limit });
     return items.map((i) => ({
       query: String(i.keyword_data?.keyword || "").toLowerCase(), position: i.ranked_serp_element?.serp_item?.rank_group ?? null, url: i.ranked_serp_element?.serp_item?.url || "",
       volume: i.keyword_data?.keyword_info?.search_volume ?? null, traffic: i.ranked_serp_element?.serp_item?.etv ?? null, intent: i.keyword_data?.search_intent_info?.main_intent || null,
     })).filter((k) => k.query);
   },
   /** Referring domains of a target: [{ domain, backlinks, rank, firstSeen, lost }]. */
-  async referringDomains(target, { fetch: f = fetch, env = process.env, limit = 500 } = {}) {
-    const items = await dfs(f, env, "backlinks/referring_domains/live", { target, limit, order_by: ["rank,desc"] });
+  async referringDomains(target, { guard, limit = 500 } = {}) {
+    const items = await dfs(guard, "backlinks/referring_domains/live", { target, limit, order_by: ["rank,desc"] });
     return items.map((i) => ({ domain: String(i.domain || "").toLowerCase(), backlinks: i.backlinks ?? null, rank: i.rank ?? null, firstSeen: i.first_seen || null, lost: i.lost_date || null })).filter((d) => d.domain);
   },
 };
