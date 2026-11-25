@@ -31,6 +31,7 @@ permissions:
   contents: write
   pull-requests: write
   checks: read      # to confirm seo-check and the reviewer passed on the exact commit
+  statuses: read    # the same, for their commit statuses
 
 concurrency:
   group: seo-automerge
@@ -67,8 +68,14 @@ jobs:
           if [ -z "$SHA" ]; then echo "No open pull request for $BRANCH; nothing to merge."; exit 0; fi
           pr=$(gh pr list --head "$BRANCH" --state open --json number,headRefOid --jq ".[] | select(.headRefOid==\"$SHA\") | .number" | head -1)
           if [ -z "$pr" ]; then echo "No open pull request at the checked commit; nothing to merge."; exit 0; fi
-          # "build" / "review" when run on their own; "<caller job> / build" when called by the seo-autopilot workflow.
-          check() { gh api "repos/$GH_REPO/commits/$SHA/check-runs" --jq "[.check_runs[] | select(.name==\"$1\" or (.name | endswith(\" / $1\"))) | .conclusion] | first"; }
+          # The check run "build" / "review" from a pull_request run, or else the commit status "seo-check" / "seo-review"
+          # that dispatched and called runs post on the commit they checked (their own check runs sit on another commit).
+          check() {
+            r=$(gh api "repos/$GH_REPO/commits/$SHA/check-runs" --jq "[.check_runs[] | select(.name==\"$1\") | .conclusion] | first")
+            if [ "$r" = "success" ]; then echo success; return; fi
+            ctx=seo-check; [ "$1" = review ] && ctx=seo-review
+            gh api "repos/$GH_REPO/commits/$SHA/status" --jq "[.statuses[] | select(.context==\"$ctx\") | .state] | first // \"none\""
+          }
           if [ "$(check build)" != "success" ]; then echo "seo-check has not passed on this commit; not merging."; exit 0; fi
           if [ "${REQUIRE_REVIEW:-}" != "false" ]; then
             if [ "$(check review)" != "success" ]; then echo "The reviewer has not finished on this commit; not merging yet."; exit 0; fi

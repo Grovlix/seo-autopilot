@@ -22,6 +22,11 @@ on:
       issue:
         type: number
         required: true
+      # The autopilot runs seo-check and seo-review itself, in order, before its merge step.
+      start_checks:
+        type: boolean
+        required: false
+        default: true
   # Started by the daily portal step for an issue someone approved in the client portal (a label added by the workflow
   # token starts nothing by itself). Only agency members signed in to the portal can approve.
   workflow_dispatch:
@@ -135,13 +140,14 @@ jobs:
             esac
           done
 
-  # A pull request opened with the workflow token starts no pull_request workflows, so seo-check and seo-review would never
-  # run on it. A workflow_dispatch run is the documented exception: it is started here, on the drafted branch, so both
-  # results show as checks on the pull request's head commit, where a person, branch protection and seo-automerge see them.
+  # A pull request opened with the workflow token starts no pull_request workflows (GitHub now creates them as "action
+  # required" runs that wait for a person to approve). A workflow_dispatch run is the documented exception, so seo-check and
+  # seo-review are started here on the drafted branch. Each posts its result as a commit status ("seo-check", "seo-review")
+  # on the pull request's head commit, where a person, branch protection and seo-automerge see it.
   # A separate job, so the drafting agent's token never holds actions: write.
   checks:
     needs: implement
-    if: always() && needs.implement.result != 'skipped'
+    if: always() && needs.implement.result != 'skipped' && inputs.start_checks != false
     runs-on: ubuntu-latest
     permissions:
       actions: write

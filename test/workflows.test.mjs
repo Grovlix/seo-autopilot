@@ -40,7 +40,7 @@ for (const f of files) {
     const runBlocks = [...t.matchAll(/^\s+run:\s*(\|[^\n]*\n((?:\s{10,}.*\n?)*)|[^\n]*)/gm)].map((m) => m[0]);
     for (const b of runBlocks) assert.ok(!/\$\{\{\s*github\.event\.(issue|pull_request|comment|review|head_commit)\.(title|body|message|label)/.test(b) && !/\$\{\{\s*github\.head_ref/.test(b), `untrusted value in run: ${b.slice(0, 80)}`);
     // Third-party actions must be pinned to a full commit SHA; first-party actions may use a version tag.
-    for (const m of t.matchAll(/uses:\s*([^\s#]+)/g)) {
+    for (const m of t.matchAll(/^\s*(?:-\s+)?uses:\s*([^\s#]+)/gm)) {
       const ref = m[1];
       if (/^(actions|github)\//.test(ref)) continue;
       if (/^\.\/\.github\/workflows\/seo-[a-z-]+\.yml$/.test(ref)) continue; // our own workflows, in the same repository

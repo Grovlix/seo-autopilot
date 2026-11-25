@@ -19,7 +19,8 @@ on:
         type: number
         required: true
   # Started by seo-implement on the drafted branch right after it opens the pull request (a pull request opened with the
-  # workflow token starts no pull_request run; a dispatch does, and its result shows on the pull request's commit).
+  # workflow token starts no pull_request run; a dispatch does). A dispatched run's check is not listed on the pull request,
+  # so the result is also posted as the commit status "seo-review" on the pull request's head commit.
   workflow_dispatch:
     inputs:
       pr:
@@ -32,6 +33,7 @@ permissions:
   pull-requests: write
   issues: write
   id-token: write
+  statuses: write   # the "seo-review" status on the reviewed commit
 
 jobs:
   review:
@@ -48,6 +50,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr edit ${{ inputs.pr || github.event.pull_request.number }} --remove-label seo-review-passed || true
+      # The commit being reviewed, fixed now: the status goes on this commit even if the branch moves during the review.
+      - name: Mark the review as started on the pull request's commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ inputs.pr || github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          sha=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
+          echo "REVIEW_SHA=$sha" >> "$GITHUB_ENV"
+          gh api "repos/$GH_REPO/statuses/$sha" -f state=pending -f context=seo-review -f description="Reviewer agent running" -f target_url="$RUN_URL" > /dev/null || echo "::warning::Could not post the seo-review status."
       - uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1.0.248
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -77,3 +90,17 @@ jobs:
             and `gh pr edit ${{ inputs.pr || github.event.pull_request.number }} --add-label seo-review-passed`, and post a short
             `gh pr comment` listing what you checked and any non-blocking suggestions. If there IS a blocking problem, do
             NOT add the label; post a `gh pr comment` listing each blocking problem with the file and the exact text.
+      - name: Post the review result as the commit status
+        if: always() && env.REVIEW_SHA != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ inputs.pr || github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB: ${{ job.status }}
+        run: |
+          if [ "$JOB" = "success" ] && gh pr view "$PR" --json labels --jq '.labels[].name' | grep -qx seo-review-passed; then
+            state=success; desc="No blocking problem found"
+          elif [ "$JOB" = "success" ]; then state=failure; desc="Blocking problems: see the review comment"
+          else state=failure; desc="The reviewer did not finish ($JOB)"; fi
+          gh api "repos/$GH_REPO/statuses/$REVIEW_SHA" -f state="$state" -f context=seo-review -f description="$desc" -f target_url="$RUN_URL" > /dev/null
