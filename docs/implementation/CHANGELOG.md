@@ -2,6 +2,10 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (Unicode / Arabic tokens and slugs; code change)
+- **Code:** new `src/lib/text.mjs` (`normalizeArabic`, `tokens`, `slugify`); `src/adapters/index.mjs` (`tokens` re-exported from it, `makeCovered` normalises page text), `src/audit/links.mjs` (phrase matching no longer ASCII-only), `src/jobs/optimize.mjs` (slug via `slugify`, percent-encoded non-ASCII URL paths decoded first). `docs/cloudflare/runtime-matrix.json` regenerated (one more module in the import graph).
+- **Tests:** `test/text.test.mjs` (English tokens and Latin slugs identical to the old code; Arabic variants; coverage; slugs). Unit tests only; no external service involved.
+
 ## 2026-11-26 (strip commit on the Grovlix fork; code and documentation change, nothing deployed)
 - **Code (removed):** `cloud/` (portal, Worker, connector), `src/god/`, `src/hosted/`, workflows `deploy-seo-god`, `god-health`, `agent-exams`, scripts for them (`god-*`, `cf-*`, `exams`, `bundle-release-1`, `db-rollback-check`, `load-check`, `scan-fn-local`), `exams/`, and the modules only they used (`src/analysis/{alerts,scorecard,discover,exams}.mjs`, `src/core/job-lifecycle.mjs`), with their tests.
 - **Code (kept, moved):** `readKnowledge`/`referencesOf` now live in `src/core/knowledge.mjs` (used by `scripts/knowledge-review.mjs`), with `test/knowledge.test.mjs`. The `portal` job and `src/analysis/portal.mjs` stay (local job, writes `portal.json`; `--push` is opt-in).
