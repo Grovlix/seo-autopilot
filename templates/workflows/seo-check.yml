@@ -129,8 +129,8 @@ jobs:
           RESULT: ${{ needs.build.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # A dispatched run was started on the branch, so its commit is the one that was built. A called run carries
-          # the caller's commit, so read the branch head (only the drafter writes seo/ branches, and it has finished).
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then sha="$GITHUB_SHA"; else sha=$(gh api "repos/$GH_REPO/commits/$REF" --jq .sha); fi
+          # A run dispatched on the branch carries the commit that was built. A called run carries the caller's commit
+          # (and the caller's event name), so read the branch head (only the drafter writes seo/ branches; it has finished).
+          if [ "$GITHUB_REF" = "refs/heads/$REF" ]; then sha="$GITHUB_SHA"; else sha=$(gh api "repos/$GH_REPO/commits/$REF" --jq .sha); fi
           if [ "$RESULT" = "success" ]; then state=success; else state=failure; fi
           gh api "repos/$GH_REPO/statuses/$sha" -f state="$state" -f context=seo-check -f description="Build and facts guard: $RESULT" -f target_url="$RUN_URL" > /dev/null

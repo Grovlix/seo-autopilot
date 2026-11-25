@@ -280,6 +280,8 @@ test("dispatched and called runs post commit statuses on the checked commit; the
   assert.match(st, /needs: build/);
   assert.match(st, /statuses: write/);
   assert.match(st, /context=seo-check/);
+  assert.match(st, /"\$GITHUB_REF" = "refs\/heads\/\$REF"/, "a called run carries the caller's commit and event name");
+  for (const f of ["seo-review.yml", "seo-implement.yml"]) assert.match(text(f), /allowed_bots: "github-actions\[bot\]"/, `${f}: dispatched runs are started by github-actions[bot]`);
   assert.ok(!/actions\/checkout/.test(st), "the status job never checks out pull request code");
   const r = text("seo-review.yml");
   assert.match(r, /statuses: write/);
