@@ -2,6 +2,13 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D68: Claude subscription for every model job; checks on drafted pull requests; code change, not released)
+- **Code:** `src/lib/llm.mjs` (`claude-code` provider, `selectProvider`, `configureLlm`, skip note), `src/core/config.mjs` + schema (`llm`), `src/jobs/index.mjs`, `src/jobs/agent.mjs` (`--report-file`, `--proposals-file`; Python route needs `ANTHROPIC_API_KEY`), `src/analysis/agent-output.mjs`, `src/jobs/ai-visibility.mjs` (names skipped engines), `src/cli/doctor.mjs`, `src/cli/init.mjs`, `engines/python/seo_engine/{runner,__main__}.py` (auth text). Templates: `seo-agent` (claude-code-action, no Python), `seo-implement` (`checks` job, `start_checks`, `allowed_bots`), `seo-review` (dispatch, statuses, `allowed_bots`), `seo-check` (dispatch trigger, `status` job), `seo-automerge` (reads statuses), `seo-autopilot` (permissions, `start_checks: false`), `seo-daily`/`seo-weekly` (pinned CLI install when the token is set, token passed).
+- **Tests:** `test/llm.test.mjs`, `test/agent-subscription.test.mjs`, `test/workflows.test.mjs` (3 new; `uses:` regex no longer matches `statuses:`). `npm test`: before 722 tests / 681 pass / 41 skipped / 0 fail; after 737 / 696 / 41 / 0.
+- **Documentation:** `docs/jobs.md` (subscription section, checks on drafted pull requests), `docs/configuration.md`, `docs/getting-started.md`, `docs/engines.md`; regenerated `docs/registry.*` and `docs/cloudflare/runtime-matrix.*`.
+- **Real runs:** a throwaway public sandbox repository with the templates and a stub drafter (no secrets): dispatched `seo-check` and `seo-review` started for the bot-opened pull request and showed on it as commit statuses; a called check posted its status on the branch head. Run links are in the task report, not here. No Claude token was used in Actions; the reviewer's model step was not exercised.
+- **Deployment:** none.
+
 ## 2026-11-24 (D66 deployed; D67 pilot reports; code change)
 - **Deployment:** #89 (D66) squash-merged as 739f7c3; migration `20261126000000_job_guards.sql` applied to production (both triggers present); Worker deployed by deploy-seo-god run 24 (success, 19:49 UTC). Run at 20:00 UTC: no errors; no job refused by the new guard; no direct inserts recorded.
 - **Code (D67):** migration `cloud/portal/supabase/migrations/20261127000000_pilot_reports.sql` (`site_work_report` gains `search`; `agency_usage`; `agency_quality`; `private.history_sum`); portal `cloud/portal/app/index.html` (search results in the monthly report, AI report quality card and usage CSV on Operations).
