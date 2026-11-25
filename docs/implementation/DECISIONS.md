@@ -1167,3 +1167,27 @@ not per pull request); auto-merging content reverts (a person merged the change,
 renaming a harmful new page (loses the work and breaks links).
 Not verified: real GitHub runs of the changed workflows; the override's event read on a private repository (the check's
 token has `contents: read` only, so it likely fails closed there); new-page cannibalisation on real Search Console data.
+Review R1 (2026-11-25), changes to the above:
+7. The guard runs from `$RUNNER_TEMP` with the base branch's config copied there (`--repo` points at the checkout), so no
+   file of the pull request (`.npmrc` `node-options`, `package.json`, `node_modules`) is read or run before it. Every input
+   (limit, site URL, skipped data/state folders, unpublish field) comes from the base config read through git. File names
+   come from git with `core.quotepath=off` and `-z` (Arabic names were quoted and never matched).
+8. Harm that keeps the words fails: page-setting keys (draft, published, status, noindex, robots, canonical, permalink,
+   slug, url, redirect, sitemap, unlisted, hidden, private, `_build`...) in front matter, the top level of a JSON page and
+   the HTML head; hidden and commented-out text is stripped before counting. A gone heading counts as reworded only when
+   an added heading of the same level is similar (character-bigram Dice or containment >= 0.5); otherwise removed. The
+   word drop is compared unrounded. Rejected for now: a cumulative 30-day budget across pull requests (after an approved
+   override it would block every later edit of that page; with automerge off a person merges each change anyway).
+9. Override tied to the head: the label event must be later than the head commit's committer time. Residual: committer
+   time is set by the client; a person approving should read the final diff.
+10. A trusted revert must also be exactly what seo-watch makes: the exact inverse of #n's merge (merge, rebase or squash)
+    or exactly the adapter's unpublish of the pages #n added, and #n came from a `seo/*` branch (workflow passes
+    `--revert-of`). The unpublish PR had to be accepted explicitly, since it now changes a page setting.
+11. Watch: a page must fail on 2 check days in a row (streak saved in state); a new page not live is never unpublished, its
+    window starts at max(merge, publishAt, first day seen live after being seen not live). `watch --git-revert` uses
+    `-m 1` for merge commits and the whole range for rebase merges. Merged unpublishes are fetched again after 2 days:
+    still 200 without noindex -> `revert-failed` and an issue (draft is ignored by some stacks).
+12. Not done here: `issues: read` / `pull-requests: read` on the seo-check build job. Both callers (seo-autopilot.yml and
+    seo-watch.yml) grant `contents: read` only, and a called workflow's job may not ask for more than its caller, so adding
+    them in seo-check alone would make GitHub refuse both nested runs at startup. All three must change together (T7).
+    Until then a private repository fails closed: no override, no trusted revert.

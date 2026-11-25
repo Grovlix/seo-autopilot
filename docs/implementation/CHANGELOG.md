@@ -2,6 +2,21 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-25 23:45 UTC (D69 review R1 fixes on fix/content-loss-guard; code and documentation change, nothing deployed)
+- **Code:** `src/lib/git-history.mjs` (new: `gitNames` with quotepath off and -z, `revertBase` for merge/rebase/squash);
+  `src/analysis/content-loss.mjs` (`stripInvisible`, page-setting controls, `headingSimilarity`, unrounded drop, override
+  after head time); `src/jobs/content-guard.mjs` (`--repo`, `baseSettings`, `exactRevert`, `--revert-of`);
+  `src/analysis/watch.mjs` (`failStreak`, 2-day rule, new-page publish window and not-live rule);
+  `src/jobs/watch.mjs` (`--git-revert`, unpublish verification, `revert-failed`, `failed=` output);
+  `src/adapters/index.mjs` (`unpublishSetting`, pure `unpublishText`).
+- **Workflows:** `templates/workflows/seo-check.yml` guard step only (runs from `$RUNNER_TEMP`, base config, `created_at`,
+  revert-of); `templates/workflows/seo-watch.yml` (`--git-revert`, reverts with state, `unpublish-failed` job). seo-check
+  `on:`/permissions and seo-watch's check job permissions unchanged (owned by T7).
+- **Tests:** `test/content-loss.test.mjs`, `test/watch.test.mjs`, `test/workflows.test.mjs`, `test/jobs-e2e.test.mjs`. The
+  new tests were run against 3f11cd7 and fail there (9 in content-loss, 8 in watch). Local git repos and a local HTTP
+  server only; no GitHub or provider call.
+- **Docs:** `docs/content-automation.md`, `docs/jobs.md`, `docs/configuration.md`, D69 additions, root `CHANGELOG.md`.
+
 ## 2026-11-26 (Unicode / Arabic tokens and slugs; code change)
 - **Code:** new `src/lib/text.mjs` (`normalizeArabic`, `tokens`, `slugify`); `src/adapters/index.mjs` (`tokens` re-exported from it, `makeCovered` normalises page text), `src/audit/links.mjs` (phrase matching no longer ASCII-only), `src/jobs/optimize.mjs` (slug via `slugify`, percent-encoded non-ASCII URL paths decoded first). `docs/cloudflare/runtime-matrix.json` regenerated (one more module in the import graph).
 - **Tests:** `test/text.test.mjs` (English tokens and Latin slugs identical to the old code; Arabic variants; coverage; slugs). Unit tests only; no external service involved.

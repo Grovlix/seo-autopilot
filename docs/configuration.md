@@ -109,7 +109,7 @@ Page fields it understands: `slug`/`id`, a title (`h1`, `title`, `name`, `term` 
 
 ### Unpublishing (`content.unpublish`)
 
-When `seo-watch` finds that a new page is taking clicks from the pages around it, it takes the page off the site without deleting it: it sets `"draft": true` (and `"hold": true`) on the page. Set `"unpublish": { "field": "published", "value": false }` inside `content` if your site uses another field. Your build must leave such pages out (see [content-automation.md](content-automation.md#making-your-site-respect-publishat)).
+When `seo-watch` finds that a new page is taking clicks from the pages around it, it takes the page off the site without deleting it: it sets `"draft": true` (and `"hold": true`) on the page. Set `"unpublish": { "field": "published", "value": false }` inside `content` if your site uses another field. Your build must leave such pages out (see [content-automation.md](content-automation.md#making-your-site-respect-publishat)); not every stack does by default. Two days after the unpublish is merged the watch checks that the page is gone (an error status or a noindex); if it still answers 200, the entry is marked `revert-failed` and an issue is opened. The content-loss guard reads this setting from the base branch, to recognise the watch's own unpublish pull requests.
 
 ## Content-loss guard (`contentGuard`) and watch (`watch`)
 
