@@ -145,9 +145,10 @@ jobs:
   # seo-review are started here on the drafted branch. Each posts its result as a commit status ("seo-check", "seo-review")
   # on the pull request's head commit, where a person, branch protection and seo-automerge see it.
   # A separate job, so the drafting agent's token never holds actions: write.
+  # format(): with no input (label or dispatch start) the value is null, and null == false in GitHub expressions.
   checks:
     needs: implement
-    if: always() && needs.implement.result != 'skipped' && inputs.start_checks != false
+    if: always() && needs.implement.result != 'skipped' && format('{0}', inputs.start_checks) != 'false'
     runs-on: ubuntu-latest
     permissions:
       actions: write

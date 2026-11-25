@@ -40,6 +40,7 @@ One file, `seo-autopilot.config.json`, in the root of your repository. Paths are
 | `stateDir` | `.seo-autopilot` | where each run keeps its memory (one folder per site). Saved to the state branch by the workflows |
 | `dataDir` | `seo-autopilot` | the files you edit: `feeds.json`, `topics.json`, `backlinks/` |
 | `stateBranch` | `seo-data` | git branch holding the saved state (one force-pushed orphan commit, reports only, never secrets) |
+| `llm` | none | optional AI step for judging, wording and ideas: `{ "provider": "claude-code" \| "anthropic" \| "openai" \| "none", "model": "sonnet" }`. `claude-code` runs the Claude Code CLI on your Claude subscription (`CLAUDE_CODE_OAUTH_TOKEN`, no API key). Without `provider`, whichever login is set is used (an API key first). `SEO_LLM_PROVIDER` and `SEO_MODEL` override it. See [jobs.md](jobs.md#run-everything-on-a-claude-subscription) |
 
 ## Site
 
@@ -131,4 +132,4 @@ See [content-automation.md](content-automation.md#watch-and-revert-after-merging
 
 ## Environment variables and secrets
 
-See [jobs.md](jobs.md).
+See [jobs.md](jobs.md). To run every AI job on a Claude subscription with the one secret `CLAUDE_CODE_OAUTH_TOKEN`, see [Run everything on a Claude subscription](jobs.md#run-everything-on-a-claude-subscription).
