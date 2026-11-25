@@ -16,6 +16,18 @@ on:
       base:
         type: string
         required: true
+  # Started by seo-implement on the drafted branch right after it opens the pull request: a pull request opened with the
+  # workflow token starts no pull_request run, but a dispatch does, and its result shows on the pull request's commit.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "The seo/ branch to check"
+        type: string
+        required: true
+      base:
+        description: "The branch the pull request merges into"
+        type: string
+        required: true
 
 permissions:
   contents: read
