@@ -78,6 +78,9 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Runs started by this repository's own workflows (seo-implement's dispatch, the portal step) have the actor
+          # github-actions[bot]; the action refuses bots unless listed. Only workflows in this repository act as it.
+          allowed_bots: "github-actions[bot]"
           claude_args: >-
             --max-turns 30
             --allowedTools "Read,Glob,Grep,{{EDIT_TOOLS}},Bash(git checkout -b seo/*),Bash(git add:*),Bash(git commit:*),Bash(git push origin seo/*),Bash(git status),Bash(git diff:*),Bash(gh pr create:*),Bash(gh issue comment:*),Bash(gh issue view:*)"

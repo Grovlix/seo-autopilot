@@ -6,7 +6,7 @@ Decision: [D30](../implementation/DECISIONS.md). Measurements: [usage-estimate.m
 **Summary:** 58 jobs.
 - 6 have a tested hosted equivalent (Worker plus the Supabase scan function).
 - 52 stay on a Node host, meaning the site repositories' existing GitHub Actions workflows.
-- 6 of them spawn processes, which Workers cannot do at all.
+- 10 of them spawn processes, which Workers cannot do at all.
 - 0 are pure or network-only candidates for a later move.
 
 None of the CLI jobs runs inside a Worker as written. They all read or write the site's state files, and Workers have no persistent file system.
@@ -28,7 +28,7 @@ None of the CLI jobs runs inside a Worker as written. They all read or write the
 | `daily` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `dashboard` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `deepdive` | github-actions | yes | none |  |  | Node host only: spawns processes (git, Go, Python or browsers); runs in the site repository's existing GitHub Actions workflows |
-| `digest` | github-actions |  | read-write | yes | yes | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
+| `digest` | github-actions | yes | read-write | yes | yes | Node host only: spawns processes (git, Go, Python or browsers); runs in the site repository's existing GitHub Actions workflows |
 | `entity` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `experiments` | github-actions | yes | read-write | yes |  | Node host only: spawns processes (git, Go, Python or browsers); runs in the site repository's existing GitHub Actions workflows |
 | `facts` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
@@ -46,9 +46,9 @@ None of the CLI jobs runs inside a Worker as written. They all read or write the
 | `local` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `logs` | github-actions |  | read-write |  |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `mark` | github-actions |  | read-write |  |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
-| `mentions` | github-actions |  | read-write | yes | yes | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
+| `mentions` | github-actions | yes | read-write | yes | yes | Node host only: spawns processes (git, Go, Python or browsers); runs in the site repository's existing GitHub Actions workflows |
 | `monthly` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
-| `news` | github-actions |  | read-write | yes | yes | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
+| `news` | github-actions | yes | read-write | yes | yes | Node host only: spawns processes (git, Go, Python or browsers); runs in the site repository's existing GitHub Actions workflows |
 | `optimize` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `pace` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `portal` | hosted-equivalent |  | read-write | yes |  | replaced for hosted sites by Supabase rows written by the scan and the jobs |
@@ -61,7 +61,7 @@ None of the CLI jobs runs inside a Worker as written. They all read or write the
 | `refresh` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `release` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `render` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
-| `research` | github-actions |  | read-write | yes | yes | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
+| `research` | github-actions | yes | read-write | yes | yes | Node host only: spawns processes (git, Go, Python or browsers); runs in the site repository's existing GitHub Actions workflows |
 | `schedule` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `schema` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
 | `shop` | github-actions |  | read-write | yes |  | Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows |
