@@ -1,6 +1,7 @@
 // `seo-autopilot doctor`: checks the setup and says exactly what to fix. Read-only.
 import { detectVerticals, PACKS } from "../analysis/verticals.mjs";
 import { pickProvider } from "../lib/serp.mjs";
+import { siteMarket, marketLabel } from "../lib/market.mjs";
 import { loadConfig } from "../core/config.mjs";
 import { readJson } from "../core/util.mjs";
 import { googleKeyAvailable, getToken, SCOPES, searchAnalytics } from "../lib/google-auth.mjs";
@@ -23,6 +24,9 @@ export function githubSetup(cwd) {
   return { secrets: new Set((secrets || []).map((s) => s.name)), vars: new Map((vars || []).map((v) => [v.name, v.value])) };
 }
 
+/** Keys whose calls depend on the market (and cost money or quota). */
+const MARKET_KEYS = ["BRAVE_API_KEY", "SERPAPI_KEY", "DATAFORSEO_LOGIN", "BING_WEBMASTER_API_KEY", "GOOGLE_ADS_DEVELOPER_TOKEN", "YOUTUBE_API_KEY"];
+
 export const OPTIONAL_KEYS = [
   [["GOOGLE_ADS_DEVELOPER_TOKEN", "GOOGLE_ADS_CUSTOMER_ID"], "Google Keyword Planner volumes, competition and bids for keywords (free; your own Ads account)"],
   [["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"], "keyword volumes, competitor rankings and backlinks (paid)"],
@@ -37,6 +41,21 @@ export const OPTIONAL_KEYS = [
   [["PERPLEXITY_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"], "AI engines for ai-visibility (paid; ANTHROPIC_API_KEY counts too)"],
   [["SEO_PORTAL_URL", "SEO_PORTAL_TOKEN"], "client portal: the daily snapshot push (both come from \"Connect a website\" in the portal)"],
 ];
+
+/** What doctor says about a site's market, as [level, text] lines. Pure apart from reading the environment passed in. */
+export function marketReport(site, env = process.env) {
+  const out = [];
+  try {
+    const m = siteMarket(site);
+    out.push(["ok", `market: ${marketLabel(m)}${m.languages.length > 1 ? `; languages ${m.languages.join(", ")}` : ""}`]);
+    if (site.language && !m.languages.includes(String(site.language).toLowerCase().split("-")[0])) out.push(["warn", `language "${site.language}" is not one of market.languages (${m.languages.join(", ")}): add it there if the site publishes in it`]);
+    for (const k of ["research", "citations"]) if (site[k]?.market != null) out.push(["warn", `${k}.market is no longer read (the site's "market" is used); remove it`]);
+  } catch (e) {
+    const paid = MARKET_KEYS.filter((k) => env[k]);
+    out.push([paid.length ? "bad" : "warn", `${e.message}${paid.length ? ` (${paid.join(", ")} would be spent in the wrong market)` : " Needed by keywords, rank, gap, optimize and citations."}`]);
+  }
+  return out;
+}
 
 export async function doctor({ cwd = process.cwd() } = {}) {
   let failed = 0;
@@ -93,6 +112,9 @@ export async function doctor({ cwd = process.cwd() } = {}) {
     const packs = detectVerticals({ profile: prof, site });
     if (packs.length) for (const p of packs) ok(`pack: ${PACKS[p.pack].title} (${p.why.join("; ")})`);
     else console.log(`  info  ${Array.isArray(site.verticals) ? "packs: none (verticals: [] in the config)" : "packs: none detected yet. Set \"verticals\": [\"local\"] or [\"ecommerce\"] in the config if one applies"}`);
+    // The market (location + language) every provider call uses. Nothing is assumed, so a missing one is reported, and is a failure
+    // as soon as a key that spends money on research is present.
+    for (const [level, text] of marketReport(site)) ({ ok, warn, bad })[level](text);
     pickProvider() ? ok(`citations provider: ${pickProvider().name}`) : warn("no search provider key for the citations job (optional): run `seo-autopilot run citations` to see how to enable one");
   }
 

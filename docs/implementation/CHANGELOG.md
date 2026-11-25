@@ -13,6 +13,13 @@ Dated session entries; history is preserved. Product release notes are in the ro
 - **Not changed:** the `seo-hosted` label and `seo-god-job` marker checks in `src/analysis/autonomy.mjs` and the workflow templates (they only make the policy stricter).
 - **Deployment:** none. The removed stack's production services (Supabase, Worker, portal) were not touched.
 
+## 2026-11-26 (D68 market from config; code change)
+- **Code:** new `src/lib/market.mjs`; `src/lib/serp.mjs`, `research-sources.mjs`, `google-ads.mjs`, `youtube.mjs`, `open-data.mjs` take a resolved market (no `en`, no UK default); `src/jobs/keywords.mjs`, `rank.mjs`, `gap.mjs`, `optimize.mjs`, `citations.mjs`, `entity.mjs` resolve it first; `src/core/config.mjs` validates `market`; `src/cli/init.mjs` (`--market`) and `doctor.mjs` (`marketReport`); `src/analysis/citations.mjs`.
+- **Documentation:** `docs/configuration.md#market`, `docs/research-suite.md`, `docs/measurement-and-compliance.md`, schema, root `CHANGELOG.md` (breaking-change note with migration).
+- **Tests:** new `test/market.test.mjs` (13), `test/market-fixtures.mjs`; payload tests in `test/features-2.test.mjs`; existing tests given an explicit market.
+- **Checks:** `npm test` 739 tests, 698 pass, 0 fail, 41 skipped (before: 722, 681 pass, 0 fail, 41 skipped). No live provider call was made.
+- **Deployment:** none.
+
 ## 2026-11-24 (D66 deployed; D67 pilot reports; code change)
 - **Deployment:** #89 (D66) squash-merged as 739f7c3; migration `20261126000000_job_guards.sql` applied to production (both triggers present); Worker deployed by deploy-seo-god run 24 (success, 19:49 UTC). Run at 20:00 UTC: no errors; no job refused by the new guard; no direct inserts recorded.
 - **Code (D67):** migration `cloud/portal/supabase/migrations/20261127000000_pilot_reports.sql` (`site_work_report` gains `search`; `agency_usage`; `agency_quality`; `private.history_sum`); portal `cloud/portal/app/index.html` (search results in the monthly report, AI report quality card and usage CSV on Operations).

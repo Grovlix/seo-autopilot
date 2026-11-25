@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { competitors, keywordGap, strengths, winningPages, gapTopics } from "../src/analysis/gap.mjs";
+import { CONFIG } from "./market-fixtures.mjs";
 
 test("competitors: your list wins; otherwise share of voice, with platforms such as Wikipedia set apart", () => {
   assert.deepEqual(competitors({ configured: ["www.Rival.test", "s.test"], own: "s.test" }).domains, ["rival.test"]);
@@ -33,18 +34,21 @@ const res = (body, status = 200) => ({ ok: status < 400, status, json: async () 
 test("gap job: with DataForSEO, every competitor query against your Search Console and provider positions", async () => {
   const root = mkdtempSync(join(tmpdir(), "seo-gap-")); const state = join(root, "state"); mkdirSync(state);
   writeFileSync(join(state, "gsc-rows.json"), JSON.stringify({ rows: [{ query: "vps hosting", impressions: 100, position: 15 }] }));
-  const bodies = [];
+  const bodies = [], sentMarkets = [];
+  const withoutLog = async (fn) => { const log = console.log; console.log = () => {}; try { return await fn(); } finally { console.log = log; } };
   const f = async (url, init) => {
-    const target = JSON.parse(init.body)[0].target; bodies.push(target);
+    const task = JSON.parse(init.body)[0], target = task.target; bodies.push(target); sentMarkets.push([task.location_code, task.language_code]);
     const items = target === "rival.test" ? [{ keyword_data: { keyword: "vps hosting", keyword_info: { search_volume: 900 } }, ranked_serp_element: { serp_item: { rank_group: 2, url: "https://rival.test/vps" } } }, { keyword_data: { keyword: "managed wordpress", keyword_info: { search_volume: 400 } }, ranked_serp_element: { serp_item: { rank_group: 6, url: "https://rival.test/wp" } } }]
       : [{ keyword_data: { keyword: "managed wordpress" }, ranked_serp_element: { serp_item: { rank_group: 9 } } }];
     return res({ tasks: [{ status_code: 20000, result: [{ items }] }] });
   };
-  const site = { id: "s", name: "S", url: "https://s.test/", research: { competitors: ["rival.test"] }, paths: { state, root, data: root } };
+  const site = { id: "s", name: "S", url: "https://s.test/", market: CONFIG.SA, research: { competitors: ["rival.test"] }, paths: { state, root, data: root } };
   const { run } = await import("../src/jobs/gap.mjs");
   const log = console.log; console.log = () => {};
   try { await run({ site, flags: {} }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: f }); } finally { console.log = log; }
   assert.deepEqual(bodies, ["rival.test", "s.test"]);
+  assert.deepEqual(sentMarkets, [[2682, "ar"], [2682, "ar"]], "DataForSEO is asked for the site's market, not a default");
+  await withoutLog(() => assert.rejects(() => run({ site: { ...site, market: undefined }, flags: {} }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: async () => { throw new Error("no request may be made"); } }), /market: missing/));
   const r = JSON.parse(readFileSync(join(state, "gap.json"), "utf8"));
   assert.deepEqual(r.gap.weak.map((x) => x.query), ["vps hosting"]);
   assert.deepEqual(r.gap.shared.map((x) => x.query), ["managed wordpress"], "your provider position fills what Search Console did not report");

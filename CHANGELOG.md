@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Every provider call now uses the site's own market (location and language). **Breaking for projects that use the research jobs:** add a `market` to each site.
+
+- **Changed:** the live search, keyword, autocomplete, Keyword Planner, YouTube, Wikipedia and entity calls take location and language from the site's new `market` setting, for example `"market": { "location_code": 2682, "language_code": "ar", "languages": ["ar", "en"] }`. Before, `language_code: "en"` was hard-coded in the DataForSEO requests (and `hl=en` in SerpAPI and autocomplete, `en-<country>` in Bing, language id 1000 in Keyword Planner), and a missing or unrecognised country silently meant the United Kingdom. A Saudi Arabian site in Arabic got UK English data, and paid for it.
+- **Changed:** a missing, unknown or misspelt market (or a language the site does not list) stops the job with an error naming the config key and an example, before any request is sent. `keywords`, `rank --serp`, `gap`, `optimize`, `citations` and `entity` need it; audit, daily and the other jobs do not. `seo-autopilot doctor` reports it (a failure when a paid key is set).
+- **Migration:** add `market` to each site in `seo-autopilot.config.json` (see docs/configuration.md#market). `research.market` and `citations.market` are no longer read; a project that only has them gets an error that shows the equivalent `location_code`. The language was always English before: set the one your site is researched in.
+- **New:** `languages` for sites in several languages. Each query, seed or question is researched in the language it is written in (when the site lists it), or with `--language`, or a `"language"` on the question. A built-in table of 61 countries and 28 languages; any other DataForSEO location code works with a `country`.
+- **New:** `init --market 2682:ar,en` writes the market. Without it init says that no market is set; it never writes a default.
+
 Connect any website to the client portal with just its address.
 
 - **New:** "Add and scan" in the portal. The `scan` Edge Function (Supabase, `cloud/portal/supabase/functions/scan`) crawls the site daily with the product's own crawler and audit rules, with no repository and no GitHub Actions minutes. pg_cron wakes it every 10 minutes; "Scan now" wakes it at once.
