@@ -17,7 +17,8 @@ on:
         type: string
         required: true
   # Started by seo-implement on the drafted branch right after it opens the pull request: a pull request opened with the
-  # workflow token starts no pull_request run, but a dispatch does, and its result shows on the pull request's commit.
+  # workflow token starts no pull_request run, but a dispatch does. A dispatched (or called) run's check is not listed on
+  # the pull request, so the "status" job below also posts the result as the commit status "seo-check".
   workflow_dispatch:
     inputs:
       ref:
@@ -62,3 +63,27 @@ jobs:
         run: |
           files=$(git diff --name-only "origin/$BASE...HEAD" -- '*.json' '*.md' '*.mdx' | { grep -v '^seo-autopilot' || true; } | paste -sd, -)
           if [ -n "$files" ]; then npx --yes "$SEO" run facts --files "$files"; else echo "No content files changed."; fi
+
+  # Dispatched or called runs only (a pull_request run is already listed on the pull request). Posts the build result as the
+  # commit status "seo-check" on the branch's head commit, where the pull request, branch protection and seo-automerge see
+  # it. A separate job: the build above, which runs project code, never holds a token that can write anything.
+  status:
+    needs: build
+    if: always() && startsWith(inputs.ref, 'seo/') && needs.build.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post the build result as the commit status
+        env:
+          GH_TOKEN: ${{ github.token }}   # this job's own token: statuses only, no repository secrets
+          GH_REPO: ${{ github.repository }}
+          REF: ${{ inputs.ref }}
+          RESULT: ${{ needs.build.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # A dispatched run was started on the branch, so its commit is the one that was built. A called run carries
+          # the caller's commit, so read the branch head (only the drafter writes seo/ branches, and it has finished).
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then sha="$GITHUB_SHA"; else sha=$(gh api "repos/$GH_REPO/commits/$REF" --jq .sha); fi
+          if [ "$RESULT" = "success" ]; then state=success; else state=failure; fi
+          gh api "repos/$GH_REPO/statuses/$sha" -f state="$state" -f context=seo-check -f description="Build and facts guard: $RESULT" -f target_url="$RUN_URL" > /dev/null

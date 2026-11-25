@@ -4,7 +4,8 @@
 # Secrets (Settings > Secrets and variables > Actions):
 #   GOOGLE_KEY_JSON        full contents of the Google service-account JSON  (required)
 #   INDEXNOW_KEY           your IndexNow key                                  (optional, Bing/Yandex)
-#   ANTHROPIC_API_KEY      optional: AI judging of news and proposal wording (or OPENAI_API_KEY)
+#   CLAUDE_CODE_OAUTH_TOKEN  optional: AI judging of news and wording on your Claude subscription (from `claude setup-token`;
+#                          no API key). ANTHROPIC_API_KEY or OPENAI_API_KEY (pay per use) work instead.
 #   SEO_INGEST_URL / SEO_INGEST_TOKEN   optional: send results to your own dashboard
 # State (inspection results, news seen, backlink log) is kept on the "seo-data" branch of this repository.
 name: seo-daily
@@ -23,12 +24,19 @@ env:
 jobs:
   run:
     runs-on: ubuntu-latest
+    env:
+      HAS_CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - name: Restore state
         run: npx --yes "$SEO" state restore
+      # Optional AI wording and judging on your Claude subscription: installs the Claude Code CLI only when the secret
+      # CLAUDE_CODE_OAUTH_TOKEN is set (pinned version; update it deliberately). Without it the AI steps run rule-based.
+      - name: Install the Claude Code CLI (only with CLAUDE_CODE_OAUTH_TOKEN)
+        if: env.HAS_CLAUDE_TOKEN == 'true'
+        run: npm install -g @anthropic-ai/claude-code@2.1.310
       - name: Daily report and URL inspection
         env:
           GOOGLE_KEY_JSON: ${{ secrets.GOOGLE_KEY_JSON }}
@@ -50,6 +58,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: npx --yes "$SEO" run news
@@ -58,6 +67,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: npx --yes "$SEO" run mentions
