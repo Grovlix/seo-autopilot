@@ -49,6 +49,13 @@ export function validate(raw) {
   const errors = [];
   if (!raw || typeof raw !== "object") return ["config is not an object"];
   if (!Array.isArray(raw.sites) || raw.sites.length === 0) errors.push("sites must be a non-empty array");
+  if (raw.llm != null) {
+    if (typeof raw.llm !== "object" || Array.isArray(raw.llm)) errors.push("llm must be an object, for example { \"provider\": \"claude-code\" }");
+    else {
+      if (raw.llm.provider != null && !["claude-code", "anthropic", "openai", "none"].includes(raw.llm.provider)) errors.push("llm.provider must be claude-code, anthropic, openai or none");
+      if (raw.llm.model != null && (typeof raw.llm.model !== "string" || !raw.llm.model.trim())) errors.push("llm.model must be a model name or alias, for example \"sonnet\"");
+    }
+  }
   const ids = new Set();
   for (const [i, s] of (raw.sites || []).entries()) {
     const w = `sites[${i}]`;
@@ -160,7 +167,7 @@ export function loadConfig({ cwd = process.cwd(), file } = {}) {
     };
     return site;
   });
-  return { path, root, stateDir, dataDir, sites };
+  return { path, root, stateDir, dataDir, sites, llm: raw.llm ?? null };
 }
 
 export function pickSites(cfg, only) {

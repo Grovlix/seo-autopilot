@@ -91,7 +91,7 @@ def _doctor(_a) -> int:
         print(f"claude-agent-sdk: installed ({getattr(claude_agent_sdk, '__version__', 'version unknown')})")
     except ImportError:
         print("claude-agent-sdk: not installed (only needed to run agents: pip install claude-agent-sdk)")
-    print("login: " + ("ANTHROPIC_API_KEY set" if os.environ.get("ANTHROPIC_API_KEY") else "CLAUDE_CODE_OAUTH_TOKEN set" if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN") else "no Claude login in this shell (needed to run agents)"))
+    print("login: " + ("ANTHROPIC_API_KEY set" if os.environ.get("ANTHROPIC_API_KEY") else "no ANTHROPIC_API_KEY in this shell (needed to run agents here; on a Claude subscription use the seo-agent workflow)"))
     print("node: " + (shutil.which("node") or "not found"))
     return 0
 

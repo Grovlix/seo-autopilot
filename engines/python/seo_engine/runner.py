@@ -1,7 +1,9 @@
 """Run an agent: a Claude model with the tools from tools.py, bounded by turns, budget and an allowlist.
 
-The model and its login come from the official `claude-agent-sdk` package (install with `pip install claude-agent-sdk`) and the
-usual environment (ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN). Everything else, the tools, the safety rules and the
+The model comes from the official `claude-agent-sdk` package (install with `pip install claude-agent-sdk`) and the login from
+ANTHROPIC_API_KEY. The Agent SDK documentation asks third-party products to use API keys rather than a claude.ai subscription
+login, so this runtime is the API-key route; on a Claude subscription the same agents run in GitHub Actions through
+claude-code-action (templates/workflows/seo-agent.yml). Everything else, the tools, the safety rules and the
 logging, is in this package. The SDK import is lazy and the query function can be replaced, so the runtime is testable
 without an AI.
 """

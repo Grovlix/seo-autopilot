@@ -18,6 +18,14 @@ on:
       pr:
         type: number
         required: true
+  # Started by seo-implement on the drafted branch right after it opens the pull request (a pull request opened with the
+  # workflow token starts no pull_request run; a dispatch does, and its result shows on the pull request's commit).
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request number to review"
+        type: number
+        required: true
 
 permissions:
   contents: read

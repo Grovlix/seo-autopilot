@@ -134,3 +134,29 @@ jobs:
               seo-topic|seo-refresh|seo-snippet|seo-links|seo-fix|seo-template) gh pr edit "$pr" --add-label "$l" || true;;
             esac
           done
+
+  # A pull request opened with the workflow token starts no pull_request workflows, so seo-check and seo-review would never
+  # run on it. A workflow_dispatch run is the documented exception: it is started here, on the drafted branch, so both
+  # results show as checks on the pull request's head commit, where a person, branch protection and seo-automerge see them.
+  # A separate job, so the drafting agent's token never holds actions: write.
+  checks:
+    needs: implement
+    if: always() && needs.implement.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Start the build check and the reviewer on the pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          N: ${{ inputs.issue || github.event.issue.number }}
+        run: |
+          set -eu
+          info=$(gh pr list --head "seo/issue-$N" --state open --json number,baseRefName --jq '.[0] // empty | "\(.number) \(.baseRefName)"')
+          if [ -z "$info" ]; then echo "No open pull request for seo/issue-$N; nothing to check."; exit 0; fi
+          pr=${info% *}; base=${info#* }
+          gh workflow run seo-check.yml --ref "seo/issue-$N" -f ref="seo/issue-$N" -f base="$base" || echo "::warning::Could not start seo-check (is .github/workflows/seo-check.yml present?)."
+          gh workflow run seo-review.yml --ref "seo/issue-$N" -f pr="$pr" || echo "::warning::Could not start seo-review (is .github/workflows/seo-review.yml present?)."
+          echo "Started seo-check and seo-review on seo/issue-$N for pull request #$pr."
