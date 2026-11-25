@@ -41,11 +41,20 @@ jobs:
     if: startsWith(github.head_ref, 'seo/') || startsWith(inputs.ref, 'seo/')
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      sha: ${{ steps.head.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ inputs.ref || '' }}
+      # The commit this run builds, recorded before any project code runs; the status job reports on exactly this commit.
+      # A pull_request run builds a temporary merge commit, so its result belongs to the pull request's head commit.
+      - name: Record the commit being checked
+        id: head
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha || '' }}
+        run: echo "sha=${PR_HEAD:-$(git rev-parse HEAD)}" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       # Content-loss guard: fails when a changed page lost more than 15% of its words (contentGuard.maxWordDropPercent), or
@@ -111,12 +120,15 @@ jobs:
           files=$(git diff --name-only "origin/$BASE...HEAD" -- '*.json' '*.md' '*.mdx' | { grep -v '^seo-autopilot' || true; } | paste -sd, -)
           if [ -n "$files" ]; then npx --yes "$SEO" run facts --files "$files"; else echo "No content files changed."; fi
 
-  # Dispatched or called runs only (a pull_request run is already listed on the pull request). Posts the build result as the
-  # commit status "seo-check" on the branch's head commit, where the pull request, branch protection and seo-automerge see
-  # it. A separate job: the build above, which runs project code, never holds a token that can write anything.
+  # Posts the build result as the commit status "seo-check" on the commit the build job checked, where the pull request,
+  # branch protection and seo-automerge see it (a dispatched or called run's own check is not listed on the pull request,
+  # and seo-automerge accepts only this status). Runs for seo/ branches of this repository only: a fork's pull_request run
+  # has a read-only token. A separate job: the build above, which runs project code, never holds a token that can write.
   status:
     needs: build
-    if: always() && startsWith(inputs.ref, 'seo/') && needs.build.result != 'skipped'
+    if: >-
+      always() && needs.build.result != 'skipped' && (startsWith(inputs.ref, 'seo/') || (
+      startsWith(github.head_ref, 'seo/') && github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
     permissions:
       statuses: write
@@ -125,12 +137,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}   # this job's own token: statuses only, no repository secrets
           GH_REPO: ${{ github.repository }}
-          REF: ${{ inputs.ref }}
+          SHA: ${{ needs.build.outputs.sha }}
           RESULT: ${{ needs.build.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # A run dispatched on the branch carries the commit that was built. A called run carries the caller's commit
-          # (and the caller's event name), so read the branch head (only the drafter writes seo/ branches; it has finished).
-          if [ "$GITHUB_REF" = "refs/heads/$REF" ]; then sha="$GITHUB_SHA"; else sha=$(gh api "repos/$GH_REPO/commits/$REF" --jq .sha); fi
+          if [ -z "$SHA" ]; then echo "::error::The build stopped before it recorded its commit; no status posted (seo-automerge will not merge)."; exit 1; fi
           if [ "$RESULT" = "success" ]; then state=success; else state=failure; fi
-          gh api "repos/$GH_REPO/statuses/$sha" -f state="$state" -f context=seo-check -f description="Build and facts guard: $RESULT" -f target_url="$RUN_URL" > /dev/null
+          gh api "repos/$GH_REPO/statuses/$SHA" -f state="$state" -f context=seo-check -f description="Build and facts guard: $RESULT" -f target_url="$RUN_URL" > /dev/null

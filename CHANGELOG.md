@@ -23,6 +23,13 @@ Content-loss guard and watch after merging (D69).
 - **Changed:** a page must fail on two check days in a row before the watch proposes a revert; a new page that is not live is never unpublished and is judged from its publish date. Reverts handle merge commits (`-m 1`) and rebase merges (`watch --git-revert`). Two days after an unpublish is merged the page is checked again; if it is still live the entry becomes `revert-failed` and an issue is opened.
 - **Upgrade:** `seo-autopilot upgrade --apply` refreshes `seo-check.yml` and `seo-watch.yml`. Make your build leave out pages with the unpublish field set (`draft: true` by default, `content.unpublish` to change it); not every stack does by default (see docs/content-automation.md).
 
+Every model job can run on a Claude subscription, and drafted pull requests always get their build check and review.
+
+- **New:** `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) is enough for drafting, review, the weekly agents (`seo-agent` now uses `claude-code-action`) and the in-process AI helpers (new `claude-code` provider, `"llm": { "provider": "claude-code" }`). API keys stay optional. See docs/jobs.md.
+- **Fixed:** a pull request opened by `seo-implement` with the workflow token started no `seo-check` or `seo-review` run. They are now started by dispatch and post `seo-check` / `seo-review` commit statuses on the checked commit.
+- **Changed (security):** `seo-automerge` accepts only those statuses when posted by `github-actions[bot]`, and refuses when any of them or any run of those workflows failed on the commit; it needs `actions: read` and `statuses: read` instead of `checks: read`. A workflow that calls `seo-check` must grant `statuses: write`. The drafter can create only its own `seo/issue-<n>` branch and cannot label its pull request. The reviewer starts with the base branch's Claude settings.
+- **Upgrade:** `seo-autopilot upgrade --diff`, then `--apply`. If you customised `seo-watch` or `seo-autopilot`, add `statuses: write` to the job that calls `seo-check` and `actions: read` to the job that calls `seo-automerge`.
+
 ### Earlier unreleased
 
 Connect any website to the client portal with just its address.

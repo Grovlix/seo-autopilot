@@ -61,6 +61,22 @@ jobs:
           sha=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
           echo "REVIEW_SHA=$sha" >> "$GITHUB_ENV"
           gh api "repos/$GH_REPO/statuses/$sha" -f state=pending -f context=seo-review -f description="Reviewer agent running" -f target_url="$RUN_URL" > /dev/null || echo "::warning::Could not post the seo-review status."
+      # Claude Code reads .claude/ (settings, hooks), CLAUDE.md and .mcp.json from the checkout when it starts, while it holds
+      # the Claude token. On a pull_request run the action restores them from the base branch itself; on a dispatched run
+      # it does not, and the checkout is the drafted branch. So they always come from the base branch here (same list as
+      # the action's own restore), and a path the base branch does not have is removed.
+      - name: Use the base branch's Claude settings, not the pull request's
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ inputs.pr || github.event.pull_request.number }}
+        run: |
+          set -eu
+          base=$(gh pr view "$PR" --json baseRefName --jq .baseRefName)
+          git fetch --no-tags origin "refs/heads/$base:refs/remotes/origin/seo-review-base"
+          for p in .claude .mcp.json .claude.json .gitmodules .ripgreprc CLAUDE.md CLAUDE.local.md .husky; do
+            rm -rf -- "$p"
+            if git cat-file -e "origin/seo-review-base:$p" 2>/dev/null; then git checkout origin/seo-review-base -- "$p"; fi
+          done
       - uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1.0.248
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

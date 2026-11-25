@@ -93,15 +93,25 @@ export const claudeArgs = (system, model) => [
   "--no-session-persistence",
 ];
 
+// The only variables the CLI child gets: the login, where to find programs and its home and temp folders, the locale, and
+// a proxy or extra CA where the network needs one (Windows needs its system folders to start Node). Everything else stays
+// out, so other secrets in the job (Search Console key, GitHub token, other providers' keys) never reach the model process.
+// ANTHROPIC_API_KEY is deliberately absent: in print mode the CLI prefers a key, and this provider uses the subscription.
+export const CLAUDE_ENV = [
+  "CLAUDE_CODE_OAUTH_TOKEN", "PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "LC_CTYPE", "USER", "LOGNAME",
+  "XDG_CONFIG_HOME", "CLAUDE_CONFIG_DIR", "HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "NO_PROXY", "no_proxy",
+  "NODE_EXTRA_CA_CERTS", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "SystemRoot", "SYSTEMROOT", "ComSpec", "PATHEXT",
+];
+/** The child's environment: only the allowlisted variables that are set. Exported for tests. */
+export const claudeEnv = (env) => Object.fromEntries(CLAUDE_ENV.filter((k) => env[k] != null && env[k] !== "").map((k) => [k, env[k]]));
+
 /**
- * One answer from the Claude Code CLI on the Claude subscription. The user text goes in on stdin, never on the command line.
- * ANTHROPIC_API_KEY is removed from the child's environment: in print mode the CLI prefers a key when present, and this
- * provider is chosen to use the subscription. Fails soft: any problem logs one line and returns null.
+ * One answer from the Claude Code CLI on the Claude subscription. The user text goes in on stdin, never on the command line,
+ * and the child sees only the variables in CLAUDE_ENV. Fails soft: any problem logs one line and returns null.
  */
 export function askClaudeCode(system, user, { model, env = process.env, timeoutMs } = {}) {
   const limit = Number(timeoutMs || env.SEO_LLM_TIMEOUT_MS || 120000);
-  const childEnv = { ...env };
-  delete childEnv.ANTHROPIC_API_KEY;
+  const childEnv = claudeEnv(env);
   return new Promise((resolve) => {
     let out = "", err = "", done = false;
     const finish = (v, note) => { if (done) return; done = true; clearTimeout(timer); if (note) console.log(`llm: claude-code ${note}`); resolve(v); };

@@ -126,7 +126,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      checks: read
+      actions: read
       statuses: read
     uses: ./.github/workflows/seo-automerge.yml
     with:

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, chmodSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { selectProvider, ask, askJson, askClaudeCode, claudeArgs, configureLlm, claudeOnPath } from "../src/lib/llm.mjs";
+import { selectProvider, ask, askJson, askClaudeCode, claudeArgs, configureLlm, claudeOnPath, CLAUDE_ENV } from "../src/lib/llm.mjs";
 import { validate } from "../src/core/config.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "seo-llm-"));
@@ -16,7 +16,7 @@ function fakeClaude(name, reply, { sleepMs = 0, exit = 0 } = {}) {
 let input = "";
 process.stdin.on("data", (d) => { input += d; });
 process.stdin.on("end", () => {
-  require("fs").writeFileSync(${JSON.stringify(log)}, JSON.stringify({ args: process.argv.slice(2), input, hasKey: "ANTHROPIC_API_KEY" in process.env, token: process.env.CLAUDE_CODE_OAUTH_TOKEN || null }));
+  require("fs").writeFileSync(${JSON.stringify(log)}, JSON.stringify({ args: process.argv.slice(2), input, hasKey: "ANTHROPIC_API_KEY" in process.env, envKeys: Object.keys(process.env), token: process.env.CLAUDE_CODE_OAUTH_TOKEN || null }));
   setTimeout(() => { process.stdout.write(${JSON.stringify(reply)}); process.exit(${exit}); }, ${sleepMs});
 });
 `);
@@ -74,6 +74,24 @@ test("claude-code: headless JSON call with no tools, the input on stdin, and the
   assert.equal(seen.hasKey, false, "ANTHROPIC_API_KEY would make the CLI bill the API instead of the subscription");
   assert.equal(seen.token, "tok");
   assert.equal(claudeArgs("s")[6], "sonnet", "default model alias");
+});
+
+test("claude-code: the child gets only allowlisted variables; other secrets in the job never reach it", async () => {
+  const fake = fakeClaude("claude-env", ok("fine"));
+  const env = {
+    PATH: "/usr/bin", HOME: "/home/runner", TMPDIR: "/tmp", LANG: "en_US.UTF-8", SEO_CLAUDE_BIN: fake.bin, CLAUDE_CODE_OAUTH_TOKEN: "tok",
+    GOOGLE_KEY_JSON: '{"private_key":"x"}', GITHUB_TOKEN: "ghs_x", GH_TOKEN: "ghs_y", OPENAI_API_KEY: "sk-x", ANTHROPIC_API_KEY: "k",
+    DATAFORSEO_PASSWORD: "p", SERPAPI_KEY: "s", NODE_OPTIONS: "--require /tmp/evil.js",
+  };
+  const { value } = await quiet(() => askClaudeCode("s", "u", { env }));
+  assert.equal(value, "fine");
+  const keys = fake.seen().envKeys;
+  for (const k of ["GOOGLE_KEY_JSON", "GITHUB_TOKEN", "GH_TOKEN", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "DATAFORSEO_PASSWORD", "SERPAPI_KEY", "NODE_OPTIONS", "SEO_CLAUDE_BIN"]) {
+    assert.ok(!keys.includes(k), `${k} must not reach the claude process`);
+  }
+  for (const k of ["CLAUDE_CODE_OAUTH_TOKEN", "PATH", "HOME", "TMPDIR", "LANG"]) assert.ok(keys.includes(k), `${k} is passed`);
+  // The OS may add a few variables of its own to any process (macOS: __CF_USER_TEXT_ENCODING); nothing else from the job.
+  assert.deepEqual(keys.filter((k) => !CLAUDE_ENV.includes(k) && !k.startsWith("__CF")), []);
 });
 
 test("claude-code: config model and askJson work through the CLI", async () => {

@@ -66,7 +66,7 @@ A past release shipped a syntax error because the commit chain used `;` after a 
 - Shell heredocs and `node -e` mangle backslashes and backticks. Write scripts with the Write or Edit tools instead, especially anything with regexes.
 - Windows checkout: files may have CRLF; scripts that patch files should normalise and restore line endings.
 - Search Console URL-inspection deep links return Google 404; list the full URL to paste into "Inspect any URL" instead.
-- GitHub `seo-automerge` needs `checks: read`. `seo-check` falls back from `npm ci` to `npm install`.
+- GitHub `seo-automerge` needs `statuses: read` and `actions: read` (it trusts only the `seo-check`/`seo-review` commit statuses posted by `github-actions[bot]`). A job that calls a workflow must grant every permission the called workflow's jobs ask for, or GitHub refuses the run (a test checks this). `seo-check` falls back from `npm ci` to `npm install`.
 - Detection and heuristics get tested on real sites before release (WordPress, Shopify, Next.js, Hugo, Jekyll, Astro, Gatsby, Webflow, and a real production site); several false positives were found this way.
 - Live provider calls have only been tested with mocked responses. That covers `citations` and the research suite (Brave, SerpAPI, DataForSEO, Bing Webmaster, Open PageRank, autocomplete, Perplexity, OpenAI, Anthropic, Gemini, Chrome UX Report, Knowledge Graph, Wikidata). Test with real keys before claiming they work.
 
