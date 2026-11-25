@@ -1,7 +1,10 @@
 // `seo-autopilot init`: scaffold the config, editable data files and GitHub workflows into the current repository.
 //   npx seo-autopilot init --url https://example.com/ [--id example] [--name "Example"] [--content sitemap|json|markdown]
 //                         [--include "src/content/**/*.json"] [--dir content] [--property sc-domain:example.com]
-//                         [--spec github:bishal-paul-git/seo-autopilot#v2] [--no-workflows] [--force]
+//                         [--market 2682:ar,en] [--spec github:bishal-paul-git/seo-autopilot#v2] [--no-workflows] [--force]
+// --market "<location>:<language>[,<language>...]": where and in which language(s) the site is researched; the location is a
+// DataForSEO location code, a country name or a two-letter country code, the first language is the primary one. Nothing is
+// assumed: without it (and without a prompt) the config has no market and the research jobs and `doctor` say so.
 // Existing files are never overwritten unless --force is given.
 import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync, readdirSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
@@ -10,6 +13,7 @@ import { createInterface } from "node:readline/promises";
 import { CONFIG_NAME } from "../core/config.mjs";
 import { detectProfile } from "../analysis/site-profile.mjs";
 import { listFiles } from "../jobs/profile.mjs";
+import { marketFromFlag, MarketError } from "../lib/market.mjs";
 
 const TEMPLATES = fileURLToPath(new URL("../../templates/", import.meta.url));
 const KNOWLEDGE = fileURLToPath(new URL("../../knowledge/", import.meta.url));
@@ -105,10 +109,12 @@ function copyTree(srcDir, dstDir, { force, report, transform }) {
 }
 
 export async function init({ cwd = process.cwd(), flags = {}, interactive = process.stdin.isTTY } = {}) {
-  let url = flags.url;
+  let url = flags.url, marketSpec = flags.market;
+  if (flags.market != null && typeof flags.market !== "string") throw new Error("--market needs a value, for example --market 2682:ar,en");
   if (!url && interactive) {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     url = (await rl.question("Your site's URL (for example https://example.com/): ")).trim();
+    if (!marketSpec) marketSpec = (await rl.question('Market to research, "<location>:<language>[,<language>]" (for example "Saudi Arabia:ar,en" or "2840:en"; empty to set it later): ')).trim() || undefined;
     rl.close();
   }
   if (!url) throw new Error("Missing --url. Example: npx seo-autopilot init --url https://example.com/");
@@ -132,6 +138,9 @@ export async function init({ cwd = process.cwd(), flags = {}, interactive = proc
       : content === "markdown" ? { type: "markdown", dir: flags.dir || "content" }
         : { type: "sitemap" },
   };
+  if (marketSpec) {
+    try { site.market = marketFromFlag(marketSpec); } catch (e) { if (e instanceof MarketError) throw new Error(e.message); throw e; }
+  }
   const config = { stateDir: ".seo-autopilot", dataDir: "seo-autopilot", sites: [site] };
 
   const report = [];
@@ -159,6 +168,7 @@ export async function init({ cwd = process.cwd(), flags = {}, interactive = proc
   console.log(report.join("\n"));
   const detected = detectLocal(cwd);
   if (detected) console.log(`\nDetected in this repository: ${detected.platform.name} (${detected.platform.kind}). ${detected.mode === "edit" ? "Agents can edit the site's files on a branch once you approve." : "This looks like a hosted or CMS site, so agents will advise and a person makes the changes."}${detected.contentHint ? "\n" + detected.contentHint : ""}\nRun \`seo-autopilot run profile\` for the full picture (rendering, hosting, where redirects live).`);
+  if (!site.market) console.log(`\nACTION REQUIRED: no market is set. The research jobs (keywords, rank, gap, optimize, citations) refuse to run without one, so no paid search is bought for the wrong country or language. Add it to ${CONFIG_NAME}, for example "market": { "location_code": 2682, "language_code": "ar", "languages": ["ar", "en"] }, or re-run init with --market 2682:ar,en --force. docs/configuration.md#market lists the names and languages.`);
   console.log(`
 Next steps
 1. Google access (needed for reports and research): create a service account, add it as a user on

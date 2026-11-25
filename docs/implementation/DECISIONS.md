@@ -1105,3 +1105,23 @@ worth paying for. Month-to-date against the same days of the month before is fai
 swing; the report states the days and the source. Rejected: Stripe now (price undecided, no proof yet); publishing the
 legal drafts with invented company details.
 
+
+## D68 (2026-11-26): the market (location and language) comes from the site's config; nothing is assumed
+Context: `language_code: "en"` was hard-coded in the DataForSEO requests (also `hl=en` in SerpAPI and autocomplete,
+`en-<country>` in Bing, language id 1000 in Keyword Planner, English in YouTube and Wikipedia and Wikidata), and a
+missing or unknown country silently meant the United Kingdom. A site in Saudi Arabia (DataForSEO location 2682) in Arabic
+got UK English data, and paid for it, with no warning.
+Decision: each site has a `market`: `{ location_code | location, language_code | languages, country? }` (the first
+language is primary). `src/lib/market.mjs` (pure) parses and validates it; every provider takes a resolved market and
+refuses anything else (a bare "GB" included). Missing, unknown location, bad code or unsupported language throws before
+any request, naming the config key and giving an example. A site's market is checked when the config loads if present; a
+missing one is an error only for the jobs that call a provider (keywords, rank --serp, gap, optimize, citations, entity),
+and `doctor` reports it (a failure when a paid key is set). Existing projects: `research.market` and `citations.market`
+are no longer read; an error shows the equivalent location code (migration line in CHANGELOG and docs). Several
+languages: each query, seed or question is researched in its own language when the site lists it and the text clearly is
+in it (detector in `src/analysis/scope.mjs`), else the primary; `--language` or a per-question `language` overrides.
+`init --market 2682:ar,en` writes it; without the flag init writes none and says so.
+Tradeoff: a breaking change for upstream users of the research jobs (one config block fixes it); language detection is a
+heuristic and falls back to the primary language, so a bilingual site should set `language` where it matters. Rejected:
+keeping a GB/en default (the bug), a prompt-free default market in init (any default is a guess that costs money), failing
+the whole config load when the market is missing (breaks audit-only users who need no market).
