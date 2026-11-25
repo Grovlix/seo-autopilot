@@ -2,6 +2,13 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D70 CMS mirror for EmDash; code change, nothing deployed)
+- **Code:** new `src/cms/emdash.mjs` (client), `src/cms/portable-text.mjs` (converter with per-block round-trip check), `src/cms/mirror.mjs` (file format, validation, write plan), `src/cms/commands.mjs`; `bin/seo-autopilot.mjs` gains `cms`.
+- **Tests:** `test/cms-portable-text.test.mjs` (9), `test/cms-mirror.test.mjs` (12) against an in-memory stand-in (`test/fixtures/fake-emdash.mjs`). `npm test` 537 tests, 535 pass, 0 fail, 2 skipped (before: 516, 514 pass, 2 skipped).
+- **Local end to end:** a local EmDash 0.1.0 (`astro dev`, local database only): export (9 posts, 0 skipped, 1 JSON block), validate, draft refused without proof (exit 3), preview-check ok (revisions true, preview 200, public 404, not in sitemap or RSS, 3 pages unchanged), draft (live page unchanged, preview shows the change), publish (verified), re-run (no-op), git revert and publish (content, SEO and re-export identical to the original). Found: the EmDash 0.1.0 loader does not hydrate SEO, so `getSeoMeta` templates show the excerpt (documented in `docs/cms-mirror.md`).
+- **Documentation:** `docs/cms-mirror.md`, D70, root `CHANGELOG.md`.
+- **Deployment:** none. No live CMS was written to from this repository.
+
 ## 2026-11-26 (D74: languages, hreflang pairs, Arabic style guide on feat/arabic-languages-style, on main 1924190; code, tests, docs; nothing deployed)
 - **Code:** `src/lib/languages.mjs` (new: translation groups, `searchConsole`, `hreflang` and `styleGuide` validation, Search Console filter), `src/lib/google-auth.mjs` (`searchAnalytics` filters), `src/core/config.mjs` (validation), `src/analysis/hreflang.mjs` and `src/jobs/hreflang.mjs`, `src/analysis/style-guide.mjs` and `src/jobs/style.mjs`, `src/jobs/gsc.mjs`, `daily`, `digest`, `research`, `rank` (pass `--language`), `src/jobs/index.mjs`.
 - **Product content:** `knowledge/arabic-msa-style-guide.md`, `departments/skills/language-style-guide/SKILL.md`, the writer agents (`seo-drafter`, `seo-refresher`, `seo-snippet-optimizer`, `seo-local-content-writer`) and `seo-editor`.

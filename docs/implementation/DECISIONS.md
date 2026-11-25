@@ -1265,3 +1265,20 @@ Our site: 0 mentions and 0 citations in all modes (45 answers, 2 runs). Plausibl
 **Why the schedule is forced.** The job skips a run when the last one is newer than `aeo.schedule` (weekly = 7 days). Without `--force` a manual test run on a Thursday would make the next Monday (4 days later) skip silently. The workflow's own cron is the weekly period, so scheduled runs pass `--force`; manual runs follow the config unless `force` is ticked. A double run is bounded by `aeo.maxCostPerRunUsd` and the guard's monthly cap.
 **Checked.** `test/workflows.test.mjs` (structure, pinned actions, no untrusted text in `run:`, no pull_request trigger, credentials in one step, state order, no artifacts, upgrade adds it). A local simulation of the steps (bare git remote as origin, stubbed DataForSEO host): first run records $0.008, a second run without force prints the skip message, a forced third run restores the ledger and the summary line reads $0.016 in 4 calls. That simulation found the state folder is `.seo-autopilot/<site id>`, not `seo-autopilot/state`, which the first draft of the summary step had wrong. Not run on GitHub Actions from this repository.
 **Tradeoffs.** The ledger line reads the default state folder; a project with a custom `stateDir` still gets the report, without that line. The file is named `aeo.yml`, without the `seo-` prefix of the other templates (the brief for this task named it).
+
+## D70 (2026-11-26): posts kept in a CMS are mirrored as Markdown files; merge publishes through the CMS API
+Context: a site whose posts live in a CMS database (EmDash 0.1.0 here) has no files for the `markdown` adapter, the
+pull-request review, the content-loss guard or `git revert`. Writing to the CMS directly from an agent would skip all of
+them (rule 1, D17).
+Decision: `seo-autopilot cms` keeps one Markdown file per post (flat JSON front matter, `baseRev`) in a git repository.
+A pull request changes the file; merge publishes it (draft revision, publish, then the five SEO fields, then a read-back
+that must match the file); revert publishes the previous file. Own Portable Text converter with a per-block round-trip
+check and a JSON fence for anything it cannot represent, so export never loses content. Writes to a live post need proof
+that the collection keeps revisions (schema, or `--revisions-proven` after `cms preview-check`), because without them a
+draft save overwrites the live post. Drift is found by comparing the live post with the previous file, not by the
+revision token (our own draft save changes it). Slugs are always explicit; new ones match a Latin pattern by default.
+The revisions "restore" endpoint is never used (0.1.0 writes the live row and skips the cache purge).
+Tradeoff: a second copy of the content that can go stale (export reports drift; the write refuses it); some blocks stay
+as JSON lines; read-only fields (publish date, byline, images, terms) still change in the CMS admin. Rejected: editing
+through the CMS admin with no mirror (no review or guard), EmDash's own Markdown converter (lossy), and `_rev` as the
+conflict token.
