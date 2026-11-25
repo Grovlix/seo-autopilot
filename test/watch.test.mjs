@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pagesForFiles, judgeChange } from "../src/analysis/watch.mjs";
@@ -65,5 +65,87 @@ test("watch job: fetches the changed pages, writes the verdicts, and outputs the
   try { await (await import("../src/jobs/watch.mjs")).run({ site, flags: { prs } }); } finally { console.log = log; delete process.env.GITHUB_OUTPUT; server.close(); }
   const r = JSON.parse(readFileSync(join(state, "watch.json"), "utf8")).results;
   assert.deepEqual(r.map((x) => [x.pr, x.verdict]), [[11, "revert"], [12, "keep"]]);
-  assert.equal(readFileSync(out, "utf8"), "revert=11 abc123\ndone=12\n");
+  const o = Object.fromEntries(readFileSync(out, "utf8").trim().split("\n").map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]));
+  assert.equal(o.revert, "11 abc123 undo");
+  assert.match(o.reason, /gone now answers 404/);
+  assert.equal(o.done, "12");
+});
+
+// ---- Content watch (refreshes and new pages, O7) ----
+import { judgeContent, mergeWatchlist, relatedPages, watchUntil } from "../src/analysis/watch.mjs";
+import { unpublishPages } from "../src/adapters/index.mjs";
+
+const before28 = (merge, clicks, impressions = 200) => days(add(merge, -28), 28, clicks, impressions);
+const after = (merge, from, to, clicks, impressions = 200) => days(add(merge, from), to - from + 1, clicks, impressions);
+const controls = (merge, last) => Object.fromEntries(["c1", "c2", "c3"].map((p) => [`https://s.test/${p}`, { ...before28(merge, 10), ...after(merge, 0, last, 10) }]));
+
+test("content watch: a refresh is watched until enough data exists, reverted on a clear click drop, kept at the end of the window", () => {
+  const merge = "2026-09-01", url = "https://s.test/guide";
+  const e = { pr: 5, kind: "refresh", mergedAt: merge + "T12:00:00Z", urls: [url] };
+  const series = (afterClicks, last) => ({ [url]: { ...before28(merge, 10), ...after(merge, 0, last, afterClicks) }, ...controls(merge, last) });
+  assert.equal(judgeContent(e, { today: "2026-09-10", series: series(4, 7), live: { [url]: { status: 200 } } }).verdict, "watch", "under 14 days of data after the lag");
+  const r = judgeContent(e, { today: "2026-10-01", series: series(4, 28), live: { [url]: { status: 200 } }, watched: new Set([url]) });
+  assert.equal(r.verdict, "revert"); assert.match(r.reasons[0], /clicks fell 60% more than the rest of the site/);
+  const ok = judgeContent(e, { today: "2026-10-10", series: series(10, 37), live: { [url]: { status: 200 } }, watched: new Set([url]) });
+  assert.equal(ok.verdict, "keep"); assert.equal(ok.done, true);
+  assert.equal(judgeContent(e, { today: "2026-09-05", live: { [url]: { status: 500 } } }).verdict, "revert", "an error is reverted at once");
+  assert.equal(judgeContent({ ...e, addedNoindex: true }, { today: "2026-09-05", live: { [url]: { status: 200, noindex: true } } }).verdict, "revert");
+  // The window is padded with nothing: Search Console's last day decides how many days are compared.
+  const lagging = judgeContent(e, { today: "2026-09-21", series: series(4, 12), live: { [url]: { status: 200 } } });
+  assert.equal(lagging.verdict, "watch", "data only up to day 12 after the merge: 10 days after the lag, not enough yet");
+});
+
+test("content watch: a new page is unpublished when the pages on its topic lose clicks it does not win back; kept when the clicks moved to it", () => {
+  const merge = "2026-09-01", page = "https://s.test/new", rel = "https://s.test/old";
+  const e = { pr: 6, kind: "new-page", mergedAt: merge, newPages: [{ url: page, file: "content/new.md", id: "new" }], related: [rel] };
+  const series = (newClicks) => ({ [rel]: { ...before28(merge, 10), ...after(merge, 0, 28, 3) }, [page]: after(merge, 0, 28, newClicks), ...controls(merge, 28) });
+  const live = { [page]: { status: 200 }, [rel]: { status: 200 } };
+  const bad = judgeContent(e, { today: "2026-10-01", series: series(1), live });
+  assert.equal(bad.verdict, "revert"); assert.match(bad.reasons[0], /taking their place in search/);
+  const moved = judgeContent(e, { today: "2026-10-01", series: series(9), live });
+  assert.equal(moved.verdict, "watch"); assert.match(moved.reasons[0], /the clicks moved to it/);
+  assert.equal(judgeContent({ ...e, related: [] }, { today: "2026-10-10", series: series(1), live }).verdict, "keep");
+  const notLive = judgeContent(e, { today: "2026-09-05", live: { [page]: { status: 404 } } });
+  assert.equal(notLive.verdict, "watch"); assert.match(notLive.reasons[0], /nothing to unpublish/);
+});
+
+test("content watch: related pages by topic words in any script; the watch list keeps history and skips finished windows", () => {
+  const pages = [{ url: "https://s.test/a", title: "العناية بالنباتات المنزلية في الشتاء", keyword: "العناية بالنباتات" }, { url: "https://s.test/b", title: "وصفات الطبخ السريعة" }, { url: "https://s.test/c", title: "Trail running shoes", keyword: "trail running shoes" }];
+  assert.deepEqual(relatedPages({ url: "https://s.test/n", title: "دليل العناية بالنباتات المنزلية" }, pages), ["https://s.test/a"]);
+  assert.deepEqual(relatedPages({ url: "https://s.test/n", title: "Trail running shoes for beginners" }, pages), ["https://s.test/c"]);
+  assert.equal(watchUntil("2026-09-01T10:00:00Z"), "2026-10-02");
+  const list = mergeWatchlist([{ pr: 1, status: "kept", mergedAt: "2026-08-01" }], [{ pr: 1, mergedAt: "2026-09-20" }, { pr: 2, mergedAt: "2026-09-20" }, { pr: 3, mergedAt: "2026-07-01" }], "2026-10-01");
+  assert.deepEqual(list.map((e) => [e.pr, e.status]), [[1, "kept"], [2, "watching"]]);
+});
+
+test("unpublish through the adapter: sets the draft field and hold, never deletes or renames; unsafe JSON formatting is skipped", () => {
+  const root = mkdtempSync(join(tmpdir(), "seo-unpub-")); mkdirSync(join(root, "content"));
+  writeFileSync(join(root, "content", "new.md"), "---\ntitle: New\nslug: new\ndraft: false\n---\n\n# New\n\nText.\n");
+  writeFileSync(join(root, "content", "bare.md"), "# Bare\n\nText.\n");
+  writeFileSync(join(root, "content", "pages.json"), JSON.stringify([{ slug: "a", h1: "A" }, { slug: "b", h1: "B" }], null, 2) + "\n");
+  writeFileSync(join(root, "content", "compact.json"), JSON.stringify([{ slug: "c" }]));
+  const site = { paths: { root }, content: { type: "markdown", dir: "content" } };
+  const r = unpublishPages(site, [{ file: "content/new.md", id: "new" }, { file: "content/bare.md", id: "bare" }, { file: "content/pages.json", id: "b" }, { file: "content/compact.json", id: "c" }]);
+  assert.equal(r.applied.length, 3); assert.equal(r.skipped.length, 1); assert.match(r.skipped[0].reason, /formatting/);
+  assert.equal(readFileSync(join(root, "content", "new.md"), "utf8"), "---\ntitle: New\nslug: new\ndraft: true\nhold: true\n---\n\n# New\n\nText.\n");
+  assert.match(readFileSync(join(root, "content", "bare.md"), "utf8"), /^---\ndraft: true\nhold: true\n---\n# Bare/);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, "content", "pages.json"), "utf8")), [{ slug: "a", h1: "A" }, { slug: "b", h1: "B", draft: true, hold: true }]);
+  const jekyll = unpublishPages({ ...site, content: { type: "markdown", dir: "content", unpublish: { field: "published", value: false } } }, [{ file: "content/new.md", id: "new" }], { dry: true });
+  assert.deepEqual(jekyll.applied.map((a) => [a.field, a.value]), [["published", false]]);
+});
+
+test("kill switch: with SEO_AUTOPILOT_PAUSED=true the watch reads and writes nothing and proposes no revert (also --unpublish)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "seo-watch-paused-")); const state = join(root, "state"); mkdirSync(state);
+  const prs = join(root, "prs.json"); writeFileSync(prs, JSON.stringify([{ number: 11, mergedAt: "2026-01-01T00:00:00Z", mergeCommit: { oid: "abc" }, files: [] }]));
+  const out = join(root, "out"); writeFileSync(out, "");
+  const site = { id: "s", name: "S", url: "https://s.test/", content: { type: "markdown", dir: "content" }, paths: { state, root, data: root } };
+  const log = console.log; console.log = () => {}; process.env.GITHUB_OUTPUT = out; process.env.SEO_AUTOPILOT_PAUSED = "true";
+  try {
+    const { run } = await import("../src/jobs/watch.mjs");
+    await run({ site, flags: { prs, content: prs } });
+    await run({ site, flags: { unpublish: "11" } });
+    await run({ site: { ...site, autopilot: { paused: true } }, flags: { prs } });
+  } finally { console.log = log; delete process.env.GITHUB_OUTPUT; delete process.env.SEO_AUTOPILOT_PAUSED; }
+  assert.equal(readFileSync(out, "utf8"), "revert=\nreason=\ndone=\n".repeat(3));
+  assert.deepEqual(readdirSync(state), [], "nothing written");
 });

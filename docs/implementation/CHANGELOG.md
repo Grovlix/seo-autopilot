@@ -20,6 +20,15 @@ Dated session entries; history is preserved. Product release notes are in the ro
 - **Checks:** `npm test` 739 tests, 698 pass, 0 fail, 41 skipped (before: 722, 681 pass, 0 fail, 41 skipped). No live provider call was made.
 - **Deployment:** none.
 
+## 2026-11-25 (D69 content-loss guard and content watch; code change)
+- **Code:** new `src/analysis/content-loss.mjs` (pure guard, Unicode word count, override rule, report table) and job `src/jobs/content-guard.mjs` (registered in `src/jobs/index.mjs`); `src/analysis/watch.mjs` (`clickHarm` shared, `judgeContent`, `mergeWatchlist`, `relatedPages`, `topicWords`, `watchUntil`); `src/jobs/watch.mjs` (content watch, `--content`, `--reverts`, `--unpublish`, kill switch); `src/adapters/index.mjs` (`unpublishPages`); `src/core/config.mjs` and `schema/seo-autopilot.config.schema.json` (`contentGuard`, `watch`, `content.unpublish`).
+- **Workflows:** `templates/workflows/seo-check.yml` (guard step before install; job steps only), `templates/workflows/seo-watch.yml` (content watch, state save, unpublish, paused gates on every job, content reverts never auto-merge; concurrency group `seo-data`).
+- **Tests:** new `test/content-loss.test.mjs` (16); `test/watch.test.mjs` (+5); `test/workflows.test.mjs` (+2); `test/jobs-e2e.test.mjs` (+1, guard and watch to revert to unpublish with real git and the fake network); `test/cf-worker.test.mjs` job count 59.
+- **Generated:** `docs/registry.*`, `docs/cloudflare/runtime-matrix.*`.
+- **Documentation:** `docs/content-automation.md`, `docs/jobs.md` (kill switch table), `docs/configuration.md`.
+- **Checks:** `npm test` 747 tests, 706 pass, 0 fail, 41 skipped (base a96ba04: 722, 681, 0, 41). No real GitHub Actions run; no live site; no paid call.
+- **Deployment:** none (product code; sites get it on `upgrade`).
+
 ## 2026-11-24 (D66 deployed; D67 pilot reports; code change)
 - **Deployment:** #89 (D66) squash-merged as 739f7c3; migration `20261126000000_job_guards.sql` applied to production (both triggers present); Worker deployed by deploy-seo-god run 24 (success, 19:49 UTC). Run at 20:00 UTC: no errors; no job refused by the new guard; no direct inserts recorded.
 - **Code (D67):** migration `cloud/portal/supabase/migrations/20261127000000_pilot_reports.sql` (`site_work_report` gains `search`; `agency_usage`; `agency_quality`; `private.history_sum`); portal `cloud/portal/app/index.html` (search results in the monthly report, AI report quality card and usage CSV on Operations).

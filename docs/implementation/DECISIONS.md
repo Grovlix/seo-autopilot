@@ -1125,3 +1125,36 @@ Tradeoff: a breaking change for upstream users of the research jobs (one config 
 heuristic and falls back to the primary language, so a bilingual site should set `language` where it matters. Rejected:
 keeping a GB/en default (the bug), a prompt-free default market in init (any default is a guess that costs money), failing
 the whole config load when the market is missing (breaks audit-only users who need no market).
+
+## D69 (2026-11-25): content-loss guard in seo-check; watch and revert for refreshes and new pages; the kill switch stops the watch
+Context: a refresh drafted by an agent can shrink a page (a 2,000-word post cut to 300 words) and still pass the build,
+the facts guard and the reviewer. `seo-watch` only watched the autopilot's own "undo"-level merges, only when
+`SEO_AUTOPILOT` was on, and kept opening revert pull requests while the kill switch was on.
+Decision:
+1. `seo-check` runs a content-loss guard (`src/analysis/content-loss.mjs`, job `content-guard`) on every `seo/*` pull
+   request, BEFORE install and build, so no pull-request code has run when it reads git. It fails when a changed page
+   loses more than `contentGuard.maxWordDropPercent` (15) of its words, any heading with nothing in its place, any
+   internal link, image or structured data, or the page itself. Settings come from the base branch's config. Words are
+   counted with Unicode letter, digit and mark classes. A heading whose text changed while another of the same level
+   appeared is a warning (rewording), not a failure: failing every reworded heading would block all snippet work.
+2. Human-only override: label `allow-content-shrink`, accepted only when the latest "labeled" event for it is by a User
+   account that is not the pull request's author; no readable events means no override (fail closed). No workflow adds it.
+3. An exact undo passes: on a `seo/revert-*` branch, a file equal to its version before its latest change on the base.
+   Without this, the undo-level revert of an internal-links change would fail the guard and never merge.
+4. `seo-watch` also watches every refresh and new page merged from a `seo/*` branch (by a person or the autopilot) for
+   `watch.days` (28) after a 3-day lag, whether or not the autopilot is on; the list lives in `watch-content.json` on the
+   `seo-data` branch. Refresh: same signals as the undo watch (error, added noindex, clicks against the untouched pages),
+   judged daily once 14 days of data exist, the window capped at Search Console's last day with data. New page: the
+   existing pages sharing most of its topic words are judged with the same click rule; it is unpublished when they lose
+   clearly more clicks than the rest of the site and it did not win them back. Unpublish = the adapter sets `draft: true`
+   (configurable, `content.unpublish`) and `hold: true`; never delete, never change the URL.
+5. Reverts of refreshes and new pages are pull requests labelled `seo-revert` that always wait for a person; only
+   undo-level reverts merge by themselves (unchanged). Alert: a comment on the original pull request.
+6. `SEO_AUTOPILOT_PAUSED=true` now stops the whole `seo-watch` workflow and the `watch` job refuses to run. Before, the
+   watch still opened revert pull requests while paused (documented behaviour, changed here). Tradeoff: while paused a
+   regression is not even reported by the watch; the daily reports still show the click history.
+Rejected: failing every reworded heading (blocks snippet optimisation); a repository variable as the override (global,
+not per pull request); auto-merging content reverts (a person merged the change, a person should undo it); deleting or
+renaming a harmful new page (loses the work and breaks links).
+Not verified: real GitHub runs of the changed workflows; the override's event read on a private repository (the check's
+token has `contents: read` only, so it likely fails closed there); new-page cannibalisation on real Search Console data.

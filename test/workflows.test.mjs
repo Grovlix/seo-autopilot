@@ -95,6 +95,32 @@ test("watch and undo: reverts go through a pull request and a no-secrets build, 
   assert.match(text("seo-automerge.yml"), /--add-label seo-watch/, "auto-merge marks undo-level changes for the watch");
 });
 
+test("kill switch: SEO_AUTOPILOT_PAUSED stops every seo-watch job (judge, revert, merge); content reverts never merge by themselves", () => {
+  const t = text("seo-watch.yml");
+  const job = (name, next) => t.slice(t.indexOf(`\n  ${name}:`), next ? t.indexOf(`\n  ${next}:`) : undefined);
+  assert.match(job("judge", "revert"), /if: vars\.SEO_AUTOPILOT_PAUSED != 'true'/, "paused: not even the check runs");
+  assert.match(job("revert", "check"), /if: needs\.judge\.outputs\.revert != '' && vars\.SEO_AUTOPILOT_PAUSED != 'true'/);
+  assert.match(job("merge"), /needs\.revert\.outputs\.automerge == 'true' && vars\.SEO_AUTOPILOT == 'true' && vars\.SEO_AUTOPILOT_PAUSED != 'true'/);
+  assert.match(job("revert", "check"), /if \[ "\$kind" = "undo" \]; then automerge=true; else automerge=false; fi/, "only the autopilot's own undo-level changes are merged back automatically");
+  assert.match(job("judge", "revert"), /run watch --prs .* --content .* --reverts/);
+  assert.match(job("judge", "revert"), /state save/, "the watch list is kept on the state branch");
+  assert.match(t, /group: seo-data/, "saves state in turn with the other jobs");
+  assert.match(job("revert", "check"), /run watch --unpublish/, "new pages are unpublished through the adapter");
+  assert.ok(!/git rm|rm -f|git mv/.test(t), "never deletes or moves a page");
+  assert.match(job("revert", "check"), /--label seo-revert/);
+  assert.match(job("revert", "check"), /gh pr comment "\$n"/, "alerts on the original pull request");
+});
+
+test("content-loss guard: runs in seo-check before install and build, and the override needs a person", () => {
+  const t = text("seo-check.yml");
+  const g = t.indexOf("run content-guard");
+  assert.ok(g > 0 && g < t.indexOf("name: Install") && g < t.indexOf("run: npm run build"), "before any pull-request code runs");
+  assert.match(t, /--base "origin\/\$BASE"/);
+  assert.match(t, /issues\/\$PR\/events/);
+  assert.match(t, /contents: read/);
+  for (const f of ["seo-implement.yml", "seo-autopilot.yml", "seo-automerge.yml", "seo-review.yml", "seo-agent.yml"]) assert.ok(!/allow-content-shrink/.test(text(f)), `${f} never applies the override`);
+});
+
 test("monthly report: runs on the 1st, reads merged pull requests and opens one report issue without touching the site", () => {
   const t = text("seo-monthly.yml");
   assert.match(t, /cron: "\d+ \d+ 1 \* \*"/);

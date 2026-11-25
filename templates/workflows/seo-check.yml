@@ -35,6 +35,29 @@ jobs:
           ref: ${{ inputs.ref || '' }}
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+      # Content-loss guard: fails when a changed page lost more than 15% of its words (contentGuard.maxWordDropPercent in
+      # the BASE branch's config) or any heading, internal link, image or structured data, or when a page was removed.
+      # It runs before the install and build, so nothing from the pull request has run yet. Human-only override: a person
+      # other than the pull request's author adds the label allow-content-shrink and re-runs this check (the label and who
+      # added it are read from the pull request's events; a bot never counts, and the autopilot and agents never add it).
+      - name: Content-loss guard on the changed pages
+        env:
+          BASE: ${{ inputs.base || github.base_ref }}
+          BRANCH: ${{ inputs.ref || github.head_ref }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          labels=""; : > "$RUNNER_TEMP/label-events.jsonl"
+          if [ -n "${PR:-}" ]; then
+            labels=$(gh api "repos/$GH_REPO/issues/$PR/labels" --jq '[.[].name] | join(",")' 2>/dev/null || true)
+            case ",$labels," in *,allow-content-shrink,*)
+              gh api "repos/$GH_REPO/issues/$PR/events" --paginate --jq '.[] | select(.event == "labeled") | {event, label: .label.name, actor: .actor.login, type: .actor.type}' > "$RUNNER_TEMP/label-events.jsonl" 2>/dev/null || : > "$RUNNER_TEMP/label-events.jsonl";;
+            esac
+          fi
+          npx --yes "$SEO" run content-guard --base "origin/$BASE" --branch="$BRANCH" --labels="$labels" --events "$RUNNER_TEMP/label-events.jsonl" --author="${AUTHOR:-}"
       - name: Install
         run: |
           if [ -f package-lock.json ]; then
