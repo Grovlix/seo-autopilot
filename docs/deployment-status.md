@@ -1,5 +1,7 @@
 # Deployment status
 
+> **History:** this document describes the hosted stack (Supabase portal, Cloudflare Worker, hosted SEO God) that was removed from this fork in the strip commit. Nothing it names under `cloud/`, `src/god/` or `src/hosted/` exists any more; the content is kept as history.
+
 Checked on 2026-11-07 against the live services (Supabase API through the project's MCP, Hostinger deployment log,
 GitHub). "Built" means code and tests exist; only what is listed as deployed is live.
 

@@ -1,5 +1,7 @@
 # Pilot runbook: 2 to 3 invited clients, advice only, invoiced by hand
 
+> **History:** this document describes the hosted stack (Supabase portal, Cloudflare Worker, hosted SEO God) that was removed from this fork in the strip commit. Nothing it names under `cloud/`, `src/god/` or `src/hosted/` exists any more; the content is kept as history.
+
 Goal: show over 2 to 4 weeks that the advice is good and the portal works for real clients before adding self-serve
 billing. Website changes stay off. Decision D67.
 

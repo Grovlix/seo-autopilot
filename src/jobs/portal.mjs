@@ -1,6 +1,6 @@
-// Client portal snapshot: gathers the latest reports into portal.json, the one document the hosted portal (cloud/portal)
-// shows the agency and the client: search totals, keywords, pages with scores, locations, index state, agents' work and,
-// when GA4 is connected, visits and where they come from. With --push it sends the snapshot to the portal.
+// Client portal snapshot: gathers the latest reports into portal.json, the one document a client portal
+// would show the agency and the client: search totals, keywords, pages with scores, locations, index state, agents' work and,
+// when GA4 is connected, visits and where they come from. With --push it sends the snapshot to a portal endpoint (SEO_PORTAL_URL).
 //   npx seo-autopilot run portal [--push]
 // With a GitHub token it also lists the open proposal issues, and applies the decisions people made on them in the portal
 // (approve: label, comment and start drafting; hold: seo-hold; decline: comment and close), then tells the portal.

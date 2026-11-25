@@ -2,7 +2,7 @@
 // and run its analysis jobs. Dependency-free: newline-delimited JSON-RPC 2.0 over stdio, per the Model Context Protocol.
 //   seo-autopilot mcp [--project <folder>]
 //
-// The protocol and the read tools live in ./core.mjs, shared with the hosted connector (cloud/connector).
+// The protocol and the read tools live in ./core.mjs, used by this server.
 // Safety: read-only by default. Tools read files inside the state folder only (no path escapes). run_job runs only analysis
 // jobs from a fixed allowlist, as a child process of this CLI with no shell; jobs that publish, open issues, submit or
 // merge are not exposed. Jobs that spend the user's paid API credits need confirm_cost: true. Report text is data from

@@ -1,5 +1,5 @@
-// The MCP protocol and the read-only report tools, shared by the local stdio server (src/mcp/server.mjs) and the hosted
-// connector (cloud/connector). No Node imports: the same code runs in Node and in a Cloudflare Worker.
+// The MCP protocol and the read-only report tools, used by the local stdio server (src/mcp/server.mjs).
+// No Node imports, so it can also run in other JavaScript runtimes.
 // Reports come through a store, so the tools do not care whether they live on disk or on a GitHub branch:
 //   store.sites()   -> [{ id, name, url }]
 //   store.open(id)  -> { site: { id, name, url }, list() -> [{ file, ageHours }], read(file) -> string | null }

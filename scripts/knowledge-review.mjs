@@ -1,6 +1,6 @@
 // Which playbooks and skills need a review (D49): no date, no sources, or last reviewed more than 90 days ago.
 // Pure read of the repository; run monthly (or any time).   node scripts/knowledge-review.mjs [--json]
-import { readKnowledge } from "../src/god/knowledge.mjs";
+import { readKnowledge } from "../src/core/knowledge.mjs";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { playbookMeta, reviewState, metaProblems } from "../src/analysis/knowledge-meta.mjs";

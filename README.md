@@ -15,7 +15,7 @@ It is a command-line tool (Node 20+, no dependencies) plus ready-made GitHub wor
 | **Full setup** in your website's repository | `npx github:bishal-paul-git/seo-autopilot#v2 init --url https://example.com/` | the whole team: daily, weekly and monthly jobs, approvals, autopilot |
 | **One job** as a GitHub Action | `uses: bishal-paul-git/seo-autopilot@v2` with `job: audit` (or `rank`, `keywords`, `schema`, …) | adding a single check to an existing workflow |
 | **Claude Code plugin** | `/plugin marketplace add bishal-paul-git/seo-autopilot` then `/plugin install seo-autopilot@seo-autopilot` | the 38 agents and the MCP server inside Claude Code |
-| **Claude or ChatGPT** | `seo-autopilot mcp` locally, or the hosted connector ([cloud/connector](cloud/connector/README.md)) | asking questions about your reports in plain words |
+| **Claude or ChatGPT** | `seo-autopilot mcp` locally | asking questions about your reports in plain words |
 
 `init` creates a config file, a few editable data files and the GitHub workflows. Then follow [docs/getting-started.md](docs/getting-started.md), which takes about 15 minutes, mostly on Google's own screens. Once the package is on npm, `npx seo-autopilot init` works too.
 

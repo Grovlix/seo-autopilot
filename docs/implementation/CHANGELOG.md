@@ -2,6 +2,13 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (strip commit on the Grovlix fork; code and documentation change, nothing deployed)
+- **Code (removed):** `cloud/` (portal, Worker, connector), `src/god/`, `src/hosted/`, workflows `deploy-seo-god`, `god-health`, `agent-exams`, scripts for them (`god-*`, `cf-*`, `exams`, `bundle-release-1`, `db-rollback-check`, `load-check`, `scan-fn-local`), `exams/`, and the modules only they used (`src/analysis/{alerts,scorecard,discover,exams}.mjs`, `src/core/job-lifecycle.mjs`), with their tests.
+- **Code (kept, moved):** `readKnowledge`/`referencesOf` now live in `src/core/knowledge.mjs` (used by `scripts/knowledge-review.mjs`), with `test/knowledge.test.mjs`. The `portal` job and `src/analysis/portal.mjs` stay (local job, writes `portal.json`; `--push` is opt-in).
+- **Documentation:** pointers fixed in README, AGENTS.md, NOTICE, .gitignore, mcp/faq/compare/evals/release-checklist and the regenerated site pages; hosted-stack documents (runbook, security, system architecture, test matrix, deployment status, pilot) carry a History note. Older entries below describe the removed stack and are kept as history.
+- **Not changed:** the `seo-hosted` label and `seo-god-job` marker checks in `src/analysis/autonomy.mjs` and the workflow templates (they only make the policy stricter).
+- **Deployment:** none. The removed stack's production services (Supabase, Worker, portal) were not touched.
+
 ## 2026-11-24 (D66 deployed; D67 pilot reports; code change)
 - **Deployment:** #89 (D66) squash-merged as 739f7c3; migration `20261126000000_job_guards.sql` applied to production (both triggers present); Worker deployed by deploy-seo-god run 24 (success, 19:49 UTC). Run at 20:00 UTC: no errors; no job refused by the new guard; no direct inserts recorded.
 - **Code (D67):** migration `cloud/portal/supabase/migrations/20261127000000_pilot_reports.sql` (`site_work_report` gains `search`; `agency_usage`; `agency_quality`; `private.history_sum`); portal `cloud/portal/app/index.html` (search results in the monthly report, AI report quality card and usage CSV on Operations).

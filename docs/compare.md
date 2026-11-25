@@ -7,7 +7,7 @@ An honest comparison with suites such as Ahrefs and Semrush. They are mature pro
 - **First-party data first.** Positions, demand and clicks come from your own Google Search Console. That is exact for your site, not modelled.
 - **Open source and yours.** MIT licence. It runs in your own GitHub repository with your own keys, so your data never passes through us.
 - **AI search visibility.** The `ai-visibility` job asks ChatGPT, Claude, Gemini and Perplexity your questions through their official APIs, with web search on, and records who they mention and cite.
-- **Use it from your AI assistant.** It works from Claude and ChatGPT: the MCP server runs locally, and the hosted connector is in `cloud/connector`.
+- **Use it from your AI assistant.** It works from Claude and ChatGPT: the MCP server runs locally (a remote connector for the web apps is not included).
 - **Explained advice.** Every audit rule says why it matters and how to fix it. 29 written playbooks say where guidance comes from and where it is uncertain.
 
 ## What the paid suites have that seo-autopilot does not
