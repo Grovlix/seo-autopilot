@@ -9,14 +9,15 @@
 // The settings are read from the BASE version of seo-autopilot.config.json, so a pull request cannot loosen its own check.
 // Human-only override: the label "allow-content-shrink", added by a person who is not the pull request's author (checked
 // from the pull request's events; a Bot never counts). The autopilot and the agents never add it.
-// A seo/revert-* branch that restores exactly the version of a file before its most recent change (an undo opened by
-// seo-watch) passes for that file: it puts back what was there.
+// A seo/revert-<n> branch that restores exactly the version of a file before its most recent change passes for that file
+// (it puts back what was there), but only when the pull request is an undo opened by seo-watch: authored by the watch's
+// account and labelled seo-revert by that same account (revertTrusted). A branch name alone proves nothing.
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { writeJson, writeText, today } from "../core/util.mjs";
 import { CONFIG_NAME } from "../core/config.mjs";
-import { guardFiles, guardTable, overrideApplied, GUARD_DEFAULTS, OVERRIDE_LABEL } from "../analysis/content-loss.mjs";
+import { guardFiles, guardTable, overrideApplied, revertTrusted, GUARD_DEFAULTS, OVERRIDE_LABEL } from "../analysis/content-loss.mjs";
 
 export const description = "Content-loss guard: fail a pull request whose changed pages lose words (>15%), headings, internal links, images or structured data";
 
@@ -67,12 +68,14 @@ export async function run({ site, cfg, flags = {} }) {
     return false;
   };
   files = files.filter((f) => !skip(f));
+  const labels = list(flags.labels), events = readEvents(flags.events), author = String(flags.author || "");
+  const revert = /^seo\/revert-/.test(branch) ? revertTrusted({ branch, author, labels, events }) : null;
 
   const input = files.map((path) => {
     const before = show(root, mb, path), after = show(root, "HEAD", path);
     let restores = false;
     // An undo: on a seo/revert-* branch, the file is exactly what it was before the latest change to it on the base branch.
-    if (/^seo\/revert-/.test(branch)) {
+    if (revert?.trusted) {
       const last = git(root, ["log", "-1", "--format=%H", mb, "--", path]).stdout?.trim();
       if (last && git(root, ["rev-parse", "--verify", "-q", `${last}^`]).status === 0 && show(root, `${last}^`, path) === after) restores = last.slice(0, 7);
     }
@@ -80,11 +83,11 @@ export async function run({ site, cfg, flags = {} }) {
   });
 
   const result = guardFiles(input, { siteUrl: site.url, maxWordDropPercent: settings.maxWordDropPercent });
-  const override = result.failed ? overrideApplied({ labels: list(flags.labels), events: readEvents(flags.events), author: String(flags.author || "") }) : null;
+  const override = result.failed ? overrideApplied({ labels, events, author }) : null;
   const table = guardTable(result, { override, maxWordDropPercent: settings.maxWordDropPercent });
-  const md = `# Content-loss guard (${today()})\n\nCompared with ${base} (merge base ${mb.slice(0, 7)}); settings from ${settings.fromBase ? "the base branch's config" : "the defaults"}.\n\n${table}${override && !override.applied && list(flags.labels).includes(OVERRIDE_LABEL) ? `\nOverride not applied: ${override.reason}.\n` : ""}`;
+  const md = `# Content-loss guard (${today()})\n\nCompared with ${base} (merge base ${mb.slice(0, 7)}); settings from ${settings.fromBase ? "the base branch's config" : "the defaults"}.\n\n${revert ? `${revert.trusted ? "Undo opened by seo-watch" : "Revert branch NOT trusted, so restored content is checked like any change"}: ${revert.reason}.\n\n` : ""}${table}${override && !override.applied && labels.includes(OVERRIDE_LABEL) ? `\nOverride not applied: ${override.reason}.\n` : ""}`;
   const strip = (p) => ({ ...p, before: p.before && { words: p.before.words, headings: p.before.headings.length, links: p.before.links.length, images: p.before.images.length, schema: p.before.schema }, after: p.after && { words: p.after.words, headings: p.after.headings.length, links: p.after.links.length, images: p.after.images.length, schema: p.after.schema } });
-  writeJson(`${site.paths.state}/content-guard.json`, { generatedAt: new Date().toISOString(), base, mergeBase: mb, branch, settings, failed: result.failed, checked: result.checked, override, pages: result.pages.map(strip) });
+  writeJson(`${site.paths.state}/content-guard.json`, { generatedAt: new Date().toISOString(), base, mergeBase: mb, branch, revert, settings, failed: result.failed, checked: result.checked, override, pages: result.pages.map(strip) });
   writeText(`${site.paths.state}/content-guard.md`, md);
   if (process.env.GITHUB_STEP_SUMMARY) { try { appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + "\n"); } catch { /* no summary file */ } }
   console.log(md);

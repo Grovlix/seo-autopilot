@@ -40,6 +40,9 @@ jobs:
       # It runs before the install and build, so nothing from the pull request has run yet. Human-only override: a person
       # other than the pull request's author adds the label allow-content-shrink and re-runs this check (the label and who
       # added it are read from the pull request's events; a bot never counts, and the autopilot and agents never add it).
+      # A seo/revert-<n> branch may restore older content only when seo-watch opened it: the pull request's author and the
+      # account that added its seo-revert label must both be the workflow's bot. When seo-watch calls this check there is
+      # no pull_request event, so the pull request is looked up by its branch.
       - name: Content-loss guard on the changed pages
         env:
           BASE: ${{ inputs.base || github.base_ref }}
@@ -51,9 +54,13 @@ jobs:
         run: |
           set -eu
           labels=""; : > "$RUNNER_TEMP/label-events.jsonl"
+          if [ -z "${PR:-}" ] && [ -n "${BRANCH:-}" ]; then
+            found=$(gh api "repos/$GH_REPO/pulls?state=open&head=${GH_REPO%%/*}:$BRANCH" --jq '.[0] // empty | "\(.number) \(.user.login)"' 2>/dev/null || true)
+            if [ -n "$found" ]; then PR="${found%% *}"; AUTHOR="${found#* }"; fi
+          fi
           if [ -n "${PR:-}" ]; then
             labels=$(gh api "repos/$GH_REPO/issues/$PR/labels" --jq '[.[].name] | join(",")' 2>/dev/null || true)
-            case ",$labels," in *,allow-content-shrink,*)
+            case ",$labels," in *,allow-content-shrink,*|*,seo-revert,*)
               gh api "repos/$GH_REPO/issues/$PR/events" --paginate --jq '.[] | select(.event == "labeled") | {event, label: .label.name, actor: .actor.login, type: .actor.type}' > "$RUNNER_TEMP/label-events.jsonl" 2>/dev/null || : > "$RUNNER_TEMP/label-events.jsonl";;
             esac
           fi

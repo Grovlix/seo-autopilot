@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { countWords, textFacts, objectFacts, pagesInFile, comparePage, guardFiles, guardTable, overrideApplied, newPageWarnings, internalLink } from "../src/analysis/content-loss.mjs";
+import { countWords, textFacts, objectFacts, pagesInFile, comparePage, guardFiles, guardTable, overrideApplied, revertTrusted, newPageWarnings, internalLink } from "../src/analysis/content-loss.mjs";
 
 const SITE = "https://example.test/";
 const EN = [
@@ -201,6 +201,15 @@ test("override: only a person who is not the author, with the label still on; bo
   assert.match(guardTable({ pages: [{ file: "a.md", id: "a.md", status: "fail", reasons: ["x"], before: textFacts("a b c"), after: textFacts("a"), removed: { headings: [], links: [], images: [], schema: [] }, words: { before: 3, after: 1, dropPercent: 66.7 } }], failed: 1, checked: 1 }, { override: ok }), /allowed by the human override/);
 });
 
+test("revertTrusted: only a seo/revert-<n> pull request opened and labelled seo-revert by the watch's account", () => {
+  const bot = "github-actions[bot]", lab = (actor) => ({ event: "labeled", label: { name: "seo-revert" }, actor: { login: actor, type: "Bot" } });
+  assert.equal(revertTrusted({ branch: "seo/revert-4", author: bot, labels: ["seo-revert"], events: [lab(bot)] }).trusted, true);
+  assert.equal(revertTrusted({ branch: "seo/revert-4", author: bot, labels: ["seo-revert"], events: [lab(bot), lab("someone")] }).trusted, false, "the last labeller counts");
+  assert.equal(revertTrusted({ branch: "seo/revert-x", author: bot, labels: ["seo-revert"], events: [lab(bot)] }).trusted, false);
+  assert.equal(revertTrusted({ branch: "seo/issue-4", author: bot, labels: ["seo-revert"], events: [lab(bot)] }).trusted, false);
+  assert.equal(revertTrusted({ branch: "seo/revert-4", author: "a-person", labels: ["seo-revert"], events: [lab("a-person")] }).trusted, false);
+});
+
 const git = (cwd, ...args) => { const r = spawnSync("git", args, { cwd, encoding: "utf8" }); if (r.status !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`); return r.stdout.trim(); };
 function repo() {
   const root = mkdtempSync(join(tmpdir(), "seo-guard-"));
@@ -237,14 +246,31 @@ test("job: reads base and head from git, fails the shrink, keeps settings from t
   assert.equal((await guard(root, { base: "main", branch: "seo/issue-7", labels: "allow-content-shrink", events, author: "seo-bot" })).code, 0);
   assert.equal((await guard(root, { base: "main", branch: "seo/issue-7", labels: "allow-content-shrink", events, author: "editor" })).code, 1, "the author cannot override");
 
-  // A merged refresh, then seo-watch's revert of it on seo/revert-<n>: restoring the previous version passes.
+  // A merged refresh, then seo-watch's revert of it on seo/revert-<n>: restoring the previous version passes, but only when
+  // the pull request was opened and labelled seo-revert by the watch's account.
   git(root, "checkout", "-q", "main");
   writeFileSync(join(root, "content", "blog", "guide.md"), md("How to choose a running shoe", article(EN, 2000) + "\n\n## Extra section\n\nMore detail with [a link](/guides/extra).\n"));
   git(root, "commit", "-qam", "refresh (#9)");
   const merged = git(root, "rev-parse", "HEAD");
   git(root, "checkout", "-qb", "seo/revert-9"); git(root, "revert", "--no-edit", merged);
-  const undo = await guard(root, { base: "main", branch: "seo/revert-9" });
-  assert.equal(undo.code, 0); assert.equal(undo.report.pages[0].status, "restore");
+  const bot = "github-actions[bot]";
+  const ev = (actor, type = "Bot") => { const f = join(root, `ev-${actor.replace(/\W/g, "")}.jsonl`); writeFileSync(f, JSON.stringify({ event: "labeled", label: "seo-revert", actor, type }) + "\n"); return f; };
+  const undo = await guard(root, { base: "main", branch: "seo/revert-9", author: bot, labels: "seo-revert", events: ev(bot) });
+  assert.equal(undo.code, 0); assert.equal(undo.report.pages[0].status, "restore"); assert.equal(undo.report.revert.trusted, true);
+  // Spoofed: the branch name alone (no pull request found), another author, the label added by someone else, no label.
+  const spoofs = [
+    { flags: {}, why: /could not be found/ },
+    { flags: { author: "drafting-agent", labels: "seo-revert", events: ev("drafting-agent", "User") }, why: /not by the seo-watch job/ },
+    { flags: { author: bot, labels: "seo-revert", events: ev("someone", "User") }, why: /added by someone, not by the account that opened/ },
+    { flags: { author: bot, labels: "", events: ev(bot) }, why: /no "seo-revert" label/ },
+    { flags: { author: bot, labels: "seo-revert" }, why: /could not be confirmed/ },
+  ];
+  for (const { flags, why } of spoofs) {
+    const r2 = await guard(root, { base: "main", branch: "seo/revert-9", ...flags });
+    assert.equal(r2.code, 1, `spoofed revert must fail: ${JSON.stringify(flags)}`);
+    assert.equal(r2.report.revert.trusted, false); assert.match(r2.report.revert.reason, why);
+    assert.equal(r2.report.pages[0].status, "fail");
+  }
   // The same removal on a normal seo/* branch fails (the added section and link are lost).
   git(root, "checkout", "-q", "main"); git(root, "checkout", "-qb", "seo/issue-10"); git(root, "revert", "--no-edit", merged);
   assert.equal((await guard(root, { base: "main", branch: "seo/issue-10" })).code, 1);

@@ -49,7 +49,7 @@ A refresh must not quietly throw away what a page already had. Before your insta
 
 It reads Markdown and MDX (with front matter), HTML, and JSON files holding a list of page objects (nested sections, headings, links, images and `schema` objects included). Words are counted in any script, so Arabic (with or without vowel marks), accented Latin and other alphabets count like English; Chinese and Japanese characters count one each. A new page has nothing to lose, so it only gets warnings: no text, no H1 (or front-matter title), no internal link. The check's summary shows one row per page: words, headings, internal links, images and structured data before and after, and what was removed.
 
-The threshold is read from the **base branch's** `seo-autopilot.config.json`, so a pull request cannot loosen its own check. A `seo/revert-*` branch that restores exactly the version of a file before its latest change (an undo opened by `seo-watch`) passes for that file.
+The threshold is read from the **base branch's** `seo-autopilot.config.json`, so a pull request cannot loosen its own check. A `seo/revert-<n>` branch that restores exactly the version of a file before its latest change passes for that file, but only when `seo-watch` opened it: the pull request's author and the account that last added its `seo-revert` label must both be the workflow's bot (`github-actions[bot]`). A branch name alone proves nothing: anyone who can push can name a branch `seo/revert-5`. If the check cannot read the pull request or its events (a private repository where its read-only token has no pull-request access), the revert is not trusted and its restored content is checked like any other change, so a person reviews it.
 
 **Human-only override.** When the loss is intended (pruning, merging two pages), a person other than the pull request's author adds the label `allow-content-shrink` and re-runs the check. The check confirms from the pull request's events that the label is still there and that a person (a User account, not a bot, not the author) added it last. If it cannot read the events (a private repository where the check's read-only token has no pull-request access), the override is not applied; a person with admin rights can still merge past the check. The autopilot, the agents and the workflows never add this label.
 
@@ -64,7 +64,7 @@ Each revert is a pull request on `seo/revert-<n>`, labelled `seo-revert`, built 
 
 For the unpublish to take a page off the site, your build must leave drafts out, the same way it leaves out queued and future pages (below).
 
-The kill switch `SEO_AUTOPILOT_PAUSED = true` stops all of this: `seo-watch` does not run at all (no check, no revert pull request, no merge), and the job itself refuses to run while paused. The guard in `seo-check` keeps running while paused: it only blocks merges.
+The kill switch `SEO_AUTOPILOT_PAUSED = true` stops all of this, reverts included: `seo-watch` does not run at all (no check, no revert pull request, no unpublish, no merge), and the job itself refuses to run while paused. Reverts wait for a person to merge anyway, so a paused repository loses nothing it could not do by hand. The guard in `seo-check` keeps running while paused: it only blocks merges.
 
 ## What the automation never does
 

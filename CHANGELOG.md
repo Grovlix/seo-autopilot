@@ -14,7 +14,8 @@ Content-loss guard and watch after merging (D69).
 
 - **New:** `content-guard` job, run by `seo-check` before install and build on every `seo/*` pull request. Fails when a changed page loses more than 15% of its words (`contentGuard.maxWordDropPercent`, read from the base branch), any heading, internal link, image or structured data, or the page itself. Markdown/MDX, HTML and JSON page lists; Unicode word count (Arabic counts correctly). Per-page before/after table in the check summary. Human-only override: label `allow-content-shrink` added by a person who is not the author.
 - **New:** `seo-watch` watches every refresh and new page merged from a `seo/*` branch for 28 days (`watch.days`) and opens a `seo-revert` pull request when it does harm: a refresh is reverted (previous content), a new page that takes clicks from the pages on its topic is unpublished through the adapter (`draft: true` and `hold: true`; never deleted, same URL). These reverts wait for a person. The watch list is saved on the `seo-data` branch.
-- **Changed:** the kill switch `SEO_AUTOPILOT_PAUSED` now stops `seo-watch` completely (before, it still opened revert pull requests).
+- **Changed:** the kill switch `SEO_AUTOPILOT_PAUSED` now stops `seo-watch` completely (before, it still opened revert pull requests) and `seo-backlinks` (no listing form is opened, live or dry; before, only `BACKLINKS_LIVE` controlled it).
+- **Security:** a `seo/revert-*` branch may restore older content past the guard only when `seo-watch` opened it (author and `seo-revert` labeller are the workflow's bot); the branch name alone is not trusted.
 - **Upgrade:** `seo-autopilot upgrade --apply` refreshes `seo-check.yml` and `seo-watch.yml`. If your build should drop unpublished pages, filter `draft: true` (see docs/content-automation.md).
 
 ### Earlier unreleased

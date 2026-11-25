@@ -95,6 +95,32 @@ test("watch and undo: reverts go through a pull request and a no-secrets build, 
   assert.match(text("seo-automerge.yml"), /--add-label seo-watch/, "auto-merge marks undo-level changes for the watch");
 });
 
+test("kill switch: SEO_AUTOPILOT_PAUSED stops backlink submissions (live or dry); recording a hand-done listing still works", () => {
+  const t = text("seo-backlinks.yml");
+  const step = (name) => { const i = t.indexOf(`- name: ${name}`); const j = t.indexOf("\n      - ", i + 1); return t.slice(i, j < 0 ? undefined : j); };
+  for (const name of ["Install a local browser", "Install the Playwright client", "Submit listings", "Keep screenshots for review"]) assert.match(step(name), /vars\.SEO_AUTOPILOT_PAUSED != 'true'/, `${name} is skipped while paused`);
+  assert.match(step("Submit listings"), /SEO_AUTOPILOT_PAUSED: \$\{\{ vars\.SEO_AUTOPILOT_PAUSED \}\}/, "the job sees the switch too");
+  assert.ok(!/PAUSED/.test(step("Record a hand-done listing")), "marking a hand-done listing is bookkeeping, not outreach");
+});
+
+test("kill switch: the backlinks job opens no browser while paused, even with BACKLINK_LIVE=1", async () => {
+  const root = mkdtempSync(join(tmpdir(), "seo-bl-paused-")); const state = join(root, "state"); const bdir = join(root, "backlinks"); mkdirSync(state); mkdirSync(bdir);
+  writeFileSync(join(bdir, "profile.json"), JSON.stringify({ name: "Example Shop", url: "https://example.test/" }));
+  writeFileSync(join(bdir, "targets.json"), JSON.stringify([{ id: "dir-1", url: "https://directory.test/add", mode: "auto" }]));
+  const site = { id: "s", name: "S", url: "https://example.test/", paths: { state, backlinks: bdir, root, data: root } };
+  const lines = []; const log = console.log; console.log = (...a) => lines.push(a.join(" "));
+  process.env.SEO_AUTOPILOT_PAUSED = "true"; process.env.BACKLINK_LIVE = "1";
+  try {
+    const { run } = await import("../src/jobs/backlinks-submit.mjs");
+    await run({ site, flags: { live: true } });
+    delete process.env.SEO_AUTOPILOT_PAUSED;
+    await run({ site: { ...site, autopilot: { paused: true } }, flags: { live: true } });
+  } finally { console.log = log; delete process.env.SEO_AUTOPILOT_PAUSED; delete process.env.BACKLINK_LIVE; }
+  assert.equal(lines.filter((l) => /paused/.test(l)).length, 2, lines.join("\n"));
+  assert.ok(!lines.some((l) => /LIVE|DRY RUN|playwright/.test(l)), "stopped before picking targets or loading a browser");
+  assert.deepEqual(readdirSync(state), [], "nothing written");
+});
+
 test("kill switch: SEO_AUTOPILOT_PAUSED stops every seo-watch job (judge, revert, merge); content reverts never merge by themselves", () => {
   const t = text("seo-watch.yml");
   const job = (name, next) => t.slice(t.indexOf(`\n  ${name}:`), next ? t.indexOf(`\n  ${next}:`) : undefined);
@@ -119,6 +145,11 @@ test("content-loss guard: runs in seo-check before install and build, and the ov
   assert.match(t, /issues\/\$PR\/events/);
   assert.match(t, /contents: read/);
   for (const f of ["seo-implement.yml", "seo-autopilot.yml", "seo-automerge.yml", "seo-review.yml", "seo-agent.yml"]) assert.ok(!/allow-content-shrink/.test(text(f)), `${f} never applies the override`);
+  // Revert provenance: when seo-watch calls the check there is no pull_request event, so the pull request (and its author)
+  // is found by branch, and the label events are read for seo-revert too.
+  assert.match(t, /pulls\?state=open&head=\$\{GH_REPO%%\/\*\}:\$BRANCH/);
+  assert.match(t, /\*,allow-content-shrink,\*\|\*,seo-revert,\*\)/);
+  assert.match(text("seo-watch.yml"), /gh pr create [^\n]*--label seo-revert/, "the watch labels its reverts itself (the same account that opens them)");
 });
 
 test("monthly report: runs on the 1st, reads merged pull requests and opens one report issue without touching the site", () => {

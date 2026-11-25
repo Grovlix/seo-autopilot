@@ -289,6 +289,30 @@ export function overrideApplied({ labels = [], events = [], author = "", label =
   return { applied: true, by: actor, reason: `"${label}" added by ${actor}` };
 }
 
+/** The account seo-watch opens its revert pull requests with (the workflow's GITHUB_TOKEN). */
+export const WATCH_BOT = "github-actions[bot]";
+export const REVERT_LABEL = "seo-revert";
+
+/**
+ * Is this pull request an undo opened by seo-watch? Only then may a seo/revert-* branch restore older content without
+ * passing the guard: the branch name alone is not enough (anyone who can push can name a branch). It must be authored by
+ * the watch's account AND carry the seo-revert label, last added by that same account (read from the pull request's
+ * events). Fails closed: no pull request found, no events, another author or another labeller means not trusted.
+ * Residual gap: anything else running as the same account (an agent using the workflow token) shares that identity.
+ */
+export function revertTrusted({ branch = "", author = "", labels = [], events = [], bot = WATCH_BOT, label = REVERT_LABEL } = {}) {
+  if (!/^seo\/revert-\d+$/.test(branch)) return { trusted: false, reason: `branch ${branch || "(unknown)"} is not seo/revert-<number>` };
+  if (!author) return { trusted: false, reason: "the pull request (and so its author) could not be found" };
+  if (author.toLowerCase() !== bot.toLowerCase()) return { trusted: false, reason: `opened by ${author}, not by the seo-watch job (${bot})` };
+  if (!labels.includes(label)) return { trusted: false, reason: `no "${label}" label` };
+  const adds = events.filter((e) => e && e.event === "labeled" && (e.label?.name ?? e.label) === label);
+  const last = adds[adds.length - 1];
+  if (!last) return { trusted: false, reason: `who added "${label}" could not be confirmed (the check could not read the pull request's events)` };
+  const actor = last.actor?.login ?? last.actor ?? "";
+  if (actor.toLowerCase() !== author.toLowerCase()) return { trusted: false, reason: `"${label}" was added by ${actor || "an unknown account"}, not by the account that opened the revert (${author})` };
+  return { trusted: true, reason: `opened and labelled "${label}" by ${bot}` };
+}
+
 // --------------------------------------------------------------------------------------------------------------- report
 
 const cell = (s) => String(s ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");

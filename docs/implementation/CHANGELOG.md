@@ -20,6 +20,13 @@ Dated session entries; history is preserved. Product release notes are in the ro
 - **Checks:** `npm test` 739 tests, 698 pass, 0 fail, 41 skipped (before: 722, 681 pass, 0 fail, 41 skipped). No live provider call was made.
 - **Deployment:** none.
 
+## 2026-11-25 23:10 UTC (D69 rebased on fork main d25fbff; revert provenance; backlinks kill switch; code change)
+- **Code:** `revertTrusted` in `src/analysis/content-loss.mjs` and its use in `src/jobs/content-guard.mjs` (a `seo/revert-<n>` restore passes only when the pull request's author and its last `seo-revert` labeller are `github-actions[bot]`); `templates/workflows/seo-check.yml` guard step finds the pull request by branch when called from seo-watch and reads label events for `seo-revert`; `templates/workflows/seo-backlinks.yml` browser, submit and screenshot steps skipped while paused; `src/jobs/backlinks-submit.mjs` refuses to run while paused. Decision renumbered D68 to D69 (D68 is the market config).
+- **Tests:** `test/content-loss.test.mjs` (+1 unit; the job test now covers the trusted undo and five spoofed cases); `test/workflows.test.mjs` (+2 backlinks kill switch, revert lookup assertions). `test/cf-worker.test.mjs` and `docs/cloudflare/runtime-matrix.*` are gone on main (strip).
+- **Documentation:** `docs/content-automation.md`, `docs/jobs.md` (kill switch table: reverts and backlinks), `docs/backlinks.md`, D69.
+- **Checks:** `npm test` 544 tests, 542 pass, 0 fail, 2 skipped (main d25fbff: 516, 514, 0, 2). No real GitHub Actions run of the templates.
+- **Deployment:** none. The pre-rebase version is kept on branch `up/content-loss-guard` (5e14f77, on upstream a96ba04).
+
 ## 2026-11-25 (D69 content-loss guard and content watch; code change)
 - **Code:** new `src/analysis/content-loss.mjs` (pure guard, Unicode word count, override rule, report table) and job `src/jobs/content-guard.mjs` (registered in `src/jobs/index.mjs`); `src/analysis/watch.mjs` (`clickHarm` shared, `judgeContent`, `mergeWatchlist`, `relatedPages`, `topicWords`, `watchUntil`); `src/jobs/watch.mjs` (content watch, `--content`, `--reverts`, `--unpublish`, kill switch); `src/adapters/index.mjs` (`unpublishPages`); `src/core/config.mjs` and `schema/seo-autopilot.config.schema.json` (`contentGuard`, `watch`, `content.unpublish`).
 - **Workflows:** `templates/workflows/seo-check.yml` (guard step before install; job steps only), `templates/workflows/seo-watch.yml` (content watch, state save, unpublish, paused gates on every job, content reverts never auto-merge; concurrency group `seo-data`).

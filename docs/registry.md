@@ -135,7 +135,7 @@ Every agent: verification is definition tests only; no agent's output has been g
 | `seo-agent.yml` | schedule, workflow_dispatch | 47 7 * * 1 | SEO_AGENT | deepdive, agent | seo-strategist, seo-researcher | 3 |
 | `seo-automerge.yml` | workflow_call, workflow_run | - | SEO_AUTOMERGE | autopilot | - | 0 |
 | `seo-autopilot.yml` | schedule, workflow_dispatch | 23 7,15 * * * | SEO_AUTOPILOT | autopilot | - | 0 |
-| `seo-backlinks.yml` | schedule, workflow_dispatch | 30 9 * * 4 | - | mark, backlinks | - | 0 |
+| `seo-backlinks.yml` | schedule, workflow_dispatch | 30 9 * * 4 | SEO_AUTOPILOT_PAUSED | mark, backlinks | - | 0 |
 | `seo-check.yml` | workflow_call, pull_request | - | - | content-guard, facts | - | 0 |
 | `seo-daily.yml` | schedule, workflow_dispatch | 17 5 * * * | - | daily, rank, propose, news, mentions, audit, analyze, priorities, linkgraph, indexnow, dashboard, portal | - | 8 |
 | `seo-implement.yml` | workflow_dispatch, workflow_call, issues | - | - | - | seo-drafter, seo-refresher, seo-snippet-optimizer, seo-internal-linker | 0 |

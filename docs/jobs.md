@@ -92,9 +92,10 @@ The repository variable `SEO_AUTOPILOT_PAUSED = true` (or `"autopilot": { "pause
 | the implementer | `seo-implement.yml` (job `if`) |
 | scheduling and publishing | `seo-release.yml` (job `if`) |
 | work-order issues from `team` | `seo-weekly.yml` passes the variable; `src/jobs/team.mjs` reads it |
-| the watch: no check, no revert pull request, no unpublish, no merge | `seo-watch.yml` (the `judge`, `revert` and `merge` jobs' `if`); `src/jobs/watch.mjs` also refuses to run while paused |
+| the watch: no check, no revert pull request, no unpublish, no merge. Reverts are stopped too (they need a person to merge anyway) | `seo-watch.yml` (the `judge`, `revert` and `merge` jobs' `if`); `src/jobs/watch.mjs` also refuses to run while paused |
+| backlink submissions, live or dry: no listing form is opened, filled or submitted | `seo-backlinks.yml` (the browser, submit and screenshot steps' `if`); `src/jobs/backlinks-submit.mjs` also refuses to run while paused. Recording a hand-done listing (`mark`) still works |
 
-Still running while paused: the read-only reports (daily, weekly, monthly), proposal issues for you to read, the checks on pull requests (`seo-check`, including the content-loss guard, which can only block a merge), and `seo-backlinks` (dry unless `BACKLINKS_LIVE` is `true`; that variable, not the kill switch, controls real submissions).
+Still running while paused: the read-only reports (daily, weekly, monthly), proposal issues for you to read, the checks on pull requests (`seo-check`, including the content-loss guard, which can only block a merge).
 
 ## Memory
 

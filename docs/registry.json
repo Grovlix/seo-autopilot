@@ -3516,7 +3516,9 @@
     "schedule",
     "workflow_dispatch"
    ],
-   "gatedBy": [],
+   "gatedBy": [
+    "SEO_AUTOPILOT_PAUSED"
+   ],
    "jobGates": {
     "mark": [],
     "backlinks": []

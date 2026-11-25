@@ -1139,8 +1139,15 @@ Decision:
    appeared is a warning (rewording), not a failure: failing every reworded heading would block all snippet work.
 2. Human-only override: label `allow-content-shrink`, accepted only when the latest "labeled" event for it is by a User
    account that is not the pull request's author; no readable events means no override (fail closed). No workflow adds it.
-3. An exact undo passes: on a `seo/revert-*` branch, a file equal to its version before its latest change on the base.
-   Without this, the undo-level revert of an internal-links change would fail the guard and never merge.
+3. An exact undo passes: on a `seo/revert-<n>` branch, a file equal to its version before its latest change on the base.
+   Without this, the undo-level revert of an internal-links change would fail the guard and never merge. The branch name
+   is not trusted on its own (anyone who can push can name one): the pull request must be authored by the watch's account
+   (`github-actions[bot]`, the workflow token) and its `seo-revert` label last added by that same account
+   (`revertTrusted`). When seo-watch calls the check there is no pull_request event, so the step finds the pull request
+   by branch. Fails closed: no pull request, no events or another actor means the restore is checked like any change.
+   Residual gap: the implementer agent (`seo-implement.yml`) also runs with the workflow token, so it acts as the same
+   account; closing that needs the implementer barred from `seo/revert-*` branches and the `seo-revert` label (that file
+   has another owner).
 4. `seo-watch` also watches every refresh and new page merged from a `seo/*` branch (by a person or the autopilot) for
    `watch.days` (28) after a 3-day lag, whether or not the autopilot is on; the list lives in `watch-content.json` on the
    `seo-data` branch. Refresh: same signals as the undo watch (error, added noindex, clicks against the untouched pages),
@@ -1152,7 +1159,9 @@ Decision:
    undo-level reverts merge by themselves (unchanged). Alert: a comment on the original pull request.
 6. `SEO_AUTOPILOT_PAUSED=true` now stops the whole `seo-watch` workflow and the `watch` job refuses to run. Before, the
    watch still opened revert pull requests while paused (documented behaviour, changed here). Tradeoff: while paused a
-   regression is not even reported by the watch; the daily reports still show the click history.
+   regression is not even reported by the watch; the daily reports still show the click history. Reverts are stopped
+   too: they wait for a person to merge anyway. The kill switch also stops `seo-backlinks` (browser, submit and
+   screenshot steps, and the job refuses), live or dry; before, only `BACKLINKS_LIVE` controlled real submissions.
 Rejected: failing every reworded heading (blocks snippet optimisation); a repository variable as the override (global,
 not per pull request); auto-merging content reverts (a person merged the change, a person should undo it); deleting or
 renaming a harmful new page (loses the work and breaks links).
