@@ -17,6 +17,13 @@ Dated session entries; history is preserved. Product release notes are in the ro
   server only; no GitHub or provider call.
 - **Docs:** `docs/content-automation.md`, `docs/jobs.md`, `docs/configuration.md`, D69 additions, root `CHANGELOG.md`.
 
+## 2026-11-26 (D71: Claude subscription for every model job; checks on drafted pull requests; code change, not released)
+- **Code:** `src/lib/llm.mjs` (`claude-code` provider, `selectProvider`, `configureLlm`, skip note), `src/core/config.mjs` + schema (`llm`), `src/jobs/index.mjs`, `src/jobs/agent.mjs` (`--report-file`, `--proposals-file`; Python route needs `ANTHROPIC_API_KEY`), `src/analysis/agent-output.mjs`, `src/jobs/ai-visibility.mjs` (names skipped engines), `src/cli/doctor.mjs`, `src/cli/init.mjs`, `engines/python/seo_engine/{runner,__main__}.py` (auth text). Templates: `seo-agent` (claude-code-action, no Python), `seo-implement` (`checks` job, `start_checks`, `allowed_bots`), `seo-review` (dispatch, statuses, `allowed_bots`), `seo-check` (dispatch trigger, `status` job), `seo-automerge` (reads statuses), `seo-autopilot` (permissions, `start_checks: false`), `seo-daily`/`seo-weekly` (pinned CLI install when the token is set, token passed).
+- **Tests:** `test/llm.test.mjs`, `test/agent-subscription.test.mjs`, `test/workflows.test.mjs` (3 new; `uses:` regex no longer matches `statuses:`). `npm test`: before 722 tests / 681 pass / 41 skipped / 0 fail; after 737 / 696 / 41 / 0.
+- **Documentation:** `docs/jobs.md` (subscription section, checks on drafted pull requests), `docs/configuration.md`, `docs/getting-started.md`, `docs/engines.md`; regenerated `docs/registry.*`.
+- **Real runs:** a throwaway public sandbox repository with the templates and a stub drafter (no secrets): dispatched `seo-check` and `seo-review` started for the bot-opened pull request and showed on it as commit statuses; a called check posted its status on the branch head. Run links are in the task report, not here. No Claude token was used in Actions; the reviewer's model step was not exercised.
+- **Deployment:** none.
+
 ## 2026-11-26 (Unicode / Arabic tokens and slugs; code change)
 - **Code:** new `src/lib/text.mjs` (`normalizeArabic`, `tokens`, `slugify`); `src/adapters/index.mjs` (`tokens` re-exported from it, `makeCovered` normalises page text), `src/audit/links.mjs` (phrase matching no longer ASCII-only), `src/jobs/optimize.mjs` (slug via `slugify`, percent-encoded non-ASCII URL paths decoded first). `docs/cloudflare/runtime-matrix.json` regenerated (one more module in the import graph).
 - **Tests:** `test/text.test.mjs` (English tokens and Latin slugs identical to the old code; Arabic variants; coverage; slugs). Unit tests only; no external service involved.
