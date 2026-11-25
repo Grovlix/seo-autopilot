@@ -63,6 +63,15 @@ test("export writes one file per published post that converts back unchanged", a
   assert.equal(report.opaque[0].slug, "second-post");
   assert.equal(report.seoEnabled, true);
   assert.deepEqual(report.sitemap.listedNotInSitemap, []);
+  assert.equal(report.sitemap.posts, 3);
+  // A sitemap that names another host form and doubles the slash ("https://www.host//posts/x") still matches by path.
+  const odd = { ...fake, fetch: async (url, init) => {
+    const res = await fake.fetch(url, init);
+    return new URL(url).pathname === "/sitemap.xml" ? new Response((await res.text()).replace(/<loc>https?:\/\/[^/]+\//g, "<loc>https://www.example.test//")) : res;
+  } };
+  const again = await run(["export", "--dir", tmp(), "--sitemap", "/sitemap.xml"], odd);
+  assert.equal(again.report.sitemap.posts, 3);
+  assert.deepEqual(again.report.sitemap.listedNotInSitemap, []);
   assert.equal(writes(fake).length, 0, "export only reads");
   const text = readFileSync(join(dir, "first-post.md"), "utf8");
   const parsed = parseMirror(text);

@@ -91,8 +91,10 @@ export async function exportCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   }
   if (flags.sitemap) {
     const xml = await (await f(new URL(String(flags.sitemap), api.base).toString())).text();
-    const prefix = api.base + o.urlPattern.split("{slug}")[0];
-    const inMap = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((x) => x[1].replace(/&amp;/g, "&")).filter((u) => u.startsWith(prefix)).map((u) => decodeURIComponent(u.slice(prefix.length).replace(/\/$/, "")));
+    // Compare paths, not whole URLs: sitemaps may name another host form (www) or repeat slashes ("//posts/x").
+    const prefix = o.urlPattern.split("{slug}")[0];
+    const pathOf = (u) => { try { return new URL(u.trim()).pathname.replace(/\/{2,}/g, "/"); } catch { return ""; } };
+    const inMap = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((x) => pathOf(x[1].replace(/&amp;/g, "&"))).filter((p) => p.startsWith(prefix) && p.length > prefix.length).map((p) => decodeURIComponent(p.slice(prefix.length).replace(/\/$/, "")));
     const listedSlugs = new Set(listed.map((x) => x.slug));
     report.sitemap = { posts: inMap.length, notListedByCms: inMap.filter((s) => !listedSlugs.has(s)), listedNotInSitemap: [...listedSlugs].filter((s) => !inMap.includes(s)) };
   }
