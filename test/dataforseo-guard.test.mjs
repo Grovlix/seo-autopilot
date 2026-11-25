@@ -241,7 +241,7 @@ test("a job stops at the cap: gap makes no DataForSEO request and says why", asy
   const log = console.log; let out = ""; console.log = (x) => { out += `${x}\n`; };
   try { await run({ site, flags: {} }, { env: DFS_ENV, fetch: f }); } finally { console.log = log; }
   assert.equal(f.requests.length, 0, "no request at all, paid or free");
-  assert.match(out, /monthly cap of \$0\.00/);
+  assert.match(out, /monthly cap of \$0\.001/);
   assert.match(readFileSync(join(state, "gap.md"), "utf8"), /monthly cap/);
 });
 

@@ -43,7 +43,8 @@ export function estimateCost(path, task = {}) {
 const round = (n) => Math.round(n * 1e6) / 1e6;
 const monthOf = (d) => d.toISOString().slice(0, 7);
 const dayOf = (d) => d.toISOString().slice(0, 10);
-const usd = (n) => `$${Number(n).toFixed(2)}`;
+// Whole cents for normal amounts, up to four decimals for small ones, so a $0.001 cap does not read as $0.00.
+const usd = (n) => (n !== 0 && Math.abs(n) < 0.1 ? `$${Number(Number(n).toFixed(4))}` : `$${Number(n).toFixed(2)}`);
 
 /** The ledger file of a site: <state>/dataforseo-ledger.json. */
 export const ledgerFile = (site) => `${site.paths.state}/dataforseo-ledger.json`;
@@ -172,7 +173,7 @@ export function createCostGuard({ cfg = {}, job = "unknown", env = process.env, 
           ledger.save(l);
           if (cached) cached.value -= cost;
         }
-        if (!r.ok) throw new Error(`dataforseo: HTTP ${r.status}${r.status === 429 ? " (rate limited)" : r.status === 401 || r.status === 403 ? " (key rejected)" : ""}`);
+        if (!r.ok) throw Object.assign(new Error(`dataforseo: HTTP ${r.status}${r.status === 429 ? " (rate limited)" : r.status === 401 || r.status === 403 ? " (key rejected)" : ""}`), { status: r.status, body: json });
       } finally { inflight -= est; }
       return json;
     },
