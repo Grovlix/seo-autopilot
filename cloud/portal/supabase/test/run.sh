@@ -38,4 +38,5 @@ p -f shim.sql -f ../migrations/20261030000000_portal.sql -f rls.sql \
   -f ../migrations/20261123000000_google_autolink.sql -f rls29.sql \
   -f ../migrations/20261124000000_pilot_hardening.sql -f rls30.sql \
   -f ../migrations/20261125000000_autolink_ga4.sql -f rls31.sql \
-  -f ../migrations/20261126000000_job_guards.sql -f rls32.sql
+  -f ../migrations/20261126000000_job_guards.sql -f rls32.sql \
+  -f ../migrations/20261127000000_pilot_reports.sql -f rls33.sql
