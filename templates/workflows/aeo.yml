@@ -1,0 +1,75 @@
+# seo-autopilot: weekly AI answer tracking (AEO). Asks Google's AI answers (or ChatGPT with web search) the buyer questions in
+# the "aeo" block of seo-autopilot.config.json through DataForSEO, and reports how many answers carry AI content, how many name
+# or cite your site, the measured cost of the run, the cost per prompt and why a run stopped early. Changes nothing on your site.
+# PAID, and OFF on the schedule until the repository variable SEO_AEO is "true" (running it by hand always works). Needs the
+# secrets DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD. Every call goes through the cost guard (monthly cap, balance floor, ledger kept
+# in the state folder, one alert a day through TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID when set) and the run also stops at
+# aeo.maxCostPerRunUsd. The report goes to the run log and the run summary only (no artifacts). See docs/aeo.md.
+name: seo-aeo
+on:
+  schedule: [{ cron: "0 4 * * 1" }]   # Mondays 04:00 UTC
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Run even if the last run is newer than aeo.schedule (a scheduled run always runs)"
+        type: boolean
+        default: false
+      limit:
+        description: "Ask only the first N prompts (a cheap test). Empty: all of them"
+        required: false
+        default: ""
+permissions:
+  contents: write   # the state branch (spend ledger and history)
+concurrency:
+  group: seo-data
+  cancel-in-progress: false
+env:
+  SEO: "{{SPEC}}"
+jobs:
+  run:
+    if: github.event_name == 'workflow_dispatch' || vars.SEO_AEO == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Restore state
+        id: restore
+        run: npx --yes "$SEO" state restore
+      - name: Ask the buyer questions (DataForSEO, through the cost guard)
+        env:
+          DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID || secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_THREAD_ID: ${{ vars.TELEGRAM_THREAD_ID || secrets.TELEGRAM_THREAD_ID }}
+          # The schedule of this workflow is the weekly period, so a scheduled run is forced: a manual test run in between must
+          # not make the next Monday skip itself.
+          FORCE: ${{ github.event_name == 'schedule' || inputs.force }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          set -o pipefail
+          args=()
+          if [ "$FORCE" = "true" ]; then args+=(--force); fi
+          if [ -n "$LIMIT" ]; then
+            case "$LIMIT" in *[!0-9]*) echo "limit must be a whole number"; exit 1 ;; esac
+            args+=(--limit "$LIMIT")
+          fi
+          npx --yes "$SEO" run aeo "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/aeo-run.log"
+      - name: Report (run summary)
+        # Before "Save state": saving replaces the working tree.
+        if: always()
+        run: |
+          {
+            if [ -s "$RUNNER_TEMP/aeo-run.log" ]; then cat "$RUNNER_TEMP/aeo-run.log"; else echo "# AI answer tracking"; echo; echo "No report: the job did not get as far as asking."; fi
+            # The guard's ledger (default state folder). One line: what this month has cost so far, across runs.
+            for l in .seo-autopilot/*/dataforseo-ledger.json; do
+              [ -f "$l" ] && jq -r --arg m "$(date -u +%Y-%m)" '.months[$m] // empty | "\nDataForSEO spend this month (cost guard ledger, all runs and jobs): $\(.usd) in \(.calls) calls."' "$l"
+            done
+          } >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Save state
+        # Also after a failed or cancelled step (the DataForSEO spend of this run must be kept), but never when the restore
+        # failed: saving then would force-push empty state over the good one.
+        if: always() && steps.restore.outcome == 'success'
+        run: npx --yes "$SEO" state save

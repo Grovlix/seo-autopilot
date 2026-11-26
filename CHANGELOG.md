@@ -11,7 +11,8 @@ Languages, hreflang pairs and an Arabic style guide (D74).
 
 AI answer tracking (D73).
 
-- **New:** `aeo` job and `aeo` config (`prompts` with `lang`, `aliases`, `mode`, `schedule`, `maxCostPerRunUsd`): asks Google AI Mode (default), the AI Overview or ChatGPT with web search the buyer questions through DataForSEO and records mentions (Arabic aliases normalised) and citations. Every call goes through the cost guard; the report shows the measured cost. See docs/aeo.md. Not scheduled by a workflow template yet.
+- **New:** `aeo` job and `aeo` config (`prompts` with `lang`, `aliases`, `mode`, `schedule`, `maxCostPerRunUsd`): asks Google AI Mode (default), the AI Overview or ChatGPT with web search the buyer questions through DataForSEO and records mentions (Arabic aliases normalised) and citations. Every call goes through the cost guard; the report shows the measured cost. See docs/aeo.md.
+- **New:** `templates/workflows/aeo.yml` (D76): the `aeo` job every Monday 04:00 UTC and on `workflow_dispatch` (inputs `force`, `limit`). The schedule is off until the repository variable `SEO_AEO` is `true`. State is restored and saved around the run (cost-guard ledger and history persist, saved even after a failed step, never after a failed restore); the report (answers with AI content, mentions and citations, measured cost of the run and per prompt, why it stopped, this month's ledger spend) goes to the log and the run summary only, no artifacts. Scheduled runs are forced so a manual run in between cannot make Monday skip. `upgrade --apply` adds it to existing projects.
 - **New:** `dataforseo` engine in `ai-engines.mjs` (opt-in: name it in `research.engines`; credentials alone never start it).
 
 Every provider call now uses the site's own market (location and language). **Breaking for projects that use the research jobs:** add a `market` to each site.

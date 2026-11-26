@@ -385,6 +385,49 @@ test("every job that calls a workflow grants at least the permissions the called
   assert.equal(build["pull-requests"], "read", "the guard reads pull requests");
 });
 
+test("aeo workflow: weekly and opt-in, paid calls only through the job, ledger kept in state, report in the summary only", () => {
+  const t = text("aeo.yml"), code = t.replace(/#.*$/gm, "");
+  assert.match(t, /cron: "0 4 \* \* 1"/, "Mondays 04:00 UTC");
+  assert.match(t, /workflow_dispatch:/);
+  assert.ok(!/pull_request/.test(code), "no trigger a pull request can use to spend money");
+  assert.match(t, /if: github\.event_name == 'workflow_dispatch' \|\| vars\.SEO_AEO == 'true'/, "the schedule is opt-in; a person can always run it");
+  // Only the job's own step holds the DataForSEO credentials, with the Telegram alert settings the guard uses.
+  const step = t.slice(t.indexOf("- name: Ask the buyer questions"), t.indexOf("- name: Report"));
+  for (const v of ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_THREAD_ID"]) assert.match(step, new RegExp(`${v}: \\$\\{\\{`), v);
+  assert.equal((code.match(/secrets\.DATAFORSEO_PASSWORD/g) || []).length, 1, "credentials in one step only");
+  assert.match(step, /run aeo "\$\{args\[@\]\}"/);
+  assert.match(step, /FORCE: \$\{\{ github\.event_name == 'schedule' \|\| inputs\.force \}\}/, "a manual run in between must not make the next scheduled run skip");
+  assert.ok(!/\$\{\{\s*inputs\./.test(code.slice(code.indexOf("run: |", code.indexOf("Ask the buyer"))).split("- name:")[0]), "inputs reach the shell through env, not the script text");
+  assert.match(step, /\*\[!0-9\]\*\) echo "limit must be a whole number"/, "the limit is checked before use");
+  // State: restored first, saved last even after a failure, never when the restore failed (the ledger is the money record).
+  assert.ok(t.indexOf("state restore") < t.indexOf("run aeo") && t.indexOf("run aeo") < t.indexOf("state save"));
+  assert.match(t, /if: always\(\) && steps\.restore\.outcome == 'success'\n\s+run: npx --yes "\$SEO" state save/);
+  assert.match(t, /group: seo-data/, "serialised with the other jobs that use the state branch");
+  // Report: log and run summary only.
+  assert.match(t, />> "\$GITHUB_STEP_SUMMARY"/);
+  assert.ok(!/upload-artifact|download-artifact/.test(t), "no artifacts");
+  assert.ok(t.indexOf("- name: Report") < t.indexOf("- name: Save state"), "the report is written before saving state replaces the working tree");
+  assert.match(t, /\.seo-autopilot\/\*\/dataforseo-ledger\.json/, "the default state folder (a wrong path would silently print nothing)");
+});
+
+test("upgrade installs the aeo workflow where it is missing and init renders it", async () => {
+  const proj = mkdtempSync(join(tmpdir(), "seo-aeo-wf-"));
+  const log = console.log; console.log = () => {};
+  const cwd = process.cwd(); process.chdir(proj);
+  try {
+    await init({ flags: { url: "https://aeo.test/", name: "Aeo", spec: "github:me/fork#v2.1.0", include: "src/content/*.json" } });
+    const wf = join(proj, ".github", "workflows", "aeo.yml");
+    assert.ok(existsSync(wf), "init writes it");
+    assert.match(readFileSync(wf, "utf8"), /SEO: "github:me\/fork#v2\.1\.0"/, "pinned like the other workflows");
+    const { rmSync } = await import("node:fs");
+    rmSync(wf);
+    assert.equal(plan({ cwd: proj }).items.find((i) => i.file === "aeo.yml").status, "missing");
+    assert.match(upgrade({ cwd: proj, flags: {} }), /missing\s+\.github\/workflows\/aeo\.yml/);
+    upgrade({ cwd: proj, flags: { apply: true } });
+    assert.ok(existsSync(wf), "--apply adds it");
+  } finally { process.chdir(cwd); console.log = log; }
+});
+
 test("the drafter may create only its own issue branch and cannot label the pull request", () => {
   const t = text("seo-implement.yml");
   const allowed = t.match(/--allowedTools "([^"]+)"/)[1].split(",");
