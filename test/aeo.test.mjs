@@ -39,10 +39,10 @@ test("config validate: aeo is checked with the site's market, and dataforseo may
   assert.deepEqual(validate({ sites: [{ ...site, aeo: goodAeo(), research: { engines: ["dataforseo"] } }] }), []);
 });
 
-test("resolveAeo: defaults (ai_overview, weekly), the market's main language for plain prompts, no market is an error", () => {
+test("resolveAeo: defaults (ai_mode, weekly), the market's main language for plain prompts, no market is an error", () => {
   const site = { id: "s", market: MARKET_RAW, aeo: { prompts: ["سؤال", { text: "a question", lang: "en" }], aliases: ["A", "Brand"].map((x) => x + "x") } };
   const a = resolveAeo(site);
-  assert.deepEqual([a.mode, a.schedule, a.maxCostPerRunUsd], ["ai_overview", "weekly", 1]);
+  assert.deepEqual([a.mode, a.schedule, a.maxCostPerRunUsd], ["ai_mode", "weekly", 1]);
   assert.deepEqual(a.prompts, [{ text: "سؤال", lang: "ar" }, { text: "a question", lang: "en" }]);
   assert.equal(resolveAeo({ id: "s" }), null);
   assert.throws(() => resolveAeo({ id: "s", aeo: { prompts: ["q"] } }), MarketError);

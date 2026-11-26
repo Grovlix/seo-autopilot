@@ -9,6 +9,12 @@ Dated session entries; history is preserved. Product release notes are in the ro
 - **Documentation:** D72 "Review R3b", `docs/configuration.md` (reasons, cost rule, lock, account-wide floor), root `CHANGELOG.md`.
 - **Deployment:** none.
 
+## 2026-11-26 (D73: AEO engine on feat/dataforseo-aeo-engine, stacked on feat/dataforseo-cost-guard 74f5aea; code, tests, docs; nothing deployed)
+- **Code:** `src/lib/ai-engines.mjs` (`dataforseo` engine: modes `ai_overview`, `ai_mode`, `llm_responses`; opt-in; guard and market required; one retry on task 40101 and 5xxxx; explicit `estimateUsd` per mode), `src/lib/aeo-config.mjs` (new: validation and defaults), `src/analysis/aeo.mjs` (new: Arabic-normalised alias matching, totals, report), `src/jobs/aeo.mjs` (new job, registered in `src/jobs/index.mjs`), `src/jobs/ai-visibility.mjs` (passes guard and market to a guarded engine), `src/core/config.mjs` (one hook for `aeo`, `dataforseo` in `research.engines`), `schema/seo-autopilot.config.schema.json`.
+- **Tests:** `test/aeo.test.mjs` (14). Added the four new files that name DataForSEO to the reviewed list in `test/dataforseo-guard-r3.test.mjs` (one line in a file the guard branch owns). `npm test`: 628 tests, 625 pass, 0 fail, 3 skipped (the guard branch alone: 613 / 610 / 0 / 3). Injected fetch only.
+- **Docs:** `docs/aeo.md`, `docs/jobs.md`, D73 in `DECISIONS.md`, root `CHANGELOG.md`, regenerated `docs/registry.*`.
+- **Real runs (not part of `npm test`):** two probe runs from the private ops repo's Actions (`aeo-probe`, runs 45728916496 and 45729625635, fork 714d8d4), $0.3354 in total; numbers in D73. No deployment.
+
 ## 2026-11-25 23:45 UTC (D69 review R1 fixes on fix/content-loss-guard; code and documentation change, nothing deployed)
 - **Code:** `src/lib/git-history.mjs` (new: `gitNames` with quotepath off and -z, `revertBase` for merge/rebase/squash);
   `src/analysis/content-loss.mjs` (`stripInvisible`, page-setting controls, `headingSimilarity`, unrounded drop, override

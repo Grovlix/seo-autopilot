@@ -281,7 +281,7 @@
                 "items": { "oneOf": [ { "type": "string", "minLength": 1, "maxLength": 500 }, { "type": "object", "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 500 }, "lang": { "type": "string", "pattern": "^[a-z]{2}$" } }, "required": ["text"], "additionalProperties": false } ] }
               },
               "aliases": { "type": "array", "items": { "type": "string", "minLength": 2 }, "description": "Names to look for in answers, in any script (Arabic is compared without diacritics). The site's domain is always looked for." },
-              "mode": { "enum": ["ai_overview", "ai_mode", "llm_responses"], "default": "ai_overview", "description": "Which AI answer to read: Google AI Overview, Google AI Mode, or ChatGPT with web search (LLM Responses API)." },
+              "mode": { "enum": ["ai_overview", "ai_mode", "llm_responses"], "default": "ai_mode", "description": "Which AI answer to read: Google AI Overview, Google AI Mode, or ChatGPT with web search (LLM Responses API)." },
               "schedule": { "enum": ["daily", "weekly", "monthly", "manual"], "default": "weekly", "description": "How often the job asks again; a run before it is due does nothing unless --force." },
               "maxCostPerRunUsd": { "type": "number", "exclusiveMinimum": 0, "default": 1, "description": "Hard stop for one run, in US dollars, on top of the DataForSEO monthly cap." }
             },

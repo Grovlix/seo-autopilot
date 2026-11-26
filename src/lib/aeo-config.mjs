@@ -4,7 +4,7 @@
 //   "aeo": {
 //     "prompts": [ { "text": "best apps for a shop", "lang": "en" }, { "text": "...", "lang": "ar" } ],
 //     "aliases": ["Brand Name", "brand.example"],          names looked for in answers, in any script (Arabic is normalised)
-//     "mode": "ai_overview",                              ai_overview | ai_mode | llm_responses
+//     "mode": "ai_mode",                                  ai_mode (default) | ai_overview | llm_responses
 //     "schedule": "weekly",                               weekly | daily | monthly | manual
 //     "maxCostPerRunUsd": 1                               hard stop for one run, on top of the DataForSEO monthly cap
 //   }
@@ -24,7 +24,7 @@ export const AEO_MODES = {
   llm_responses: "ChatGPT with web search through the LLM Responses API, and the sources it cites",
 };
 export const AEO_SCHEDULES = { daily: 1, weekly: 7, monthly: 30, manual: null };
-export const DEFAULT_MODE = "ai_overview";
+export const DEFAULT_MODE = "ai_mode"; // picked from measured results, see D73 in docs/implementation/DECISIONS.md
 export const DEFAULT_SCHEDULE = "weekly";
 export const DEFAULT_MAX_COST_PER_RUN_USD = 1;
 export const MAX_PROMPTS = 100;
