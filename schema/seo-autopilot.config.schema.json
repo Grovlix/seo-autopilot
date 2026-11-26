@@ -219,6 +219,15 @@
             },
             "additionalProperties": false
           },
+          "searchConsole": {
+            "type": "object",
+            "description": "How the site's Search Console queries are filtered so another country's or language's rows do not dilute the numbers. Off by default. See docs/configuration.md#search-console-filter.",
+            "properties": {
+              "country": { "description": "true: only the market's country. A two-letter country code: only that country. false or absent: no country filter.", "oneOf": [ { "type": "boolean" }, { "type": "string", "pattern": "^[A-Za-z]{2}$" } ] },
+              "languagePaths": { "type": "object", "propertyNames": { "pattern": "^[A-Za-z]{2}$" }, "additionalProperties": { "type": "string", "pattern": "^/", "description": "Where the language lives, for example \"/ar/\". One language may be \"/\" (everything outside the others)." }, "description": "Where each language lives on the site (languages come from market.languages). The primary language is the default for queries; --language picks another, --language all none." }
+            },
+            "additionalProperties": false
+          },
           "citations": {
             "type": "object",
             "properties": {

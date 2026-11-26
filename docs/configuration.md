@@ -61,6 +61,7 @@ One file, `seo-autopilot.config.json`, in the root of your repository. Paths are
 | `verticals` | specialist packs for this kind of business: `["local"]`, `["ecommerce"]`, both, or `[]` for none. Without it, packs are detected from the site profile (business or product markup, the shop platform, `local: true`). It also decides which pack agents `init` and `upgrade` install. See `departments/verticals/packs.json` |
 | `language` | language the site publishes in (`en`, `en-GB`, `es`...); queries clearly in another language are not proposed as topics |
 | `market` | **where and in which language the site is researched.** Used by every job that calls a search or keyword provider; see [Market](#market) below. Without it the old United Kingdom / English behaviour applies, with a warning |
+| `searchConsole` | `{ "country": true, "languagePaths": { "ar": "/ar/", "en": "/en/" } }`: keep Search Console queries to one country and one language's pages. Off by default; see [Search Console filter](#search-console-filter) |
 | `citations` | `market`: country for tracked questions; only read when the site has no `market` (see [Market](#market)) |
 | `ingest` | optional dashboard sync, see [dashboard.md](dashboard.md) |
 
@@ -91,6 +92,19 @@ Every provider call (live search results, keyword ideas and volumes, a competito
 **Supported locations** (name, code, country code): United States 2840 US, United Kingdom 2826 GB, Canada 2124 CA, Australia 2036 AU, New Zealand 2554 NZ, Ireland 2372 IE, South Africa 2710 ZA, Saudi Arabia 2682 SA, United Arab Emirates 2784 AE, Egypt 2818 EG, Kuwait 2414 KW, Qatar 2634 QA, Bahrain 2048 BH, Oman 2512 OM, Jordan 2400 JO, Lebanon 2422 LB, Iraq 2368 IQ, Morocco 2504 MA, Algeria 2012 DZ, Tunisia 2788 TN, Germany 2276 DE, France 2250 FR, Spain 2724 ES, Italy 2380 IT, Netherlands 2528 NL, Belgium 2056 BE, Switzerland 2756 CH, Austria 2040 AT, Portugal 2620 PT, Poland 2616 PL, Sweden 2752 SE, Norway 2578 NO, Denmark 2208 DK, Finland 2246 FI, Greece 2300 GR, Czechia 2203 CZ, Romania 2642 RO, Hungary 2348 HU, Turkey 2792 TR, Russia 2643 RU, Ukraine 2804 UA, Israel 2376 IL, India 2356 IN, Pakistan 2586 PK, Japan 2392 JP, South Korea 2410 KR, Singapore 2702 SG, Malaysia 2458 MY, Indonesia 2360 ID, Philippines 2608 PH, Thailand 2764 TH, Vietnam 2704 VN, Hong Kong 2344 HK, Taiwan 2158 TW, Brazil 2076 BR, Mexico 2484 MX, Argentina 2032 AR, Colombia 2170 CO, Chile 2152 CL, Nigeria 2566 NG, Kenya 2404 KE. Aliases: `UK`, `USA`, `UAE`, `KSA`. Any other DataForSEO location code works with a `country`.
 
 **Supported languages:** en, de, fr, es, it, ja, da, nl, fi, ko, no, pt, sv, ar, cs, el, hi, hu, id, he, pl, ru, ro, uk, tr, vi, ur, th (ISO 639-1; the Keyword Planner language ids are built in). Provider coverage differs: a provider may not offer every language in every location, and it then answers with its own error, which the job reports. Checked against Google's published lists (geotargets of 2026-10-06 and the language codes table): every location id, name and country matches except that Google writes Turkey as "Turkiye" (accepted as an alias), Hong Kong 2344 and Taiwan 2158 appear only as the parent ids of their regions, and Hebrew is `iw` in Google's list but `he` here. Not checked against a live DataForSEO or Brave account.
+
+## Search Console filter
+
+A site that serves several countries or languages can keep its Search Console numbers apart. Both parts are off by default, so existing projects see the same numbers as before.
+
+```json
+"searchConsole": { "country": true, "languagePaths": { "ar": "/ar/", "en": "/en/" } }
+```
+
+- `country`: `true` keeps only the [market's](#market) country; a two-letter code (`"SA"`) keeps that country; `false` or absent filters nothing. A query broken down by country is never filtered to one country.
+- `languagePaths`: where each language lives. The languages are the ones in `market.languages`; the primary (first) one is used unless you pass `--language en` (`--language all` turns the page filter off for that run). One language may be `"/"`, meaning everything outside the other folders. A language with no path, or one the site does not list, is an error.
+
+The filter applies to `daily`, `digest`, `research`, `rank` and `gsc`. The `gsc` report records which filter was used.
 
 ## Content adapters (`content`)
 

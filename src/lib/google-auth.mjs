@@ -3,6 +3,7 @@
 // Never commit key files.
 import { readFileSync } from "node:fs";
 import { createSign } from "node:crypto";
+import { withSiteFilter } from "./search-console-filter.mjs";
 
 const b64 = (b) => Buffer.from(b).toString("base64url");
 
@@ -33,13 +34,19 @@ export const SCOPES = {
   analytics: "https://www.googleapis.com/auth/analytics.readonly",
 };
 
-/** Search Console searchAnalytics.query helper bound to one site. */
-export function searchAnalytics(site, token) {
+/**
+ * Search Console searchAnalytics.query helper bound to one site. Queries are filtered to a country when the site sets
+ * searchConsole.country, and to one language when it declares language paths (the primary one unless `language` says otherwise,
+ * "all" for every language); see src/lib/search-console-filter.mjs. Without those settings nothing is filtered. An unknown
+ * language throws before any request.
+ */
+export function searchAnalytics(site, token, { language, fetch: f = globalThis.fetch } = {}) {
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   // `extra` adds request fields such as startRow (paging) or dimensionFilterGroups.
   return async (startDate, endDate, dimensions, rowLimit, extra = {}) => {
-    const r = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site.searchConsoleProperty)}/searchAnalytics/query`, {
-      method: "POST", headers, body: JSON.stringify({ startDate, endDate, dimensions, rowLimit, ...extra }),
+    const body = withSiteFilter(site, { startDate, endDate, dimensions, rowLimit, ...extra }, { language });
+    const r = await f(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site.searchConsoleProperty)}/searchAnalytics/query`, {
+      method: "POST", headers, body: JSON.stringify(body),
     });
     const j = await r.json();
     if (j.error) throw new Error(`Search Console: ${j.error.message}`);

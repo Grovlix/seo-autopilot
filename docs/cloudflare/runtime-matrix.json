@@ -107,7 +107,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 12
+   "modules": 13
   },
   {
    "job": "backlinks-queue",
@@ -159,7 +159,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 21
+   "modules": 22
   },
   {
    "job": "citations",
@@ -211,7 +211,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 5
+   "modules": 8
   },
   {
    "job": "daily",
@@ -229,7 +229,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 5
+   "modules": 7
   },
   {
    "job": "dashboard",
@@ -282,7 +282,7 @@
     "network": true,
     "llm": true
    },
-   "modules": 8
+   "modules": 10
   },
   {
    "job": "entity",
@@ -300,7 +300,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 22
+   "modules": 23
   },
   {
    "job": "experiments",
@@ -370,7 +370,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 16
+   "modules": 17
   },
   {
    "job": "geo",
@@ -410,7 +410,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 4
+   "modules": 7
   },
   {
    "job": "inbound",
@@ -479,7 +479,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 14
+   "modules": 15
   },
   {
    "job": "linkgraph",
@@ -531,7 +531,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 8
+   "modules": 11
   },
   {
    "job": "local",
@@ -549,7 +549,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 23
+   "modules": 24
   },
   {
    "job": "logs",
@@ -655,7 +655,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 19
+   "modules": 20
   },
   {
    "job": "pace",
@@ -689,7 +689,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 6
+   "modules": 9
   },
   {
    "job": "priorities",
@@ -773,7 +773,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 16
+   "modules": 17
   },
   {
    "job": "redirects",
@@ -860,7 +860,7 @@
     "network": true,
     "llm": true
    },
-   "modules": 8
+   "modules": 10
   },
   {
    "job": "schedule",
@@ -895,7 +895,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 21
+   "modules": 22
   },
   {
    "job": "shop",
@@ -913,7 +913,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 23
+   "modules": 24
   },
   {
    "job": "speed",
