@@ -2,6 +2,15 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26, round 3 (D77 amended: review R10 round 2 fixes to the drift window, on feat/cms-discard-slug-update; code change, nothing deployed)
+- **Code (`d771fdd`):**
+  - `src/cms/mirror.mjs` `writePlan`: a window match must be the newest window version that differs from this file; an older one is refused `live-older-version` (R1).
+  - `src/cms/commands.mjs`: `rangeVersionsOf` returns nothing unless `--base-ref` is an ancestor of HEAD (R2); `draft` no longer passes a base ref to the window (R3); `safeRef` keeps refs starting with `-` away from git and `--end-of-options` is passed (R6); a window match is added to `highRisk` (R1).
+- **Tests:** 5 "R10r2" tests in `test/cms-discard-idless.test.mjs`, all 5 red on `561277b` first. `npm test`: 789 tests, 787 pass, 0 fail, 2 skipped. cms tests 93/93.
+- **Sims (ops repository evidence `T16/round3`):** R10's window sim with W1, W3, W4 asserting refusal: 12/12 on `d771fdd` (7/12 on `561277b`); R10's unchanged window sim on `d771fdd`: 8/12, exactly W1, W3, W4 and W7's 60-back match flipped. R10's round-1 sim 20/20; R8's round-2 sim 35/35.
+- **Documentation:** `docs/cms-mirror.md` (window rule, rebase merges, `live-older-version`), root `CHANGELOG.md`, D77 amendment, STATUS.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call.
+
 ## 2026-11-26, later still (D77 amended: review R8 round 2 item 1, stuck published point, on feat/cms-discard-slug-update; code change, nothing deployed)
 - **Code (`9039b94`):**
   - `src/cms/commands.mjs`: `rangeVersionsOf(file, baseRef)` lists the file's versions on HEAD's first-parent history after `--base-ref`; `saveDraft` passes them to `writePlan` only for a file that owns its post (id, or accepted claim); reports `liveMatchedVersion`. `claimProblem` unchanged.

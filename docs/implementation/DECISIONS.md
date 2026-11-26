@@ -1365,3 +1365,12 @@ Review R2b (2026-11-26): only the current file goes live; file names and post fi
   - `npm test` 784/782/0/2.
   - R8's round-2 sim with the stuck-point scenarios asserting the fix: 35/35 on `9039b94`; the same assertions fail on `53a1026` (32/35).
   - R10's sim 20/20 and R8's walk 31/36, both unchanged. Evidence: ops repository, `T16/round2/r8r2`.
+
+**Amended 2026-11-26 after review R10 round 2 (verdict: merge after fixes, no HIGH).** Code change `d771fdd`.
+- **R1 (MED), admin rollback inside the window.** The window accepts live only when it equals the newest window version that differs from this file: the last version the mirror published from this branch. Live equal to an older window version is a person's rollback in the admin and is refused (`live-older-version`, naming both commits). A window match is also listed in `highRisk`. Cost: a run where a red run published v2, v3 then failed for this same file, and v4 follows, now stops too; it was red already.
+- **R2.** No window unless `--base-ref` is an ancestor of HEAD (`git merge-base --is-ancestor`): rewritten history gets the plain drift check.
+- **R3.** `draft` (a preview) never uses the window: its range is the pull request's own unreviewed commits. Only `publish` does.
+- **R5.** The docs now say that rebase and fast-forward merges put every pull-request commit on the first-parent line, so each counts.
+- **R6.** A ref starting with `-` is never passed to git; `gitVersion` and `rangeVersionsOf` also pass `--end-of-options`.
+- **Left to the ops repository (T11):** F5 `--keep-refs` and R4 (show `highRisk`).
+- **Checked.** 5 tests, red on `561277b` first; `npm test` 789/787/0/2; R10's window sim with W1, W3, W4 asserting refusal: 12/12 (W7's in-cap case moved to the newest version before head; 60 back is now `live-older-version`); R10's round-1 sim 20/20; R8's round-2 sim 35/35. Evidence: ops repository, `T16/round3`.
