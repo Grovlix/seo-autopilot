@@ -14,7 +14,7 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
   const log = [];
   for (const p of posts) {
     const rid = id();
-    const row = { id: rid, type: "posts", slug: p.slug, status: p.status || "published", data: structuredClone(p.data), authorId: "u1", primaryBylineId: null, createdAt: now(), updatedAt: now(), publishedAt: p.publishedAt === undefined ? now() : p.publishedAt, scheduledAt: p.scheduledAt ?? null, deletedAt: p.deletedAt ?? null, liveRevisionId: null, draftRevisionId: null, version: 1, locale: "en", translationGroup: rid, terms: p.terms || {} };
+    const row = { id: rid, type: "posts", slug: p.slug, status: p.status || "published", data: structuredClone(p.data), authorId: "u1", primaryBylineId: null, createdAt: now(), updatedAt: now(), publishedAt: p.publishedAt === undefined ? now() : p.publishedAt, scheduledAt: p.scheduledAt ?? null, deletedAt: p.deletedAt ?? null, liveRevisionId: null, draftRevisionId: null, version: 1, locale: p.locale || "en", translationGroup: rid, terms: p.terms || {} };
     rows.set(rid, row);
     if (seo) seoRows.set(rid, { title: null, description: null, image: null, canonical: null, noIndex: false, ...(p.seo || {}) });
   }

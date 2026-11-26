@@ -12,7 +12,7 @@
 // Output: a JSON report on stdout. Exit codes: 0 ok, 1 error or invalid files, 2 published but the CMS does not match
 // the file afterwards, 3 refused for safety (conflict, unknown revisions setting, slug taken).
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, lstatSync, realpathSync } from "node:fs";
 import { join, dirname, basename, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createClient, revisionsSupported, EmDashError } from "./emdash.mjs";
@@ -21,6 +21,25 @@ import { fromMarkdown, countWords } from "./portable-text.mjs";
 import { mainScope, visibleText } from "../audit/extract.mjs";
 
 class Refused extends Error { constructor(msg) { super(msg); this.exit = 3; } }
+
+/**
+ * Why a post file may not be read or written, or null. A post file is a regular file directly inside the posts folder:
+ * never a symbolic link (x.md -> ../../.git/config) and never a path that resolves somewhere else. A missing file is
+ * null (the caller decides).
+ */
+export function unsafePostFile(file, dir = dirname(file)) {
+  let st;
+  try { st = lstatSync(file); } catch { return null; }
+  if (st.isSymbolicLink()) return `${file} is a symbolic link; post files must be plain files`;
+  if (!st.isFile()) return `${file} is not a plain file`;
+  try { if (dirname(realpathSync(file)) !== realpathSync(dir)) return `${file} is not inside the posts folder ${dir}`; }
+  catch (e) { return `${file}: ${e.code || e.message}`; }
+  return null;
+}
+
+// A CMS slug becomes a file name: it must not hold path characters or start with a dot (EmDash 0.1.0 stores an
+// explicit slug as given, so "../../x" is possible).
+const unsafeSlug = (slug) => /[\/\\\0]/.test(slug) || slug.startsWith(".");
 
 // --settings <file.json>: the site's settings (collection, urlPattern, fields, taxonomies, slugPattern, sitemap, rss,
 // revisionsProven). Flags override them, except revisionsProven: when the settings file has it, only the file decides,
@@ -75,8 +94,17 @@ export async function exportCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const listed = await api.list(o.collection, { status });
   const report = { collection: o.collection, status: status || "all", listed: listed.length, written: [], skipped: [], opaque: [], pendingDrafts: [], noPublishedAt: [], noSlug: [], seoEnabled: null, liveRevision: 0, taxonomies: {} };
   if (!flags.dry) mkdirSync(dir, { recursive: true });
+  // One file per slug: the same slug in two locales (allowed by EmDash) would overwrite one file, so both are skipped.
+  const bySlug = new Map();
+  for (const row of listed) if (row.slug) bySlug.set(row.slug, [...(bySlug.get(row.slug) || []), row]);
   for (const row of listed) {
     if (!row.slug) { report.noSlug.push(row.id); continue; }
+    if (unsafeSlug(row.slug)) { report.skipped.push({ slug: row.slug, id: row.id, reason: "the slug has path characters or starts with a dot; it cannot be a file name" }); continue; }
+    const same = bySlug.get(row.slug);
+    if (same.length > 1) { report.skipped.push({ slug: row.slug, id: row.id, locale: row.locale ?? null, reason: `the same slug is used by ${same.length} posts (locales: ${same.map((r) => r.locale ?? "none").join(", ")}); one file per slug cannot hold them` }); continue; }
+    const target = resolve(dir, `${row.slug}.md`);
+    if (dirname(target) !== resolve(dir)) { report.skipped.push({ slug: row.slug, id: row.id, reason: "the file would be outside the mirror folder" }); continue; }
+    if (unsafePostFile(target, dir)) { report.skipped.push({ slug: row.slug, id: row.id, reason: unsafePostFile(target, dir) }); continue; }
     const got = await api.get(o.collection, row.id);
     const item = got?.item || row;
     const terms = {};
@@ -91,7 +119,7 @@ export async function exportCmd(flags, { fetch: f = globalThis.fetch } = {}) {
     if (item.draftRevisionId && item.draftRevisionId !== item.liveRevisionId) report.pendingDrafts.push(item.slug);
     if (!m.roundTrip.ok) { report.skipped.push({ slug: item.slug, reason: "does not convert back unchanged", blocks: m.roundTrip.differences }); continue; }
     if (m.roundTrip.opaque) report.opaque.push({ slug: item.slug, blocks: m.roundTrip.opaque, why: [...new Set(m.roundTrip.problems.map((p) => p.reason))] });
-    if (!flags.dry) writeFileSync(join(dir, `${item.slug}.md`), m.text);
+    if (!flags.dry) writeFileSync(target, m.text);
     report.written.push(item.slug);
   }
   // Files for posts the CMS no longer lists are reported, never deleted.
@@ -121,13 +149,41 @@ export function validateCmd(flags) {
   if (!files.length && dir) files = readdirSync(dir).filter((n) => n.endsWith(".md")).map((n) => join(dir, n));
   if (!files.length) throw new Error("give --dir <mirror folder> or --files a.md,b.md");
   const o = options(flags);
-  const entries = files.filter((file) => existsSync(file)).map((file) => ({ file, parsed: parseMirror(readFileSync(file, "utf8")), base: baseOf(file, flags) }));
-  // Slugs and ids must be unique across the whole folder, not only the changed files.
-  const others = dir ? readdirSync(dir).filter((n) => n.endsWith(".md")).map((n) => join(dir, n)).filter((p) => !files.some((x) => resolve(x) === resolve(p))) : [];
-  const all = [...entries, ...others.map((file) => ({ file, parsed: parseMirror(readFileSync(file, "utf8")), skip: true }))];
+  const withBase = !!(flags.base || flags["base-ref"]);
+  const folderOf = (file) => dir || dirname(file);
+  const entries = [];
+  const blocked = [];
+  for (const file of files.filter((f) => existsSync(f) || unsafePostFile(f, folderOf(f)))) {
+    const bad = unsafePostFile(file, folderOf(file));
+    if (bad) { blocked.push({ file, errors: [bad], warnings: [], highRisk: [], facts: null, before: null }); continue; }
+    entries.push({ file, parsed: parseMirror(readFileSync(file, "utf8")), base: baseOf(file, flags) });
+  }
+  // Slugs and ids must be unique across the whole folder (--dir, or else the changed files' own folder), not only the
+  // changed files. Unsafe files in the folder are never read and make the result fail.
+  const unsafe = [];
+  const others = [];
+  for (const d of new Set(files.map(folderOf))) {
+    if (!existsSync(d)) continue;
+    for (const n of readdirSync(d).filter((x) => x.endsWith(".md"))) {
+      const p = join(d, n);
+      if (files.some((x) => resolve(x) === resolve(p))) continue;
+      const bad = unsafePostFile(p, d);
+      if (bad) { unsafe.push(bad); continue; }
+      others.push({ file: p, parsed: parseMirror(readFileSync(p, "utf8")), skip: true });
+    }
+  }
+  const all = [...entries, ...others];
   const v = validateSet(all, { slugPattern: o.slugPattern });
-  const results = v.results.filter((_, i) => !all[i].skip).map((r, i) => ({ ...r, before: entries[i].base ? { words: validateFile(entries[i].base).facts.words } : null }));
-  const report = { ok: results.every((r) => !r.errors.length), files: results.length, results };
+  const results = v.results.filter((_, i) => !all[i].skip).map((r, i) => {
+    const e = entries[i];
+    const errors = [...r.errors];
+    const id = e.parsed.meta.id;
+    if (withBase && !e.base && id != null && id !== "") errors.push(`id "${id}" on a new file (it has no previous version): a new post gets its id from the CMS, and this one would point at another post`);
+    return { ...r, errors, before: e.base ? { words: validateFile(e.base).facts.words } : null };
+  });
+  results.push(...blocked);
+  const report = { ok: results.every((r) => !r.errors.length) && !unsafe.length, files: results.length, results };
+  if (unsafe.length) report.unsafe = unsafe;
   out(report);
   return report.ok ? 0 : 1;
 }
@@ -180,12 +236,20 @@ async function loadTarget(api, o, parsed, report, versions) {
   return got;
 }
 
-/** true when the post has a pending draft that is neither "no change" nor one of this file's versions. */
-async function foreignDraft(api, o, item, versions) {
-  if (!item.draftRevisionId || item.draftRevisionId === item.liveRevisionId) return false;
-  const draft = (await api.compare(o.collection, item.id))?.draft;
-  const base = item.data || {};
-  return ![null, ...versions].some((v) => draftMatches(draft, { base, version: v, fields: o.fields, slug: item.slug }));
+/** true when a pending draft is neither "no change" nor one of this file's versions: someone else's. */
+function foreignDraft(o, item, draft, versions) {
+  return ![null, ...versions].some((v) => draftMatches(draft, { base: item.data || {}, version: v, fields: o.fields, slug: item.slug }));
+}
+
+// Re-read the draft right before publishing: a draft saved by someone else after ours would go live with it. This
+// narrows the window to one round trip (EmDash 0.1.0's publish takes no revision token).
+async function confirmDraft(api, o, id, parsed) {
+  const now = (await api.get(o.collection, id))?.item;
+  const pending = now?.draftRevisionId && now.draftRevisionId !== now.liveRevisionId;
+  const data = pending ? (await api.compare(o.collection, id))?.draft : now?.data;
+  if (!now || !draftMatches(data, { base: now.data || {}, version: parsed, fields: o.fields, slug: parsed.meta.slug })) {
+    throw new Refused(`the CMS draft of "${parsed.meta.slug}" is not the file any more (someone saved a draft after ours); nothing was published. Check the CMS, then run the publish again`);
+  }
 }
 
 async function saveDraft(api, o, parsed, report, file) {
@@ -196,21 +260,27 @@ async function saveDraft(api, o, parsed, report, file) {
     const created = await api.createDraft(o.collection, { slug: parsed.meta.slug, data: draftData(parsed, o.fields) });
     report.created = created.item.id;
     report.draftSaved = true;
-    return { item: created.item, head, changes: diffState(null, head) };
+    return { item: created.item, head, changes: diffState(null, head), pendingIsHead: false };
   }
   const item = got.item;
   const live = stateOfItem(item, o.fields);
   const base = report.base ? stateOfFile(report.base) : null;
-  const foreign = item.status === "published" ? await foreignDraft(api, o, item, versions) : false;
-  const pending = item.draftRevisionId && item.draftRevisionId !== item.liveRevisionId ? stateOfItem(item, o.fields, (await api.compare(o.collection, item.id))?.draft || {}) : null;
+  const hasPending = !!item.draftRevisionId && item.draftRevisionId !== item.liveRevisionId;
+  const pendingData = hasPending ? (await api.compare(o.collection, item.id))?.draft || {} : null;
+  const foreign = item.status === "published" && hasPending ? foreignDraft(o, item, pendingData, versions) : false;
   const plan = writePlan({ live, base, foreignDraft: foreign, head });
   report.plan = { ok: plan.ok, reason: plan.reason, changes: plan.changes };
   if (!plan.ok) throw new Refused(plan.reason);
+  // Only the current file may go live. A pending draft equal to an older version of the file (a publish that failed
+  // before a revert, say) may be overwritten, never published: it is replaced by the current file first, also when
+  // only the SEO fields changed.
+  const pendingIsHead = hasPending && draftMatches(pendingData, { base: item.data || {}, version: parsed, fields: o.fields, slug: item.slug });
   const content = plan.changes.filter((c) => ["title", "excerpt", "body"].includes(c));
-  const alreadyDrafted = pending && !diffState(pending, head, ["title", "excerpt", "body"]).length;
-  if (!content.length || alreadyDrafted) { report.draftSaved = false; report.draftReason = alreadyDrafted ? "the CMS draft already matches the file" : "no content change"; return { item, head, changes: plan.changes }; }
+  const needDraft = !pendingIsHead && (content.length > 0 || (hasPending && plan.changes.length > 0));
+  if (!needDraft) { report.draftSaved = false; report.draftReason = pendingIsHead ? "the CMS draft already matches the file" : "no content change"; return { item, head, changes: plan.changes, pendingIsHead }; }
+  if (hasPending && !content.length) report.draftReason = "a pending draft of an older version was replaced by the current file";
   report.guard = await writeGuard(api, o, item);
-  if (report.dry) { report.draftSaved = false; return { item, head, changes: plan.changes }; }
+  if (report.dry) { report.draftSaved = false; return { item, head, changes: plan.changes, pendingIsHead }; }
   await api.saveDraft(o.collection, item.id, { data: draftData(parsed, o.fields, { previous: item.data?.[o.fields.body] }), _rev: got._rev });
   // The live post must not have moved; the draft must exist.
   const after = (await api.get(o.collection, item.id)).item;
@@ -220,11 +290,13 @@ async function saveDraft(api, o, parsed, report, file) {
     if (!after.draftRevisionId) { const e = new Error("the draft save left no draft revision"); e.exit = 2; throw e; }
   }
   report.draftSaved = true;
-  return { item: after, head, changes: plan.changes };
+  return { item: after, head, changes: plan.changes, pendingIsHead: false };
 }
 
 function readFile(flags) {
   const file = String(flags.file || "");
+  const bad = file ? unsafePostFile(file, flags.dir ? String(flags.dir) : dirname(file)) : null;
+  if (bad) throw new Refused(bad);
   if (!file || !existsSync(file)) throw new Error("--file <mirror file> is required");
   const parsed = parseMirror(readFileSync(file, "utf8"));
   return { file, parsed };
@@ -266,15 +338,15 @@ export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const v = checkFile(file, parsed, base, o);
   const api = client(flags, f);
   const report = { action: "publish", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
-  const { item, head, changes } = await saveDraft(api, o, parsed, report, file);
+  const { item, head, changes, pendingIsHead } = await saveDraft(api, o, parsed, report, file);
   delete report.base;
   report.id = item.id;
   report.changes = changes;
   if (flags.dry) { report.calls = api.calls; out(report); return 0; }
   if (!changes.length && item.status === "published") { report.published = false; report.reason = "the CMS already matches the file"; }
   else {
-    const needsPublish = item.status !== "published" || report.draftSaved || (item.draftRevisionId && item.draftRevisionId !== item.liveRevisionId);
-    if (needsPublish) { await api.publish(o.collection, item.id); report.published = true; }
+    const needsPublish = item.status !== "published" || report.draftSaved || pendingIsHead;
+    if (needsPublish) { await confirmDraft(api, o, item.id, parsed); await api.publish(o.collection, item.id); report.published = true; }
     if (head.seo && "seo" in item) {
       const now = await api.get(o.collection, item.id);
       if (JSON.stringify(stateOfItem(now.item, o.fields).seo) !== JSON.stringify(head.seo)) {

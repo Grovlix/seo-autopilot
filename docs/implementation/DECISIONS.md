@@ -1299,3 +1299,16 @@ Review R2 (2026-11-26): a write can only reach the file's own post, and only whe
   duplicate ids and slugs are reported on every file that has them.
 - A save keeps the keys and link definitions of unchanged blocks and the post's strike mark name; `blank: false` links
   are plain links. Undoing a new post is an unpublish, not a `git revert` (the revert conflicts with the write-back).
+
+Review R2b (2026-11-26): only the current file goes live; file names and post files are checked.
+- A pending draft that equals an older version of the file may be overwritten, never published: when the pending
+  draft is not the current file, the current file is saved as the draft first (also for an SEO-only change), and
+  publish runs only after our own save or when the pending draft is the current file. The draft is re-read just before
+  the publish call. 0.1.0's publish takes no revision token, so one round trip of race remains; the read-back reports it.
+- Export skips slugs with path characters or a leading dot (0.1.0 stores explicit slugs as given), slugs used by more
+  than one post (UNIQUE(slug, locale) allows the same slug per locale), and never writes through a symbolic link.
+  Chosen over `<slug>.<locale>.md` names: it keeps one file name rule (`<slug>.md`) for validate, the URL pattern and
+  the content-loss guard; a multi-locale site with shared slugs cannot mirror those posts yet.
+- `validate` and `publish` refuse post files that are symbolic links or resolve outside the posts folder, so a merged
+  `x.md -> ../../.git/config` is never read or written. `validate` defaults to the files' own folder and rejects an id on
+  a file with no previous version. Front matter escapes U+2028 and U+2029.

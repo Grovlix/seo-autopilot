@@ -33,7 +33,8 @@ export function stringifyMirror(meta, body) {
   const keys = [...KEY_ORDER.filter((k) => k in meta), ...Object.keys(meta).filter((k) => !KEY_ORDER.includes(k)).sort()];
   for (const k of keys) {
     const v = meta[k];
-    lines.push(`${k}: ${v === undefined ? "null" : JSON.stringify(v)}`);
+    // JSON.stringify leaves U+2028 and U+2029 raw; they end a line for many readers (and for "." in a RegExp), so escape them.
+    lines.push(`${k}: ${v === undefined ? "null" : JSON.stringify(v).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029")}`);
   }
   lines.push("---", "");
   return lines.join("\n") + String(body ?? "");
@@ -51,7 +52,7 @@ export function parseMirror(src) {
   const errors = [];
   m[1].split("\n").forEach((line, n) => {
     if (!line.trim() || line.trim().startsWith("#")) return;
-    const kv = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    const kv = line.match(/^([A-Za-z0-9_-]+):[ \t]*([^\n]*)$/);
     if (!kv) { errors.push(`front matter line ${n + 2} is not "key: value"`); return; }
     if (kv[1] in meta) errors.push(`front matter key "${kv[1]}" appears twice`);
     const raw = kv[2].trim();
