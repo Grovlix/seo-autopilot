@@ -7,7 +7,7 @@
 // aeo.maxCostPerRunUsd. The report shows the cost measured from the API responses, not an estimate.
 // Writes aeo.json (answers, history) and aeo.md in the state folder. Runs at most once per `aeo.schedule` period unless --force.
 import { readJson, writeJson, writeText, today as todayFn, sleep } from "../core/util.mjs";
-import { dataforseo } from "../lib/ai-engines.mjs";
+import { dataforseo, DFS_ESTIMATE_USD } from "../lib/ai-engines.mjs";
 import { costGuardFor, dataforseoEnabled, BudgetError } from "../lib/dataforseo.mjs";
 import { resolveAeo, AEO_MODES, AEO_SCHEDULES } from "../lib/aeo-config.mjs";
 import { analyseAeo, aeoMarkdown } from "../analysis/aeo.mjs";
@@ -17,7 +17,7 @@ export const description = "AI answers: do Google's AI Overview / AI Mode or Cha
 
 // What one call may cost at least, used only to decide whether the next prompt still fits under the per-run cap before the first
 // real cost is known; afterwards 1.5x the dearest call so far is used. The real cost always comes from the response.
-export const FLOOR_ESTIMATE_USD = { ai_overview: 0.01, ai_mode: 0.02, llm_responses: 0.05 };
+export const FLOOR_ESTIMATE_USD = DFS_ESTIMATE_USD;
 const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 
 /**

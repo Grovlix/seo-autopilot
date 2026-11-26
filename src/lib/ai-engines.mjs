@@ -88,6 +88,12 @@ export const gemini = {
 //   llm_responses  POST ai_optimization/chat_gpt/llm_responses/live with web_search: ChatGPT's answer and its url annotations
 export const DFS_PATHS = { ai_overview: "serp/google/organic/live/advanced", ai_mode: "serp/google/ai_mode/live/advanced", llm_responses: "ai_optimization/chat_gpt/llm_responses/live" };
 export const DFS_DEFAULT_LLM_MODEL = "gpt-4.1-mini";
+// Generous per-call estimates for the cost guard (only used to decide whether a call may start; the ledger records the real cost).
+// llm_responses: DataForSEO's pricing page says "The price for setting a task is $0.0006 in the Live mode" plus the LLM provider's own
+// price for the answer (https://dataforseo.com/pricing/ai-optimization/llm-responses); measured live 2026-11-26: $0.0013 without a
+// web search, up to $0.0299 with one, so 0.05. ai_mode: its pricing page (https://dataforseo.com/pricing/serp/google-ai-mode) gives no
+// number in its text; measured live $0.004 per call, so 0.01. ai_overview: a SERP call at depth 10 with the async AI Overview, measured $0.004.
+export const DFS_ESTIMATE_USD = { ai_overview: 0.01, ai_mode: 0.01, llm_responses: 0.05 };
 // Task statuses worth one more try: 40101 "Internal SE Server Error" (seen live, costs nothing) and the 5xxxx server errors.
 const retryable = (code) => code === 40101 || code >= 50000;
 const clip = (s) => String(s || "").slice(0, 80);
@@ -130,7 +136,7 @@ export const dataforseo = {
       : { user_prompt: q, model_name: model, web_search: true, web_search_country_iso_code: m.country, max_output_tokens: 1024 };
     let costUsd = 0, t;
     for (let attempt = 0; ; attempt++) {
-      const json = await g.post(path, [task]);
+      const json = await g.post(path, [task], { estimateUsd: DFS_ESTIMATE_USD[mode] });
       costUsd += costOf(json) || 0;
       t = json?.tasks?.[0];
       if (t?.status_code === 20000) break;
