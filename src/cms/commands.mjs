@@ -16,22 +16,32 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 
 import { join, dirname, basename, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createClient, revisionsSupported, EmDashError } from "./emdash.mjs";
-import { parseMirror, stringifyMirror, itemToMirror, stateOfItem, stateOfFile, diffState, validateFile, validateSet, draftData, seoPayload, writePlan, DEFAULT_FIELDS, LATIN_SLUG } from "./mirror.mjs";
+import { parseMirror, stringifyMirror, itemToMirror, stateOfItem, stateOfFile, diffState, validateFile, validateSet, draftData, draftMatches, seoPayload, writePlan, DEFAULT_FIELDS, LATIN_SLUG } from "./mirror.mjs";
 import { fromMarkdown, countWords } from "./portable-text.mjs";
 import { mainScope, visibleText } from "../audit/extract.mjs";
 
 class Refused extends Error { constructor(msg) { super(msg); this.exit = 3; } }
 
+// --settings <file.json>: the site's settings (collection, urlPattern, fields, taxonomies, slugPattern, sitemap, rss,
+// revisionsProven). Flags override them, except revisionsProven: when the settings file has it, only the file decides,
+// so a person turns writes on by committing "revisionsProven": true after preview-check, not a job by passing a flag.
 function options(flags) {
-  const collection = String(flags.collection || "posts");
+  const st = flags.settings ? JSON.parse(readFileSync(String(flags.settings), "utf8")) : {};
+  const pick = (flag, key, dflt) => flags[flag] ?? st[key] ?? dflt;
+  const collection = String(pick("collection", "collection", "posts"));
   const fields = { ...DEFAULT_FIELDS };
-  for (const pair of String(flags.fields || "").split(",").filter(Boolean)) { const [k, v] = pair.split("="); if (k && v) fields[k.trim()] = v.trim(); }
+  for (const src of [st.fields, flags.fields]) for (const pair of String(src || "").split(",").filter(Boolean)) { const [k, v] = pair.split("="); if (k && v) fields[k.trim()] = v.trim(); }
+  const fromSettings = typeof st.revisionsProven === "boolean";
+  const slugPattern = pick("slug-pattern", "slugPattern", null);
   return {
     collection, fields,
-    urlPattern: String(flags["url-pattern"] || `/${collection}/{slug}`),
-    taxonomies: String(flags.taxonomies ?? "category,tag").split(",").map((s) => s.trim()).filter(Boolean),
-    slugPattern: flags["slug-pattern"] ? new RegExp(String(flags["slug-pattern"])) : LATIN_SLUG,
-    revisionsProven: flags["revisions-proven"] === true || flags["revisions-proven"] === "true" || process.env.EMDASH_REVISIONS_PROVEN === "true",
+    urlPattern: String(pick("url-pattern", "urlPattern", `/${collection}/{slug}`)),
+    taxonomies: String(pick("taxonomies", "taxonomies", "category,tag")).split(",").map((s) => s.trim()).filter(Boolean),
+    slugPattern: slugPattern ? new RegExp(String(slugPattern)) : LATIN_SLUG,
+    sitemap: pick("sitemap", "sitemap", null),
+    rss: pick("rss", "rss", null),
+    revisionsProven: fromSettings ? st.revisionsProven === true : flags["revisions-proven"] === true || flags["revisions-proven"] === "true" || process.env.EMDASH_REVISIONS_PROVEN === "true",
+    revisionsProvenFrom: fromSettings ? `settings file ${flags.settings}` : "flag or environment",
   };
 }
 
@@ -89,8 +99,8 @@ export async function exportCmd(flags, { fetch: f = globalThis.fetch } = {}) {
     const have = new Set(listed.map((x) => x.slug));
     report.notInCms = readdirSync(dir).filter((n) => n.endsWith(".md")).map((n) => n.slice(0, -3)).filter((s) => !have.has(s));
   }
-  if (flags.sitemap) {
-    const xml = await (await f(new URL(String(flags.sitemap), api.base).toString())).text();
+  if (o.sitemap) {
+    const xml = await (await f(new URL(String(o.sitemap), api.base).toString())).text();
     // Compare paths, not whole URLs: sitemaps may name another host form (www) or repeat slashes ("//posts/x").
     const prefix = o.urlPattern.split("{slug}")[0];
     const pathOf = (u) => { try { return new URL(u.trim()).pathname.replace(/\/{2,}/g, "/"); } catch { return ""; } };
@@ -131,32 +141,57 @@ async function writeGuard(api, o, liveItem) {
   const r = await revisionsSupported(api, o.collection);
   if (r === true) return "schema";
   if (r === false) throw new Refused(`collection "${o.collection}" does not keep revisions: a draft save would change the live post`);
-  if (o.revisionsProven) return "proven by preview-check";
-  throw new Refused(`cannot read collection settings with this token; run "cms preview-check" and pass --revisions-proven (or EMDASH_REVISIONS_PROVEN=true) once it shows revisions: true`);
+  if (o.revisionsProven) return `proven by preview-check (${o.revisionsProvenFrom})`;
+  throw new Refused(`revisions are not proven for this collection (${o.revisionsProvenFrom}); run "cms preview-check", and once it shows revisions: true set "revisionsProven": true in the settings file (or pass --revisions-proven when no settings file is used)`);
 }
 
-async function loadTarget(api, o, parsed) {
+/** The file's own versions: this file, its previous version, and every version committed in git (newest first). */
+export function versionsOf(file, parsed, base) {
+  const out = [parsed];
+  if (base) out.push(base);
+  try {
+    const shas = execFileSync("git", ["log", "--format=%H", "-n", "50", "--", basename(file)], { cwd: dirname(resolve(file)), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean);
+    for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push(parseMirror(t)); }
+  } catch { /* not a git checkout */ }
+  return out;
+}
+
+// Which CMS post a file may write to. A file with an id: only that published post, with the same slug, and only with
+// its previous version at hand (to see edits made in the CMS). A new file: only a slug nobody uses, or an unpublished
+// draft this mirror made from this file (a re-run). Scheduled, unpublished and trashed posts are never touched.
+async function loadTarget(api, o, parsed, report, versions) {
   const m = parsed.meta;
-  if (m.id) {
-    const got = await api.get(o.collection, m.id);
-    if (!got) throw new Refused(`post ${m.id} (${m.slug}) is not in the CMS any more`);
+  if (m.id != null && m.id !== "") {
+    if (!report.base) throw new Refused(`${m.slug}: a file with an id needs its previous version (--base or --base-ref), so edits made in the CMS are not overwritten`);
+    const got = await api.get(o.collection, String(m.id));
+    if (!got) throw new Refused(`post ${m.id} (${m.slug}) is not in the CMS: deleted or in the trash`);
+    if (got.item.slug !== m.slug) throw new Refused(`post ${m.id} is "${got.item.slug}" in the CMS but the file says "${m.slug}": the file does not belong to that post`);
+    if (got.item.deletedAt) throw new Refused(`post ${m.slug} is in the trash`);
+    if (got.item.status !== "published") throw new Refused(`post ${m.slug} is ${got.item.status} in the CMS; the mirror only updates published posts (it was taken down or scheduled there)`);
     return got;
   }
-  // A new post: reuse an unpublished draft with this slug (a re-run of the check), never a live post.
-  const got = await api.get(o.collection, m.slug);
-  if (got && got.item.status !== "draft") throw new Refused(`slug "${m.slug}" is already used by a ${got.item.status} post`);
+  const got = await api.get(o.collection, String(m.slug));
+  if (!got) return null;
+  const it = got.item;
+  if (it.status !== "draft" || it.publishedAt || it.liveRevisionId || it.deletedAt) throw new Refused(`slug "${m.slug}" is already used by a ${it.status} post`);
+  const data = it.draftRevisionId ? (await api.compare(o.collection, it.id))?.draft : it.data;
+  if (!versions.some((v) => draftMatches(data, { version: v, fields: o.fields, slug: m.slug }))) throw new Refused(`an unpublished draft with slug "${m.slug}" already exists and was not made from this file; pick another slug or remove that draft in the CMS`);
+  report.reusedDraft = it.id;
   return got;
 }
 
-async function pendingDraftState(api, o, item) {
-  if (!item.draftRevisionId || item.draftRevisionId === item.liveRevisionId) return null;
-  const cmp = await api.compare(o.collection, item.id);
-  return cmp?.draft ? stateOfItem(item, o.fields, cmp.draft) : null;
+/** true when the post has a pending draft that is neither "no change" nor one of this file's versions. */
+async function foreignDraft(api, o, item, versions) {
+  if (!item.draftRevisionId || item.draftRevisionId === item.liveRevisionId) return false;
+  const draft = (await api.compare(o.collection, item.id))?.draft;
+  const base = item.data || {};
+  return ![null, ...versions].some((v) => draftMatches(draft, { base, version: v, fields: o.fields, slug: item.slug }));
 }
 
-async function saveDraft(api, o, parsed, report) {
+async function saveDraft(api, o, parsed, report, file) {
   const head = stateOfFile(parsed);
-  let got = await loadTarget(api, o, parsed);
+  const versions = versionsOf(file, parsed, report.base);
+  let got = await loadTarget(api, o, parsed, report, versions);
   if (!got) {
     const created = await api.createDraft(o.collection, { slug: parsed.meta.slug, data: draftData(parsed, o.fields) });
     report.created = created.item.id;
@@ -166,8 +201,9 @@ async function saveDraft(api, o, parsed, report) {
   const item = got.item;
   const live = stateOfItem(item, o.fields);
   const base = report.base ? stateOfFile(report.base) : null;
-  const pending = await pendingDraftState(api, o, item);
-  const plan = writePlan({ live, base, pendingDraft: pending, head });
+  const foreign = item.status === "published" ? await foreignDraft(api, o, item, versions) : false;
+  const pending = item.draftRevisionId && item.draftRevisionId !== item.liveRevisionId ? stateOfItem(item, o.fields, (await api.compare(o.collection, item.id))?.draft || {}) : null;
+  const plan = writePlan({ live, base, foreignDraft: foreign, head });
   report.plan = { ok: plan.ok, reason: plan.reason, changes: plan.changes };
   if (!plan.ok) throw new Refused(plan.reason);
   const content = plan.changes.filter((c) => ["title", "excerpt", "body"].includes(c));
@@ -175,7 +211,7 @@ async function saveDraft(api, o, parsed, report) {
   if (!content.length || alreadyDrafted) { report.draftSaved = false; report.draftReason = alreadyDrafted ? "the CMS draft already matches the file" : "no content change"; return { item, head, changes: plan.changes }; }
   report.guard = await writeGuard(api, o, item);
   if (report.dry) { report.draftSaved = false; return { item, head, changes: plan.changes }; }
-  await api.saveDraft(o.collection, item.id, { data: draftData(parsed, o.fields), _rev: got._rev });
+  await api.saveDraft(o.collection, item.id, { data: draftData(parsed, o.fields, { previous: item.data?.[o.fields.body] }), _rev: got._rev });
   // The live post must not have moved; the draft must exist.
   const after = (await api.get(o.collection, item.id)).item;
   if (item.status === "published") {
@@ -207,7 +243,7 @@ export async function draftCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const v = checkFile(file, parsed, base, o);
   const api = client(flags, f);
   const report = { action: "draft", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
-  const { item } = await saveDraft(api, o, parsed, report);
+  const { item } = await saveDraft(api, o, parsed, report, file);
   delete report.base;
   report.id = item.id;
   report.liveUrl = item.status === "published" ? pageUrl(api.base, o.urlPattern, item.slug) : null;
@@ -230,7 +266,7 @@ export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const v = checkFile(file, parsed, base, o);
   const api = client(flags, f);
   const report = { action: "publish", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
-  const { item, head, changes } = await saveDraft(api, o, parsed, report);
+  const { item, head, changes } = await saveDraft(api, o, parsed, report, file);
   delete report.base;
   report.id = item.id;
   report.changes = changes;
@@ -325,7 +361,7 @@ export async function previewCheckCmd(flags, { fetch: f = globalThis.fetch } = {
   const pub = await pageFacts(f, publicUrl);
   report.checks.publicUrlHidden = pub.status === 404 || pub.status === 410;
   report.publicStatus = pub.status;
-  for (const [name, path] of [["sitemap", flags.sitemap || "/sitemap.xml"], ["rss", flags.rss || "/rss.xml"]]) {
+  for (const [name, path] of [["sitemap", o.sitemap || "/sitemap.xml"], ["rss", o.rss || "/rss.xml"]]) {
     if (path === "false") continue;
     try {
       const r = await f(new URL(String(path), api.base).toString(), { headers: { "user-agent": "seo-autopilot-cms-mirror" } });

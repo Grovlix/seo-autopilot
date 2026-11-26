@@ -1282,3 +1282,20 @@ Tradeoff: a second copy of the content that can go stale (export reports drift; 
 as JSON lines; read-only fields (publish date, byline, images, terms) still change in the CMS admin. Rejected: editing
 through the CMS admin with no mirror (no review or guard), EmDash's own Markdown converter (lossy), and `_rev` as the
 conflict token.
+
+Review R2 (2026-11-26): a write can only reach the file's own post, and only when nothing else is pending.
+- A file with an `id` needs a base; the post must have the file's slug, not be trashed (0.1.0 hides trashed rows from
+  get, so a 404 is refused, never recreated) and be `published`. A taken-down, scheduled or trashed post is never
+  published again, even from an unchanged file.
+- A pending draft is the mirror's own only when its whole data, `_slug` included, equals what the mirror would have
+  saved (`{...live, ...draftData(version)}`) for the file, its base or one of its last 50 git versions; anything else is
+  someone else's and stops the write (0.1.0 publishes `revision.data._slug` as the new slug). A new file reuses a draft
+  with its slug only on the same test, and never a row that is scheduled, trashed or was ever published.
+- "Live equals the new file except the SEO fields, which still equal the base" is a resumable state, so a failed SEO
+  write after the content write is finished by a re-run instead of being reported as drift.
+- `revisionsProven` lives in the per-site settings file (`--settings`); when present it overrides the flag and the
+  environment, so a workflow cannot pass `--revisions-proven` past a `false`.
+- Validate rejects front-matter values that are not JSON, indented or non-object JSON blocks and unclosed code fences;
+  duplicate ids and slugs are reported on every file that has them.
+- A save keeps the keys and link definitions of unchanged blocks and the post's strike mark name; `blank: false` links
+  are plain links. Undoing a new post is an unpublish, not a `git revert` (the revert conflicts with the write-back).

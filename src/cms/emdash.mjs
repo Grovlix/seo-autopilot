@@ -24,7 +24,10 @@ export class EmDashError extends Error {
 export function createClient({ url, token, fetch: f = globalThis.fetch, userAgent = "seo-autopilot-cms-mirror" } = {}) {
   if (!url) throw new Error("EmDash URL is missing (set EMDASH_URL or pass --url)");
   const base = String(url).replace(/\/+$/, "");
-  const u = new URL(base);
+  let u;
+  try { u = new URL(base); } catch { throw new Error("EmDash URL is not a valid URL"); }
+  // A user name or password in the URL would end up in reports and logs; the token goes in EMDASH_TOKEN only.
+  if (u.username || u.password) throw new Error("EmDash URL must not contain a user name or password");
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname);
   if (u.protocol !== "https:" && !local) throw new Error(`EmDash URL must use https (got ${u.protocol}//${u.host})`);
   const calls = [];

@@ -137,8 +137,9 @@ test("a collection without revisions is never written to", async () => {
   const fake = site({ revisions: false, schemaReadable: true }); const dir = tmp();
   await run(["export", "--dir", dir], fake);
   const file = join(dir, "third-post.md");
+  const base = join(dir, "base.md.txt"); copyFileSync(file, base);
   edit(file, (p) => { p.body += "\nMore.\n"; });
-  const { code, report } = await run(["draft", "--file", file, "--revisions-proven"], fake);
+  const { code, report } = await run(["draft", "--file", file, "--base", base, "--revisions-proven"], fake);
   assert.equal(code, 3);
   assert.match(report.error, /does not keep revisions/);
   assert.equal(writes(fake).length, 0);
@@ -173,7 +174,7 @@ test("draft keeps the live post unchanged; publish makes the file live; revert p
   assert.notEqual(after.meta.baseRev, parseMirror(readFileSync(v1, "utf8")).meta.baseRev);
 
   // Publishing the same file again changes nothing.
-  const again = await run(["publish", "--file", file, "--revisions-proven"], fake);
+  const again = await run(["publish", "--file", file, "--base", v1, "--revisions-proven"], fake);
   assert.equal(again.code, 0);
   assert.equal(again.report.reason, "the CMS already matches the file");
   // A retried job still passes the old base; the CMS already holds the new file, so that is not drift.
@@ -205,10 +206,10 @@ test("an edit made in the CMS outside the mirror stops the write", async () => {
 test("someone else's unpublished CMS draft stops the write", () => {
   const head = { slug: "a", title: "Mine", excerpt: null, body: [], seo: null };
   const live = { ...head, title: "Live" };
-  const plan = writePlan({ live, base: live, pendingDraft: { ...head, title: "Theirs" }, head });
+  const plan = writePlan({ live, base: live, foreignDraft: true, head });
   assert.equal(plan.ok, false);
   assert.match(plan.reason, /unpublished draft/);
-  assert.equal(writePlan({ live, base: live, pendingDraft: head, head }).ok, true, "our own earlier draft is fine");
+  assert.equal(writePlan({ live, base: live, foreignDraft: false, head }).ok, true, "no foreign draft: fine");
 });
 
 test("a new post: explicit slug, one draft across re-runs, then published; a taken slug is refused", async () => {

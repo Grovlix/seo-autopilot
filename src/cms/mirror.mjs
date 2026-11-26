@@ -16,7 +16,7 @@
 // Values are JSON (strings in double quotes, null, true/false, ["a", "b"] lists), one key per line, so the project's
 // tiny front-matter reader (src/adapters/index.mjs) and the content-loss guard can read the same files.
 
-import { fromMarkdown, toMarkdown, normalizeBlocks, blockFacts } from "./portable-text.mjs";
+import { fromMarkdown, toMarkdown, normalizeBlocks, blockFacts, markdownProblems, strikeMarkOf } from "./portable-text.mjs";
 
 export const DEFAULT_FIELDS = { title: "title", excerpt: "excerpt", body: "content", image: "featured_image" };
 export const SEO_KEYS = { seoTitle: "title", seoDescription: "description", seoImage: "image", canonical: "canonical", noIndex: "noIndex" };
@@ -39,7 +39,10 @@ export function stringifyMirror(meta, body) {
   return lines.join("\n") + String(body ?? "");
 }
 
-/** Parse a mirror file. Returns { meta, body, errors }. Values are JSON; a bare word is read as a string. */
+/**
+ * Parse a mirror file. Returns { meta, body, errors }. Values must be JSON: a value that is not (a YAML habit such as
+ * 'single quotes' or a bare word) is an error, because it would be published with the quotes or read differently.
+ */
 export function parseMirror(src) {
   const s = String(src ?? "").replace(/^﻿/, "").replace(/\r\n/g, "\n");
   const m = s.match(/^---\n([\s\S]*?)\n---[ \t]*(?:\n|$)/);
@@ -53,7 +56,7 @@ export function parseMirror(src) {
     if (kv[1] in meta) errors.push(`front matter key "${kv[1]}" appears twice`);
     const raw = kv[2].trim();
     try { meta[kv[1]] = raw === "" ? null : JSON.parse(raw); }
-    catch { if (/^["[{]/.test(raw)) errors.push(`front matter "${kv[1]}" is not valid JSON: ${raw.slice(0, 60)}`); meta[kv[1]] = raw; }
+    catch { errors.push(`front matter "${kv[1]}" is not valid JSON (write text in "double quotes"): ${raw.slice(0, 60)}`); meta[kv[1]] = raw; }
   });
   return { meta, body: s.slice(m[0].length).replace(/^\n/, ""), errors };
 }
@@ -153,13 +156,8 @@ export function validateFile(parsed, { file = "", base = null, slugPattern = LAT
   if (!blank(m.canonical) && !/^https?:\/\/[^\s]+$/.test(String(m.canonical))) errors.push(`canonical must be an http(s) URL`);
   if ("noIndex" in m && typeof m.noIndex !== "boolean") errors.push("noIndex must be true or false");
   if (m.noIndex === true) highRisk.push("noIndex is true: the page will ask search engines to drop it");
-  // Opaque fences that no longer parse are read as plain text: that would publish JSON as words.
-  parsed.body.split("\n").forEach((line, n) => {
-    if (/^<!--ec:block /.test(line)) {
-      const f = line.match(/^<!--ec:block (.+) -->$/);
-      try { if (!f) throw new Error(); JSON.parse(f[1]); } catch { errors.push(`body line ${n + 1}: a <!--ec:block --> line is broken (it must stay one line of valid JSON)`); }
-    }
-  });
+  // Lines that would publish differently from what the author sees: JSON shown as words, the rest of a post as code.
+  for (const p of markdownProblems(parsed.body)) errors.push(`body line ${p.line}: ${p.problem}`);
   const facts = fileFacts(parsed);
   if (facts.opaque) warnings.push(`${facts.opaque} block(s) kept as <!--ec:block --> JSON (not editable as Markdown)`);
   if (!facts.words) errors.push("the body has no words");
@@ -180,24 +178,67 @@ export function validateFile(parsed, { file = "", base = null, slugPattern = LAT
 /** Check a set of mirror files together: each file, plus slugs and ids unique across the set. */
 export function validateSet(entries, opts = {}) {
   const results = entries.map((e) => ({ file: e.file, ...validateFile(e.parsed, { ...opts, file: e.file, base: e.base || null }) }));
-  const seen = new Map();
+  // Every file of a clash gets the error, so a changed file clashing with an unchanged one is reported on the change.
+  const groups = new Map();
   for (const [i, e] of entries.entries()) {
     for (const k of ["slug", "id"]) {
       const v = e.parsed.meta[k];
       if (blank(v)) continue;
       const key = `${k}:${v}`;
-      if (seen.has(key)) results[i].errors.push(`${k} "${v}" is also used by ${entries[seen.get(key)].file}`);
-      else seen.set(key, i);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(i);
     }
+  }
+  for (const [key, idx] of groups) {
+    if (idx.length < 2) continue;
+    const [k, ...rest] = key.split(":");
+    for (const i of idx) results[i].errors.push(`${k} "${rest.join(":")}" is also used by ${idx.filter((j) => j !== i).map((j) => entries[j].file).join(", ")}`);
   }
   return { ok: results.every((r) => !r.errors.length), results };
 }
 
 // --------------------------------------------------------------------------------------------- write plans
 
-/** The data object to save as a draft: only the fields the file edits. */
-export function draftData(parsed, fields = DEFAULT_FIELDS) {
-  return { [fields.title]: parsed.meta.title, [fields.excerpt]: orNull(parsed.meta.excerpt), [fields.body]: fromMarkdown(parsed.body) };
+/**
+ * The data object to save as a draft: only the fields the file edits. previous: the post's current body; blocks the
+ * file did not change keep their original objects (keys, markDefs), and edited blocks keep its strike mark name.
+ */
+export function draftData(parsed, fields = DEFAULT_FIELDS, { previous = null } = {}) {
+  const blocks = fromMarkdown(parsed.body, { strike: strikeMarkOf(previous) });
+  return { [fields.title]: parsed.meta.title, [fields.excerpt]: orNull(parsed.meta.excerpt), [fields.body]: preserveBlocks(blocks, previous) };
+}
+
+/** New blocks, with each one that equals an unused previous block (same normalised form) replaced by that block. */
+export function preserveBlocks(blocks, previous) {
+  if (!Array.isArray(previous) || !previous.length) return blocks;
+  const pool = previous.map((b) => ({ b, n: JSON.stringify(normalizeBlocks([b])[0]), used: false }));
+  return blocks.map((b) => {
+    const n = JSON.stringify(normalizeBlocks([b])[0]);
+    const hit = pool.find((p) => !p.used && p.n === n);
+    if (!hit) return b;
+    hit.used = true;
+    return structuredClone(hit.b);
+  });
+}
+
+const canon = (v) => (v === undefined || v === null || v === "" ? "null" : JSON.stringify(sortDeep(v)));
+const sortDeep = (v) => (Array.isArray(v) ? v.map(sortDeep) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortDeep(v[k])])) : v);
+
+/**
+ * Is a pending CMS draft exactly what the mirror would have saved? draft: the draft's whole data (EmDash keeps a pending
+ * slug change in it as _slug and applies it on publish). base: the data the mirror's save was merged onto (the live
+ * post's data, or {} for a new post). version: a parsed mirror file, or null for "no edit at all". slug: the post's slug.
+ * Any other difference (another field, another slug, other words) means someone else made the draft.
+ */
+export function draftMatches(draft, { base = {}, version = null, fields = DEFAULT_FIELDS, slug } = {}) {
+  if (!draft || typeof draft !== "object") return false;
+  const expected = { ...base, ...(version ? draftData(version, fields) : {}) };
+  for (const k of new Set([...Object.keys(draft), ...Object.keys(expected)])) {
+    if (k === "_slug") { if (draft._slug != null && draft._slug !== slug) return false; continue; }
+    if (k === fields.body) { if (JSON.stringify(normalizeBlocks(draft[k] || [])) !== JSON.stringify(normalizeBlocks(expected[k] || []))) return false; continue; }
+    if (canon(draft[k]) !== canon(expected[k])) return false;
+  }
+  return true;
 }
 
 /** The SEO object to send at publish (all five keys, so the CMS ends up exactly as the file says). */
@@ -212,18 +253,19 @@ export function seoPayload(parsed) {
  * live: state of the live item (or null for a new post); base: state of the previous file (or null);
  * pendingDraft: state of an unpublished CMS draft (or null); head: state of this file.
  */
-export function writePlan({ live, base, pendingDraft, head }) {
+export function writePlan({ live, base, foreignDraft = false, head }) {
   if (!live) return { ok: true, reason: "new post", changes: diffState(null, head) };
   // A re-run after a publish that already landed (a retried job): the CMS matches the new file, nothing to do.
   if (!diffState(live, head).length) return { ok: true, reason: "the CMS already matches the file", changes: [] };
+  // Publishing would publish that draft too (its words, and a pending slug change with no redirect).
+  if (foreignDraft) return { ok: false, reason: "the CMS has an unpublished draft that this mirror did not make; publish or discard it in the CMS first", changes: [] };
   if (base) {
     const drift = diffState(live, base);
+    // An SEO write that failed after the content was published: the content already equals this file and the SEO
+    // fields are still the previous file's. Finishing the job is safe.
+    if (drift.length && !diffState(live, head, ["slug", "title", "excerpt", "body"]).length && !diffState(live, base, ["seo"]).length)
+      return { ok: true, reason: "resuming: the content is already published, the SEO fields are not yet", changes: diffState(live, head) };
     if (drift.length) return { ok: false, reason: `the CMS changed outside the mirror (${drift.join(", ")} differ from the previous file); export again before editing`, changes: [] };
-  }
-  if (pendingDraft) {
-    const ours = !diffState(pendingDraft, head, ["title", "excerpt", "body"]).length;
-    const same = !diffState(pendingDraft, live, ["title", "excerpt", "body"]).length;
-    if (!ours && !same) return { ok: false, reason: "the CMS has an unpublished draft that is not this file's; publish or discard it in the CMS first", changes: [] };
   }
   return { ok: true, reason: base ? "live matches the previous file" : "no previous file given", changes: diffState(live, head) };
 }

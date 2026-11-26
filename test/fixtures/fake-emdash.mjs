@@ -1,6 +1,7 @@
 // An in-memory stand-in for the EmDash 0.1.0 content API, with the behaviour the mirror depends on (read in EmDash's
-// source): data saves on a "revisions" collection go to a draft revision and leave the live row alone; publish copies
-// the draft into the row; SEO writes go live at once; _rev = base64(version:updatedAt). Synthetic content only.
+// source): data saves on a "revisions" collection go to a draft revision (the whole merged data, plus _slug when a slug
+// is sent) and leave the live row alone; publish copies the draft into the row and applies _slug; SEO writes go live at
+// once; get and list skip trashed rows (deletedAt); _rev = base64(version:updatedAt). Synthetic content only.
 
 export function fakeEmDash({ revisions = true, seo = true, schemaReadable = false, previewSecret = false, posts = [] } = {}) {
   let clock = Date.parse("2026-01-01T00:00:00Z");
@@ -13,11 +14,20 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
   const log = [];
   for (const p of posts) {
     const rid = id();
-    const row = { id: rid, type: "posts", slug: p.slug, status: p.status || "published", data: structuredClone(p.data), authorId: "u1", primaryBylineId: null, createdAt: now(), updatedAt: now(), publishedAt: p.publishedAt === undefined ? now() : p.publishedAt, scheduledAt: null, liveRevisionId: null, draftRevisionId: null, version: 1, locale: "en", translationGroup: rid, terms: p.terms || {} };
+    const row = { id: rid, type: "posts", slug: p.slug, status: p.status || "published", data: structuredClone(p.data), authorId: "u1", primaryBylineId: null, createdAt: now(), updatedAt: now(), publishedAt: p.publishedAt === undefined ? now() : p.publishedAt, scheduledAt: p.scheduledAt ?? null, deletedAt: p.deletedAt ?? null, liveRevisionId: null, draftRevisionId: null, version: 1, locale: "en", translationGroup: rid, terms: p.terms || {} };
     rows.set(rid, row);
     if (seo) seoRows.set(rid, { title: null, description: null, image: null, canonical: null, noIndex: false, ...(p.seo || {}) });
   }
-  const find = (k) => rows.get(k) || [...rows.values()].find((r) => r.slug === k);
+  const findAny = (k) => rows.get(k) || [...rows.values()].find((r) => r.slug === k);
+  const find = (k) => { const r = rows.get(k) || [...rows.values()].find((x) => x.slug === k && !x.deletedAt); return r && !r.deletedAt ? r : undefined; };
+  /** Test helper: an admin saves a draft (like the admin UI: whole merged data, _slug when the slug changes). */
+  function adminDraft(k, { data = {}, slug } = {}) {
+    const r = find(k);
+    const baseData = r.draftRevisionId ? revs.get(r.draftRevisionId).data : r.data;
+    const merged = { ...baseData, ...structuredClone(data) };
+    if (slug !== undefined) merged._slug = slug;
+    const rid = id(); revs.set(rid, { id: rid, data: merged }); r.draftRevisionId = rid; r.updatedAt = now(); r.version++;
+  }
   const view = (r) => { const { terms, ...v } = structuredClone(r); if (seo) v.seo = { ...seoRows.get(r.id) }; return v; };
   const rev = (r) => Buffer.from(`${r.version}:${r.updatedAt}`).toString("base64");
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -35,7 +45,7 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
     let m;
     if (p === "/_emdash/api/content/posts" && method === "GET") {
       const status = u.searchParams.get("status");
-      const items = [...rows.values()].filter((r) => !status || r.status === status).map(view);
+      const items = [...rows.values()].filter((r) => !r.deletedAt && (!status || r.status === status)).map(view);
       return ok({ items });
     }
     if (p === "/_emdash/api/content/posts" && method === "POST") {
@@ -57,7 +67,7 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
           if (revisions) {
             const baseData = r.draftRevisionId ? revs.get(r.draftRevisionId).data : r.data;
             const rid = id();
-            revs.set(rid, { id: rid, data: { ...baseData, ...structuredClone(body.data) } });
+            revs.set(rid, { id: rid, data: { ...baseData, ...structuredClone(body.data), ...(body.slug !== undefined ? { _slug: body.slug } : {}) } });
             r.draftRevisionId = rid;
           } else r.data = { ...r.data, ...structuredClone(body.data) };
         }
@@ -72,6 +82,7 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
         if (!pick) { pick = id(); revs.set(pick, { id: pick, data: structuredClone(r.data) }); }
         const { _slug, ...data } = revs.get(pick).data;
         r.data = structuredClone(data);
+        if (typeof _slug === "string") r.slug = _slug;
         r.liveRevisionId = pick; r.draftRevisionId = null; r.status = "published";
         r.publishedAt = r.publishedAt || now(); r.updatedAt = now();
         return ok({ item: view(r) });
@@ -94,9 +105,9 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
       const text = (data.content || []).map((b) => (b.children || []).map((s) => s.text).join("")).join(" ");
       return new Response(`<html><head><title>x</title></head><body><nav>Home Blog</nav><main><h1>${data.title}</h1><p>${text}</p></main></body></html>`, { status: 200 });
     }
-    if (p === "/sitemap.xml") return new Response(`<urlset>${[...rows.values()].filter((r) => r.status === "published").map((r) => `<url><loc>${u.origin}/posts/${encodeURIComponent(r.slug)}</loc></url>`).join("")}</urlset>`);
+    if (p === "/sitemap.xml") return new Response(`<urlset>${[...rows.values()].filter((r) => r.status === "published" && !r.deletedAt).map((r) => `<url><loc>${u.origin}/posts/${encodeURIComponent(r.slug)}</loc></url>`).join("")}</urlset>`);
     if (p === "/rss.xml") return new Response(`<rss>${[...rows.values()].filter((r) => r.status === "published" && r.publishedAt).map((r) => `<link>${u.origin}/posts/${r.slug}</link>`).join("")}</rss>`);
     return err(404, "NOT_FOUND");
   }
-  return { fetch, rows, revs, seoRows, log, find };
+  return { fetch, rows, revs, seoRows, log, find, findAny, adminDraft };
 }

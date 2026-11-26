@@ -2,6 +2,12 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D70 review R2 fixes on feat/emdash-cms-mirror; code and documentation change, nothing deployed)
+- **Code:** rebased on main 1924190. `src/cms/commands.mjs` (`loadTarget` refuses: id without a base, 404/trashed, slug mismatch, status not published, a new file on someone else's row; `foreignDraft` compares the whole pending data with `_slug` against the file's versions; `--settings` file with `revisionsProven` that the flag cannot override), `src/cms/mirror.mjs` (`draftMatches`, `writePlan` resume state, `preserveBlocks`, non-JSON front matter rejected, duplicates on every file), `src/cms/portable-text.mjs` (`markdownProblems`, `blank:false` links, strike mark name kept), `src/cms/emdash.mjs` (URL with credentials refused).
+- **Tests:** new `test/cms-mirror-safety.test.mjs` (11 tests: fixes 1, 2, 3 (two), 4, 5, 6, 8, 9d, 10 and a trashed post). All 11 fail at b14d0bd (each on the behaviour, not on an import) and pass after. Stand-in `test/fixtures/fake-emdash.mjs` gained trashed and scheduled rows, editor drafts with `_slug`, and slug changes on publish. `npm test` 670 tests, 668 pass, 0 fail, 2 skipped.
+- **Documentation:** `docs/cms-mirror.md` (settings file, ownership rules, resume, new-post undo, block keys), D70 "Review R2", root `CHANGELOG.md`.
+- **Deployment:** none. No live CMS write.
+
 ## 2026-11-26 (D70 CMS mirror for EmDash; code change, nothing deployed)
 - **Code:** new `src/cms/emdash.mjs` (client), `src/cms/portable-text.mjs` (converter with per-block round-trip check), `src/cms/mirror.mjs` (file format, validation, write plan), `src/cms/commands.mjs`; `bin/seo-autopilot.mjs` gains `cms`.
 - **Tests:** `test/cms-portable-text.test.mjs` (9), `test/cms-mirror.test.mjs` (12) against an in-memory stand-in (`test/fixtures/fake-emdash.mjs`). `npm test` 537 tests, 535 pass, 0 fail, 2 skipped (before: 516, 514 pass, 2 skipped).

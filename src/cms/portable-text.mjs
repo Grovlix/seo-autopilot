@@ -19,6 +19,9 @@ const DELIM_MARK = { "**": "strong", _: "em", "~~": "strike-through" };
 const MARK_ALIASES = { strikethrough: "strike-through" };
 const ESCAPABLE = /[\\*_`[\]~]/g;
 
+// A link the Markdown form can carry: href only, or href plus blank: false (EmDash's editor writes it on every link).
+const plainLink = (d) => d?._type === "link" && typeof d.href === "string" && Object.keys(d).every((k) => ["_key", "_type", "href"].includes(k) || (k === "blank" && d.blank === false));
+
 // ------------------------------------------------------------------------------------------------ normalised form
 
 /**
@@ -45,7 +48,7 @@ function normalizeBlockShape(b) {
     const marks = (s.marks || []).map((m) => {
       const d = defs.get(m);
       if (!d) return MARK_ALIASES[m] || m;
-      if (d._type === "link" && Object.keys(d).every((k) => ["_key", "_type", "href"].includes(k))) return `link:${d.href ?? ""}`;
+      if (plainLink(d)) return `link:${d.href}`;
       return `def:${JSON.stringify(stripKeys(d))}`;
     }).sort();
     const extra = {};
@@ -181,7 +184,7 @@ function renderSpans(spans, markDefs) {
     if (Object.keys(s).some((k) => !["_type", "_key", "text", "marks"].includes(k))) return null;
     for (const m of s.marks || []) {
       const d = defs.get(m);
-      if (d) { if (d._type !== "link" || typeof d.href !== "string" || Object.keys(d).some((k) => !["_key", "_type", "href"].includes(k))) return null; }
+      if (d) { if (!plainLink(d)) return null; }
       else if (!DELIMS[MARK_ALIASES[m] || m] && m !== "code") return null;
     }
   }
@@ -216,8 +219,53 @@ const escapeHref = (h) => String(h).replace(/[\\()]/g, (c) => "\\" + c);
 
 // ------------------------------------------------------------------------------------------------ Markdown -> PT
 
-/** Markdown (the dialect above) to Portable Text blocks, with fresh deterministic keys. */
-export function fromMarkdown(markdown) {
+/**
+ * Markdown (the dialect above) to Portable Text blocks, with fresh deterministic keys.
+ * opts.strike: the mark name to write for ~~text~~ ("strike-through" by default; pass "strikethrough" when the CMS
+ * content uses that name, see strikeMarkOf).
+ */
+export function fromMarkdown(markdown, { strike = "strike-through" } = {}) {
+  const blocks = parseBlocks(markdown);
+  if (strike !== "strike-through") for (const b of blocks) for (const c of b?.children || []) if (Array.isArray(c?.marks)) c.marks = c.marks.map((m) => (m === "strike-through" ? strike : m));
+  return blocks;
+}
+
+/** The strike mark name a block list already uses, so edited blocks keep it. */
+export function strikeMarkOf(blocks) {
+  for (const b of Array.isArray(blocks) ? blocks : []) for (const c of b?.children || []) for (const m of c?.marks || []) if (m === "strikethrough" || m === "strike-through") return m;
+  return "strike-through";
+}
+
+/**
+ * Lines that would not publish as the author meant, for validate: an indented or broken <!--ec:block --> line (it
+ * would be published as visible text), a block that is not an object, and a code fence that is never closed (the rest
+ * of the post would become code). Returns [{ line, problem }]. Follows the same reading order as the parser.
+ */
+export function markdownProblems(markdown) {
+  const lines = String(markdown ?? "").replace(/\r\n/g, "\n").split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^<!--ec:block /.test(line)) {
+      const f = line.match(FENCE);
+      let v;
+      try { if (!f) throw new Error(); v = JSON.parse(f[1]); } catch { out.push({ line: i + 1, problem: "a <!--ec:block --> line is broken (it must stay one line of valid JSON)" }); continue; }
+      if (!v || typeof v !== "object" || Array.isArray(v) || typeof v._type !== "string") out.push({ line: i + 1, problem: "a <!--ec:block --> line must hold one block (a JSON object with a _type)" });
+      continue;
+    }
+    if (/^\s+<!--ec:block/.test(line)) { out.push({ line: i + 1, problem: "a <!--ec:block --> line must start at the beginning of the line (indented, it is published as text)" }); continue; }
+    const code = line.match(/^(`{3,})([^`\s]*)\s*$/);
+    if (code) {
+      let j = i + 1;
+      while (j < lines.length && lines[j] !== code[1]) j++;
+      if (j >= lines.length) { out.push({ line: i + 1, problem: `the code fence ${code[1]} opened here is never closed (everything after it would become code)` }); break; }
+      i = j;
+    }
+  }
+  return out;
+}
+
+function parseBlocks(markdown) {
   const keys = keyMaker();
   const lines = String(markdown ?? "").replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
@@ -237,7 +285,9 @@ export function fromMarkdown(markdown) {
     if (line.trim() === "") { i++; continue; }
     const f = line.match(FENCE);
     if (f) {
-      try { blocks.push(JSON.parse(f[1])); } catch { blocks.push(textBlock(line, "normal", keys)); }
+      let v = null;
+      try { v = JSON.parse(f[1]); } catch { /* broken: kept as text, validate reports it */ }
+      blocks.push(v && typeof v === "object" && !Array.isArray(v) ? v : textBlock(line, "normal", keys));
       i++; continue;
     }
     const code = line.match(/^(`{3,})([^`\s]*)\s*$/);
