@@ -596,3 +596,72 @@ test("R10 F9: removing every SEO key from a file that had them is invalid (it wo
   assert.equal(writes(fake).length, n);
   assert.equal(fake.seoRows.get(fake.find("alpha").id).title, "Alpha SEO");
 });
+
+// ------------------------------------------------------------------------------------------------ review R8 round 2, item 1
+
+// A publish run turns red on one file while another file's change (X1) still goes out, so the caller's published point
+// (its --base-ref) stays behind. The next edit (X2) must not be refused as "changed outside the mirror".
+test("R8r2 stuck point: a file with an id whose live post is a later version on the branch (published by a red run) is not drift", async () => {
+  const fake = site(); const r = await repo(fake);
+  const point = r.head();
+  r.edit("alpha", (p) => { p.body = p.body.replace("Alpha words here.", "Alpha words (X1)."); }); const x1 = r.commit("X1");
+  assert.equal((await r.cmd("publish", "alpha", "--base-ref", point)).code, 0, "X1 goes out; the caller's point stays");
+  r.edit("alpha", (p) => { p.body = p.body.replace("(X1)", "(X1) (X2)"); }); r.commit("X2");
+  const p = await r.cmd("publish", "alpha", "--base-ref", point);
+  assert.equal(p.code, 0, p.raw);
+  assert.match(bodyText(fake.find("alpha")), /\(X2\)/);
+  assert.equal(p.report.liveMatchedVersion, x1);
+});
+
+test("R8r2 stuck point: an admin edit is still drift with the window (live equals no version on the branch)", async () => {
+  const fake = site(); const r = await repo(fake);
+  const point = r.head();
+  r.edit("alpha", (p) => { p.body = p.body.replace("Alpha words here.", "Alpha words (X1)."); }); r.commit("X1");
+  assert.equal((await r.cmd("publish", "alpha", "--base-ref", point)).code, 0);
+  fake.find("alpha").data.title = "Alpha (edited in the CMS)";
+  r.edit("alpha", (p) => { p.body = p.body.replace("(X1)", "(X1) (X2)"); }); r.commit("X2");
+  const n = writes(fake).length;
+  const p = await r.cmd("publish", "alpha", "--base-ref", point);
+  assert.equal(p.code, 3, p.raw);
+  assert.equal(p.report.refusal, "live-changed");
+  assert.equal(writes(fake).length, n);
+});
+
+test("R8r2 stuck point: the window is first-parent only (a side branch's intermediate commit does not count) and starts at --base-ref", async () => {
+  const fake = site(); const r = await repo(fake);
+  const point = r.head();
+  // A side branch: S1 then S2, merged with a merge commit; only S2's text is on main's first-parent history.
+  r.git("checkout", "-qb", "side");
+  r.edit("alpha", (p) => { p.body = p.body.replace("Alpha words here.", "Alpha side one."); }); r.commit("S1");
+  r.edit("alpha", (p) => { p.body = p.body.replace("side one", "side two"); }); r.commit("S2");
+  r.git("checkout", "-q", "main"); r.git("merge", "-q", "--no-ff", "-m", "merge side", "side");
+  fake.adminDraft("alpha", { data: { content: [para("Alpha side one.")] } }); // live becomes S1's text (not via the mirror)
+  await fake.fetch(`${URL_}/_emdash/api/content/posts/${fake.find("alpha").id}/publish`, { method: "POST", headers: { authorization: "Bearer x" }, body: "{}" });
+  r.edit("alpha", (p) => { p.body = p.body.replace("side two", "side three"); }); r.commit("main edit");
+  const p = await r.cmd("publish", "alpha", "--base-ref", point);
+  assert.equal(p.code, 3, p.raw);
+  assert.equal(p.report.refusal, "live-changed");
+  // A version from before --base-ref does not count either: live back at the seed text, base after a later commit.
+  const fake2 = site(); const r2 = await repo(fake2);
+  r2.edit("alpha", (p2) => { p2.body = p2.body.replace("Alpha words here.", "Alpha words (Y1)."); }); const y1 = r2.commit("Y1 (never published)");
+  r2.edit("alpha", (p2) => { p2.body = p2.body.replace("(Y1)", "(Y2)"); }); r2.commit("Y2");
+  const q = await r2.cmd("publish", "alpha", "--base-ref", y1);
+  assert.equal(q.code, 3, q.raw);
+  assert.equal(q.report.refusal, "live-changed");
+});
+
+test("R8r2 stuck point: an id-less claim cannot use the wider window (only --base-ref's version or this version)", async () => {
+  const fake = site(); const r = await repo(fake);
+  await published(r, fake, "claim-window", "Version one of the article.");
+  const point = r.head();
+  r.edit("claim-window", (p) => { p.body = p.body.replace("Version one", "Version two"); }); r.commit("v2");
+  const p1 = await r.cmd("publish", "claim-window", "--base-ref", point);
+  assert.equal(p1.code, 0, p1.raw); // claimed by its previous version; the caller's point stays behind
+  r.edit("claim-window", (p) => { p.body = p.body.replace("Version two", "Version three"); }); r.commit("v3");
+  const n = writes(fake).length;
+  const p2 = await r.cmd("publish", "claim-window", "--base-ref", point);
+  assert.equal(p2.code, 3, p2.raw);
+  assert.equal(p2.report.refusal, "slug-taken");
+  assert.equal(writes(fake).length, n);
+  assert.match(bodyText(fake.find("claim-window")), /Version two/);
+});

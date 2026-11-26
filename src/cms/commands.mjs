@@ -260,6 +260,22 @@ export function gitVersionsOf(file) {
   return out;
 }
 
+/**
+ * The file's versions committed after baseRef on the first-parent history of HEAD (the branch being published), newest
+ * first: [{ sha, parsed }]. Side branches merged in do not count, only what each merge put on the branch. Empty without
+ * git or when git cannot resolve baseRef. Used only by the drift check of a file that already
+ * owns its post (review R8 round 2, item 1), never to claim a post (review R10 F6/F7).
+ */
+export function rangeVersionsOf(file, baseRef) {
+  const out = [];
+  if (!baseRef) return out;
+  try {
+    const shas = execFileSync("git", ["log", "--first-parent", "--format=%H", "-n", "200", `${baseRef}..HEAD`, "--", basename(file)], { cwd: dirname(resolve(file)), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean);
+    for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push({ sha, parsed: parseMirror(t) }); }
+  } catch { /* not a git checkout, or baseRef unknown */ }
+  return out;
+}
+
 /** The file's own versions: this file, its previous version, and every version committed in git (newest first). */
 export function versionsOf(file, parsed, base) {
   return [parsed, ...(base ? [base] : []), ...gitVersionsOf(file).map((v) => v.parsed)];
@@ -273,7 +289,8 @@ export function versionsOf(file, parsed, base) {
  * this version (a retried publish that landed; nothing is written then). Never any older version in git history: a pull
  * request could supply that proof itself (a first commit copying a public page, then a rewrite; R10 F6), and a path
  * reused for an unrelated article would match its removed predecessor (R10 F7). No other mirror file may claim the slug
- * or the post. SEO drift is left to writePlan, which compares against the same previous version.
+ * or the post. Drift (SEO included) is left to writePlan, which compares against the same previous version or, once the
+ * claim holds, a later version of the file on the published branch (rangeVersionsOf); that window never proves a claim.
  */
 function claimProblem(o, file, dir, parsed, item, base) {
   const m = parsed.meta;
@@ -347,7 +364,7 @@ async function confirmDraft(api, o, id, parsed) {
   }
 }
 
-async function saveDraft(api, o, parsed, report, file, { dir, added = [] } = {}) {
+async function saveDraft(api, o, parsed, report, file, { dir, added = [], baseRef = null } = {}) {
   const head = stateOfFile(parsed);
   const versions = versionsOf(file, parsed, report.base);
   let got = await loadTarget(api, o, parsed, report, versions, file, dir);
@@ -364,8 +381,13 @@ async function saveDraft(api, o, parsed, report, file, { dir, added = [] } = {})
   const hasPending = !!item.draftRevisionId && item.draftRevisionId !== item.liveRevisionId;
   const pendingData = hasPending ? (await api.compare(o.collection, item.id))?.draft || {} : null;
   const foreign = item.status === "published" && hasPending ? foreignDraft(o, item, pendingData, versions) : false;
-  const plan = writePlan({ live, base, foreignDraft: foreign, head });
+  // A file that owns its post (an id, or a claim the previous version or this version proved) may find the live post at a
+  // later version of itself on this branch: a red run published it but the caller's base did not move.
+  const owned = (parsed.meta.id != null && parsed.meta.id !== "") || !!report.claimedBySlug;
+  const between = owned && base ? rangeVersionsOf(file, baseRef).map((v) => ({ sha: v.sha, state: stateOfFile(v.parsed) })) : [];
+  const plan = writePlan({ live, base, foreignDraft: foreign, head, between });
   report.plan = { ok: plan.ok, reason: plan.reason, changes: plan.changes };
+  if (plan.matched) report.liveMatchedVersion = plan.matched;
   if (!plan.ok) throw new Refused(plan.reason, foreign ? "foreign-draft" : "live-changed");
   // Only the current file may go live. A pending draft equal to an older version of the file (a publish that failed
   // before a revert, say) may be overwritten, never published: it is replaced by the current file first, also when
@@ -432,7 +454,7 @@ export async function draftCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const api = client(flags, f);
   const report = { action: "draft", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
   refuseIfWritesOff(o, flags, report);
-  const { item } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly });
+  const { item } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly, baseRef: flags.base ? null : flags["base-ref"] && String(flags["base-ref"]) });
   delete report.base;
   report.id = item.id;
   report.liveUrl = item.status === "published" ? pageUrl(api.base, o.urlPattern, item.slug) : null;
@@ -456,7 +478,7 @@ export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const api = client(flags, f);
   const report = { action: "publish", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
   refuseIfWritesOff(o, flags, report);
-  const { item, head, changes, pendingIsHead } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly });
+  const { item, head, changes, pendingIsHead } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly, baseRef: flags.base ? null : flags["base-ref"] && String(flags["base-ref"]) });
   delete report.base;
   report.id = item.id;
   report.changes = changes;

@@ -286,13 +286,27 @@ export function seoPayload(parsed) {
  * any pending CMS draft. Returns { ok, reason, changes } where changes lists what the write will change.
  * live: state of the live item (or null for a new post); base: state of the previous file (or null);
  * pendingDraft: state of an unpublished CMS draft (or null); head: state of this file.
+ * between: [{ sha, state }] the file's versions after base on the published branch (first-parent commits in
+ * base..head), for a file that already owns its post. When live is not base but equals one of them, that version is the
+ * previous version: a run that went red on another file still published this one, and the caller's base stayed behind
+ * (review R8 round 2, item 1). The result then has `matched: sha`.
  */
-export function writePlan({ live, base, foreignDraft = false, head }) {
+export function writePlan({ live, base, foreignDraft = false, head, between = [] }) {
   if (!live) return { ok: true, reason: "new post", changes: diffState(null, head) };
   // A re-run after a publish that already landed (a retried job): the CMS matches the new file, nothing to do.
   if (sameState(live, head)) return { ok: true, reason: "the CMS already matches the file", changes: [] };
   // Publishing would publish that draft too (its words, and a pending slug change with no redirect).
   if (foreignDraft) return { ok: false, reason: "the CMS has an unpublished draft that this mirror did not make; publish or discard it in the CMS first", changes: [] };
+  let matched = null;
+  if (base && diffState(live, base, partsFor(live, base)).length) {
+    const v = between.find((x) => !diffState(live, x.state, partsFor(live, x.state)).length);
+    if (v) { matched = v.sha; base = v.state; }
+  }
+  const plan = planAgainst({ live, base, head });
+  return matched && plan.ok ? { ...plan, reason: `live matches the file at ${matched.slice(0, 12)} (published after the given previous version)`, matched } : plan;
+}
+
+function planAgainst({ live, base, head }) {
   // SEO keys appear in the file for the first time: the previous version never managed SEO, so whatever the CMS has was
   // set there (an editor in the admin). Overwriting it is drift, unless the CMS has none yet (review R10 F8).
   if (head.seo && !base?.seo && live.seo && seoIsSet(live.seo) && JSON.stringify(live.seo) !== JSON.stringify(head.seo))
