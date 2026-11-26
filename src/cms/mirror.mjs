@@ -141,6 +141,12 @@ export function partsFor(a, b) {
   return ["slug", "title", "excerpt", "body", ...(a?.seo && b?.seo ? ["seo"] : [])];
 }
 
+/** Has any SEO field a value (a state's seo object)? */
+export const seoIsSet = (seo) => !!seo && Object.values(seo).some((v) => v !== null && v !== false);
+
+/** The parts a post's words and address live in (everything but SEO). */
+export const CONTENT_PARTS = ["slug", "title", "excerpt", "body"];
+
 /** Does the live state equal this file state, on the parts the file manages? */
 export const sameState = (live, file) => diffState(live, file, partsFor(live, file)).length === 0;
 
@@ -194,6 +200,10 @@ export function validateFile(parsed, { file = "", base = null, slugPattern = LAT
     }
     if (JSON.stringify(b.canonical ?? null) !== JSON.stringify(m.canonical ?? null)) highRisk.push(`canonical changes from ${JSON.stringify(b.canonical ?? null)} to ${JSON.stringify(m.canonical ?? null)}`);
     if (b.noIndex !== true && m.noIndex === true) highRisk.push("noIndex turned on");
+    // A file without SEO keys leaves the CMS's SEO alone (publish never writes it), so removing every key would not clear
+    // anything: the run would be green while the old SEO stays live (review R10 F9). Clearing is done with null / false.
+    const seoKeys = (x) => Object.keys(SEO_KEYS).filter((k) => k in x);
+    if (seoKeys(b).length && !seoKeys(m).length) errors.push(`SEO keys removed (${seoKeys(b).join(", ")}): a file without SEO keys leaves the CMS's SEO as it is; to clear them keep the keys and set them to null (noIndex: false)`);
     if (addedReadOnly.length) warnings.push(`read-only ${addedReadOnly.join(", ")} added (absent in the previous version): draft and publish refuse unless ${addedReadOnly.length > 1 ? "they equal" : "it equals"} the CMS post`);
   }
   return { errors: [...new Set(errors)], warnings, highRisk, facts, addedReadOnly };
@@ -283,6 +293,10 @@ export function writePlan({ live, base, foreignDraft = false, head }) {
   if (sameState(live, head)) return { ok: true, reason: "the CMS already matches the file", changes: [] };
   // Publishing would publish that draft too (its words, and a pending slug change with no redirect).
   if (foreignDraft) return { ok: false, reason: "the CMS has an unpublished draft that this mirror did not make; publish or discard it in the CMS first", changes: [] };
+  // SEO keys appear in the file for the first time: the previous version never managed SEO, so whatever the CMS has was
+  // set there (an editor in the admin). Overwriting it is drift, unless the CMS has none yet (review R10 F8).
+  if (head.seo && !base?.seo && live.seo && seoIsSet(live.seo) && JSON.stringify(live.seo) !== JSON.stringify(head.seo))
+    return { ok: false, reason: `the CMS has SEO fields the previous file did not manage (${Object.keys(live.seo).filter((k) => live.seo[k] !== null && live.seo[k] !== false).join(", ")}), and this file sets SEO for the first time: it would overwrite them; export again to get them into the file, then edit`, changes: [] };
   if (base) {
     const drift = diffState(live, base, partsFor(live, base));
     // An SEO write that failed after the content was published: the content already equals this file and the SEO

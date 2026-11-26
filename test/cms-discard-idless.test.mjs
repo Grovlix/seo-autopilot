@@ -412,3 +412,187 @@ test("discard of an id-less file's closed refresh preview", async () => {
   assert.equal(pending(fake.find("idless-preview")), false);
   assert.match(bodyText(fake.find("idless-preview")), /First version/);
 });
+
+// ------------------------------------------------------------------------------------------------ review R10 fixes
+
+const discardWith = (r, fake, slug, fetch, ...extra) => run(["discard", "--file", r.file(slug), "--settings", r.settings, ...extra], fake, { fetch });
+/** A published post made in the admin (no mirror file has ever stood for it). */
+async function adminPost(fake, slug, title, words) {
+  const api = (path, body) => fake.fetch(URL_ + path, { method: "POST", headers: { authorization: "Bearer x" }, body: JSON.stringify(body) });
+  const made = await (await api("/_emdash/api/content/posts", { slug, status: "draft", data: { title, content: [para(words)] } })).json();
+  await api(`/_emdash/api/content/posts/${made.data.item.id}/publish`, {});
+  return made.data.item.id;
+}
+/** What export would write for one post, as a "new article" file (slug, title and body only, no id). */
+async function idlessCopyOf(r, fake, slug) {
+  const d = join(r.dir, "export-scratch");
+  await run(["export", "--dir", d], fake);
+  const p = parseMirror(readFileSync(join(d, `${slug}.md`), "utf8"));
+  execFileSync("rm", ["-rf", d]);
+  return { meta: { slug: p.meta.slug, title: p.meta.title }, body: p.body };
+}
+
+test("R10 F1: an admin autosave (same draft revision id) between the check and the call is not discarded (draft-changed)", async () => {
+  const fake = site(); const r = await repo(fake);
+  const base = await previewed(r, "alpha", "Alpha words here.", "Alpha words, PR.");
+  const rid = fake.find("alpha").draftRevisionId;
+  let compared = false;
+  const racing = async (url, init = {}) => {
+    const u = new URL(url);
+    if ((init.method || "GET") === "GET" && compared && /\/content\/posts\/[^/]+$/.test(u.pathname)) { fake.adminAutosave("alpha", { data: { content: [para("Alpha words, PR. An editor is typing here.")] } }); compared = false; }
+    if (u.pathname.endsWith("/compare")) compared = true;
+    return fake.fetch(url, init);
+  };
+  const d = await discardWith(r, fake, "alpha", racing, "--base-ref", base);
+  assert.equal(fake.find("alpha").draftRevisionId, rid, "the autosave kept the draft revision id");
+  assert.equal(d.code, 3, d.raw);
+  assert.equal(d.report.refusal, "draft-changed");
+  assert.equal(discards(fake).length, 0);
+  assert.ok(pending(fake.find("alpha")), "the editor's draft stays");
+});
+
+test("R10 F1: the stand-in's autosave keeps the draft revision id and changes _rev (as EmDash 0.1.0 does)", async () => {
+  const fake = site(); const r = await repo(fake);
+  await previewed(r, "alpha", "Alpha words here.", "Alpha words, PR.");
+  const row = fake.find("alpha"); const rid = row.draftRevisionId;
+  const get = async () => (await (await fake.fetch(`${URL_}/_emdash/api/content/posts/${row.id}`, { headers: { authorization: "Bearer x" } })).json()).data;
+  const before = await get();
+  await fake.fetch(`${URL_}/_emdash/api/content/posts/${row.id}`, { method: "PUT", headers: { authorization: "Bearer x" }, body: JSON.stringify({ data: { title: "Typing" }, skipRevision: true }) });
+  const after = await get();
+  assert.equal(after.item.draftRevisionId, rid);
+  assert.notEqual(after._rev, before._rev);
+  assert.equal(fake.revs.get(rid).data.title, "Typing");
+});
+
+test("R10 F2: discard refuses a post with a scheduled update (exit 3, scheduled); the draft and the schedule stay", async () => {
+  const fake = site(); const r = await repo(fake);
+  const base = await previewed(r, "alpha", "Alpha words here.", "Alpha words, scheduled.");
+  fake.find("alpha").scheduledAt = "2027-01-01T09:00:00.000Z"; // a person scheduled the draft in the admin
+  const d = await r.cmd("discard", "alpha", "--base-ref", base);
+  assert.equal(d.code, 3, d.raw);
+  assert.equal(d.report.refusal, "scheduled");
+  assert.equal(discards(fake).length, 0);
+  assert.ok(pending(fake.find("alpha")));
+  assert.equal(fake.find("alpha").scheduledAt, "2027-01-01T09:00:00.000Z");
+});
+
+test("R10 F4: a closed stale pull request on an id-less post with no draft exits 4 (no-draft), not 3", async () => {
+  const fake = site(); const r = await repo(fake);
+  await published(r, fake, "stale-pr");
+  const prBase = r.head();
+  r.git("checkout", "-qb", "pr-stale"); r.edit("stale-pr", (p) => { p.body = p.body.replace("First version", "Stale PR version"); });
+  const prHead = r.commit("stale edit");
+  r.git("checkout", "-q", "main"); const mb = r.head();
+  r.edit("stale-pr", (p) => { p.body = p.body.replace("First version", "Second version"); }); r.commit("main edit");
+  assert.equal((await r.cmd("publish", "stale-pr", "--base-ref", mb)).code, 0);
+  r.git("checkout", "-q", prHead);
+  const n = writes(fake).length;
+  const d = await r.cmd("discard", "stale-pr", "--base-ref", prBase);
+  r.git("checkout", "-q", "main");
+  assert.equal(d.code, 4, d.raw);
+  assert.equal(d.report.refusal, "no-draft");
+  assert.equal(writes(fake).length, n);
+});
+
+test("R10 F5: discard removes only a draft equal to the closed pull request's head, not an older push of it", async () => {
+  const fake = site(); const r = await repo(fake);
+  const base = await previewed(r, "alpha", "Alpha words here.", "Alpha words, first push.");
+  r.edit("alpha", (p) => { p.body = p.body.replace("first push", "second push"); }); r.commit("second push, no preview");
+  const d = await r.cmd("discard", "alpha", "--base-ref", base);
+  assert.equal(d.code, 3, d.raw);
+  assert.equal(d.report.refusal, "foreign-draft");
+  assert.equal(discards(fake).length, 0);
+  assert.ok(pending(fake.find("alpha")));
+});
+
+test("R10 F5: --keep-refs: closing a stacked pull request leaves the open parent's preview draft (exit 3, kept-ref)", async () => {
+  const fake = site(); const r = await repo(fake);
+  const base = await previewed(r, "beta", "Beta words here.", "Beta words, PR A.");
+  const aHead = r.head();
+  r.git("checkout", "-qb", "pr-b-stacked"); r.edit("alpha", (p) => { p.body = p.body.replace("Alpha words here.", "Alpha, PR B."); }); r.commit("B");
+  const d = await r.cmd("discard", "beta", "--base-ref", base, "--keep-refs", aHead);
+  assert.equal(d.code, 3, d.raw);
+  assert.equal(d.report.refusal, "kept-ref");
+  assert.equal(discards(fake).length, 0);
+  assert.ok(pending(fake.find("beta")), "A's preview stays");
+  // A ref whose file differs from the draft does not block (B's own preview of a post A never touched).
+  const e = await r.cmd("discard", "beta", "--base-ref", base, "--keep-refs", base);
+  assert.equal(e.code, 0, e.raw);
+});
+
+test("R10 F6: a pull request whose first commit copies a live post the mirror never had cannot preview or publish its rewrite", async () => {
+  const fake = site(); const r = await repo(fake);
+  await adminPost(fake, "gamma", "Gamma (owner's post)", "Gamma owner words.");
+  const main = r.head(); r.git("checkout", "-qb", "pr-gamma");
+  const copy = await idlessCopyOf(r, fake, "gamma");
+  writeFileSync(r.file("gamma"), stringifyMirror(copy.meta, copy.body)); r.commit("copy of the public page");
+  writeFileSync(r.file("gamma"), stringifyMirror({ ...copy.meta, title: "Gamma (taken over)" }, "Replaced words.\n")); r.commit("rewrite");
+  const n = writes(fake).length;
+  const d = await r.cmd("draft", "gamma", "--base-ref", main);
+  assert.equal(d.code, 3, d.raw);
+  assert.equal(d.report.refusal, "slug-taken");
+  r.git("checkout", "-q", "main"); r.git("merge", "-q", "--no-ff", "-m", "Merge PR gamma", "pr-gamma");
+  const p = await r.cmd("publish", "gamma", "--base-ref", main);
+  assert.equal(p.code, 3, p.raw);
+  assert.equal(p.report.refusal, "slug-taken");
+  assert.equal(writes(fake).length, n, "nothing written");
+  assert.equal(fake.find("gamma").data.title, "Gamma (owner's post)");
+});
+
+test("R10 F7: an exported file removed, then a different article added at the same name, cannot replace the old post", async () => {
+  const fake = site(); const r = await repo(fake);
+  r.git("rm", "-q", r.file("beta")); r.commit("drop beta from the mirror");
+  const before = r.head();
+  r.newPost("beta", "A brand new beta article", "Completely different article."); r.commit("new article beta");
+  const n = writes(fake).length;
+  const p = await r.cmd("publish", "beta", "--base-ref", before);
+  assert.equal(p.code, 3, p.raw);
+  assert.equal(p.report.refusal, "slug-taken");
+  assert.equal(writes(fake).length, n);
+  assert.equal(fake.find("beta").data.title, "Beta");
+});
+
+test("R10 F6/F7: an id-less update is high-risk and names the version that proved it (the previous version)", async () => {
+  const fake = site(); const r = await repo(fake);
+  await published(r, fake, "claimed");
+  const b = r.head(); r.edit("claimed", (p) => { p.body += "\nMore.\n"; }); r.commit("edit");
+  const p = await r.cmd("publish", "claimed", "--base-ref", b);
+  assert.equal(p.code, 0, p.raw);
+  assert.equal(p.report.claimedBySlug.matched, "previous version");
+  assert.ok(p.report.highRisk.some((h) => /found by its slug/.test(h)), JSON.stringify(p.report.highRisk));
+});
+
+test("R10 F8: a file that adds SEO keys for the first time is refused (live-changed) when the CMS has other SEO set; allowed when it has none", async () => {
+  const fake = site(); const r = await repo(fake);
+  const id = await published(r, fake, "seo-first");
+  fake.seoRows.get(id).title = "Editor's SEO title"; fake.seoRows.get(id).description = "Editor's description";
+  const addSeo = (p) => { Object.assign(p.meta, { seoTitle: "PR SEO title", seoDescription: null, seoImage: null, canonical: null, noIndex: false }); };
+  const b = r.head(); r.edit("seo-first", addSeo); r.commit("add SEO");
+  const n = writes(fake).length;
+  const p = await r.cmd("publish", "seo-first", "--base-ref", b);
+  assert.equal(p.code, 3, p.raw);
+  assert.equal(p.report.refusal, "live-changed");
+  assert.match(p.report.error, /SEO/);
+  assert.equal(writes(fake).length, n);
+  assert.equal(fake.seoRows.get(id).title, "Editor's SEO title");
+  // The same edit on a post whose CMS SEO is empty sets it.
+  const id2 = await published(r, fake, "seo-empty");
+  const b2 = r.head(); r.edit("seo-empty", addSeo); r.commit("add SEO 2");
+  const q = await r.cmd("publish", "seo-empty", "--base-ref", b2);
+  assert.equal(q.code, 0, q.raw);
+  assert.equal(fake.seoRows.get(id2).title, "PR SEO title");
+});
+
+test("R10 F9: removing every SEO key from a file that had them is invalid (it would not clear them in the CMS)", async () => {
+  const fake = site(); const r = await repo(fake);
+  const b = r.head();
+  r.edit("alpha", (p) => { for (const k of ["seoTitle", "seoDescription", "seoImage", "canonical", "noIndex"]) delete p.meta[k]; }); r.commit("drop SEO keys");
+  const v = await run(["validate", "--dir", r.posts, "--files", r.file("alpha"), "--base-ref", b], fake);
+  assert.equal(v.code, 1, v.raw);
+  assert.ok(v.report.results[0].errors.some((e) => /SEO keys removed/.test(e)), v.raw);
+  const n = writes(fake).length;
+  const p = await r.cmd("publish", "alpha", "--base-ref", b);
+  assert.equal(p.code, 1, p.raw);
+  assert.equal(writes(fake).length, n);
+  assert.equal(fake.seoRows.get(fake.find("alpha").id).title, "Alpha SEO");
+});
