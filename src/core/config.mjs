@@ -13,6 +13,7 @@ export const CONFIG_NAME = "seo-autopilot.config.json";
 export const DEFAULTS = {
   stateDir: ".seo-autopilot",
   dataDir: "seo-autopilot",
+  stateBranch: "seo-data",
   site: {
     inspectPerDay: 60,
     indexNowPerDay: 10,
@@ -59,6 +60,12 @@ export function validate(raw) {
       if (raw.llm.provider != null && !["claude-code", "anthropic", "openai", "none"].includes(raw.llm.provider)) errors.push("llm.provider must be claude-code, anthropic, openai or none");
       if (raw.llm.model != null && (typeof raw.llm.model !== "string" || !raw.llm.model.trim())) errors.push("llm.model must be a model name or alias, for example \"sonnet\"");
     }
+  }
+  if (raw.stateBranch != null) {
+    const b = raw.stateBranch;
+    // The state is force-pushed to this branch, so a name that could be (or reach) a real branch of the site is refused.
+    if (typeof b !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(b) || /\.\.|\/\/|\/$|\.lock$|\.$/.test(b)) errors.push("stateBranch must be a plain git branch name (letters, digits, . _ - /), for example \"seo-data\"");
+    else if (/^(main|master|develop|dev|trunk|head|production|prod|release|gh-pages)$/i.test(b)) errors.push(`stateBranch "${b}" is refused: the state branch is force-pushed, so it must not be a branch your site is built or released from. Use a dedicated name such as "seo-data"`);
   }
   const ids = new Set();
   for (const [i, s] of (raw.sites || []).entries()) {
@@ -185,7 +192,7 @@ export function loadConfig({ cwd = process.cwd(), file } = {}) {
     };
     return site;
   });
-  return { path, root, stateDir, dataDir, sites, llm: raw.llm ?? null };
+  return { path, root, stateDir, dataDir, stateBranch: raw.stateBranch ?? DEFAULTS.stateBranch, sites, llm: raw.llm ?? null };
 }
 
 export function pickSites(cfg, only) {
