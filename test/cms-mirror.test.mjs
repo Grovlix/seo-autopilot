@@ -49,7 +49,8 @@ async function run(args, fake, env = {}) {
   }
 }
 
-const tmp = () => mkdtempSync(join(tmpdir(), "cms-mirror-"));
+// Each temporary folder is its own git repository: mirror folders must sit inside one (or inside the working folder).
+const tmp = () => { const d = mkdtempSync(join(tmpdir(), "cms-mirror-")); execFileSync("git", ["init", "-q"], { cwd: d }); return d; };
 const edit = (file, fn) => { const p = parseMirror(readFileSync(file, "utf8")); fn(p); writeFileSync(file, stringifyMirror(p.meta, p.body)); };
 const writes = (fake) => fake.log.filter((l) => l.method !== "GET" && l.path.startsWith("/_emdash/"));
 
