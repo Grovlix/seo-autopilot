@@ -127,9 +127,13 @@
    ],
    "credentials": [
     "ANTHROPIC_API_KEY",
+    "CLAUDE_CODE_OAUTH_TOKEN",
     "GH_TOKEN",
     "GITHUB_TOKEN",
-    "OPENAI_API_KEY"
+    "OPENAI_API_KEY",
+    "PATH",
+    "SEO_CLAUDE_BIN",
+    "SEO_LLM_TIMEOUT_MS"
    ],
    "hosts": [
     "api.anthropic.com",
@@ -166,11 +170,15 @@
    ],
    "credentials": [
     "ANTHROPIC_API_KEY",
+    "CLAUDE_CODE_OAUTH_TOKEN",
     "GH_TOKEN",
     "GITHUB_TOKEN",
     "GOOGLE_KEY_FILE",
     "GOOGLE_KEY_JSON",
-    "OPENAI_API_KEY"
+    "OPENAI_API_KEY",
+    "PATH",
+    "SEO_CLAUDE_BIN",
+    "SEO_LLM_TIMEOUT_MS"
    ],
    "hosts": [
     "api.anthropic.com",
@@ -207,11 +215,15 @@
    ],
    "credentials": [
     "ANTHROPIC_API_KEY",
+    "CLAUDE_CODE_OAUTH_TOKEN",
     "GH_TOKEN",
     "GITHUB_TOKEN",
     "GOOGLE_KEY_FILE",
     "GOOGLE_KEY_JSON",
-    "OPENAI_API_KEY"
+    "OPENAI_API_KEY",
+    "PATH",
+    "SEO_CLAUDE_BIN",
+    "SEO_LLM_TIMEOUT_MS"
    ],
    "hosts": [
     "analyticsdata.googleapis.com",
@@ -311,9 +323,13 @@
    ],
    "credentials": [
     "ANTHROPIC_API_KEY",
+    "CLAUDE_CODE_OAUTH_TOKEN",
     "GH_TOKEN",
     "GITHUB_TOKEN",
-    "OPENAI_API_KEY"
+    "OPENAI_API_KEY",
+    "PATH",
+    "SEO_CLAUDE_BIN",
+    "SEO_LLM_TIMEOUT_MS"
    ],
    "hosts": [
     "api.anthropic.com",
@@ -1059,6 +1075,7 @@
      "workflow": "seo-check.yml",
      "cron": [],
      "events": [
+      "workflow_dispatch",
       "workflow_call",
       "pull_request"
      ],
@@ -1098,6 +1115,7 @@
      "workflow": "seo-check.yml",
      "cron": [],
      "events": [
+      "workflow_dispatch",
       "workflow_call",
       "pull_request"
      ],
@@ -1318,7 +1336,7 @@
    "hosts": [],
    "writes": [],
    "permissions": "read-only",
-   "usesLLM": true,
+   "usesLLM": false,
    "onError": "the workflow step logs the error; most steps use continue-on-error so one failing job does not stop the run; no automatic retry",
    "verification": "unit/fixture tests only (external calls mocked)"
   },
@@ -1348,7 +1366,7 @@
     "watch.md"
    ],
    "permissions": "read-only",
-   "usesLLM": true,
+   "usesLLM": false,
    "onError": "the workflow step logs the error; most steps use continue-on-error so one failing job does not stop the run; no automatic retry",
    "verification": "unit/fixture tests only (external calls mocked)"
   },
@@ -3319,6 +3337,7 @@
     {
      "workflow": "seo-review.yml",
      "events": [
+      "workflow_dispatch",
       "workflow_call",
       "pull_request"
      ],
@@ -3459,7 +3478,7 @@
     "seo-strategist",
     "seo-researcher"
    ],
-   "continueOnError": 3
+   "continueOnError": 4
   },
   {
    "file": "seo-automerge.yml",
@@ -3535,6 +3554,7 @@
    "file": "seo-check.yml",
    "cron": [],
    "events": [
+    "workflow_dispatch",
     "workflow_call",
     "pull_request"
    ],
@@ -3673,6 +3693,7 @@
    "file": "seo-review.yml",
    "cron": [],
    "events": [
+    "workflow_dispatch",
     "workflow_call",
     "pull_request"
    ],

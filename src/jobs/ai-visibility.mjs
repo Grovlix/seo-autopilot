@@ -17,6 +17,10 @@ export async function run({ site, flags = {} }, deps = {}) {
   const env = deps.env || process.env, f = deps.fetch || globalThis.fetch;
   const only = flags.engines ? String(flags.engines).split(",") : site.research?.engines || null;
   const engines = enabledEngines(env, only);
+  // Engines without a key are skipped by name, so a partial setup still runs (a Claude subscription token does not cover
+  // these: each engine is a provider's own web-search API).
+  const skipped = ENGINES.filter((e) => (!only?.length || only.includes(e.name)) && !e.enabled(env)).map((e) => e.name);
+  if (engines.length && skipped.length) console.log(`ai-visibility: skipping ${skipped.join(", ")} (no key set).`);
   if (!engines.length) { console.log(`ai-visibility: no AI engine key is set, so nothing was asked. Set any of: ${ENGINES.map((e) => e.name).join(", ")} (PERPLEXITY_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY).`); return; }
   const raw = readJson(`${site.paths.data}/questions.json`, []);
   if (raw.some((x) => /^replace these/i.test(String(x?.q ?? x)))) { console.log("ai-visibility: questions.json still has the example list. Put your real customer questions there first, so no credits are spent on examples."); return; }

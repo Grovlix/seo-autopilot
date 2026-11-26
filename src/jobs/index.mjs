@@ -1,5 +1,6 @@
 // Job registry and runner. Each job module exports `description` and `run({ site, cfg, flags, positional })`.
 import { loadConfig, pickSites } from "../core/config.mjs";
+import { configureLlm } from "../lib/llm.mjs";
 
 export const JOBS = {
   daily: () => import("./daily.mjs"),
@@ -73,6 +74,7 @@ export async function runJob(name, { cwd = process.cwd(), site: siteId, flags = 
   const load = JOBS[name];
   if (!load) throw new Error(`Unknown job "${name}". Jobs: ${Object.keys(JOBS).join(", ")}`);
   const cfg = loadConfig({ cwd });
+  configureLlm(cfg.llm);
   const mod = await load();
   for (const site of pickSites(cfg, siteId)) {
     console.log(`\n=== ${name} :: ${site.id} ===`);

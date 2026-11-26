@@ -71,8 +71,8 @@ Outside GitHub Actions the jobs that open issues print what they would do unless
 |---|---|---|
 | `GOOGLE_KEY_JSON` | secret | everything that reads Google |
 | `INDEXNOW_KEY` | secret | IndexNow |
-| `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | secret | optional AI judging, ideas, digest wording. `SEO_LLM_PROVIDER`, `SEO_MODEL`, `OPENAI_BASE_URL` pick the provider/model |
-| `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` | secret | the implementer (drafts approved pages as pull requests); either works and drafting is optional |
+| `CLAUDE_CODE_OAUTH_TOKEN` | secret | your Claude subscription (from `claude setup-token`), no API key: the implementer, the reviewer, the weekly agents, and AI judging, ideas and digest wording. See [Run everything on a Claude subscription](#run-everything-on-a-claude-subscription) |
+| `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | secret | optional pay-per-use alternative for AI judging, ideas and digest wording (`ANTHROPIC_API_KEY` also works for drafting, review and the agents). `SEO_LLM_PROVIDER`, `SEO_MODEL`, `OPENAI_BASE_URL` pick the provider/model |
 | `PAGESPEED_API_KEY` | secret | optional, raises the PageSpeed rate limit |
 | `BRAVE_API_KEY`, `SERPAPI_KEY`, `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` | secrets | optional, any one turns on the `citations` job |
 | `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN` | secrets | optional, Google Keyword Planner in `keywords` (see `docs/research-suite.md`) |
@@ -100,3 +100,47 @@ Still running while paused: the read-only reports (daily, weekly, monthly), prop
 ## Memory
 
 Each run restores its memory from the `seo-data` branch and saves it back (`state restore` / `state save`), so the next run picks up where the last stopped (which pages were inspected, which news was seen, which backlinks were tried). The workflows share one concurrency group so two runs never save at once.
+
+## Run everything on a Claude subscription
+
+Every job that uses a model can run on a Claude Pro, Max, Team or Enterprise subscription with one secret, `CLAUDE_CODE_OAUTH_TOKEN`. No `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is needed.
+
+1. On your own computer, with Claude Code installed: `claude setup-token`. It prints a token valid for a year (it is not saved anywhere).
+2. In your repository: **Settings > Secrets and variables > Actions > New repository secret**, name `CLAUDE_CODE_OAUTH_TOKEN`.
+3. Install the Claude GitHub app on the repository (needed by `anthropics/claude-code-action`).
+4. Optional: in `seo-autopilot.config.json` add `"llm": { "provider": "claude-code" }`. Without it the subscription is used whenever no API key is set; with it the subscription is used even if a key is also set.
+
+What uses it:
+
+| Work | Where | How |
+|---|---|---|
+| Drafting approved changes, reviewing drafts | `seo-implement`, `seo-review` | `anthropics/claude-code-action` (pinned to a commit) with `claude_code_oauth_token` |
+| Weekly strategist and researcher | `seo-agent` | the same action; the agents read the saved reports and write a report and proposals into `seo-agent-out/`, then `run agent ... --report-file / --proposals-file` checks them and opens the issues. No shell |
+| AI judging of news, wording, AI keyword ideas, digest wording | `seo-daily`, `seo-weekly` (`news`, `mentions`, `research`, `digest`) | the Claude Code CLI headless (`claude -p --output-format json --max-turns 1`), installed at a pinned version only when the secret is set. It runs with no tools, no MCP servers and no project settings; search queries, page text and feed items go in as data on stdin |
+
+Without any login every job still runs: the AI parts are skipped with a one-line note and the rule-based result is used. `seo-autopilot doctor` says which provider would be used and why.
+
+Not covered by the subscription:
+- `ai-visibility` asks each AI engine's own web-search API (Perplexity, OpenAI, Anthropic, Gemini) and needs that engine's key. Engines without a key are skipped by name.
+- The Python agent runtime (`run agent` without the file flags, `engines/python`) uses the Claude Agent SDK, whose documentation says: "Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK." It therefore needs `ANTHROPIC_API_KEY`; on a subscription use the `seo-agent` workflow instead.
+
+Limits to know: the token is tied to the subscription of the person who ran `claude setup-token`, and runs count against that subscription's usage limits. Anthropic's GitHub Actions page recommends an API key rather than an OAuth token for a secret shared across repositories. The `claude-code` provider starts the CLI with only the variables it needs (the token, `PATH`, `HOME`, temp folders, locale, proxy and CA settings; the list is `CLAUDE_ENV` in `src/lib/llm.mjs`). Other secrets in the job, such as the Search Console key, `GITHUB_TOKEN` or another provider's key, never reach it. `ANTHROPIC_API_KEY` is left out on purpose: in print mode the CLI uses a key when one is set.
+
+## Checks on drafted pull requests
+
+GitHub does not start `pull_request` workflows for a pull request opened with the workflow's own `GITHUB_TOKEN`. (It now creates them as "action required" runs that wait for someone to click **Approve and run**.) `seo-implement` opens its pull request with that token, so its `checks` job then starts `seo-check` and `seo-review` with `workflow_dispatch` on the drafted branch, which GitHub does allow. It does so only when the drafting job succeeded. A dispatched run's check is not listed on the pull request, so each run (dispatched, called or `pull_request` from a branch of the same repository) also posts a commit status:
+
+- `seo-check`: the build and facts guard, on exactly the commit the build checked out (the pull request's head commit for a `pull_request` run). It is posted from a separate job that has only `statuses: write`; the build itself stays read-only with no secrets. A workflow that calls `seo-check` must grant `statuses: write` to the calling job, or GitHub refuses to start the run.
+- `seo-review`: `pending` while the reviewer runs, then `success` only if it added `seo-review-passed`.
+
+You can make `seo-check` and `seo-review` required status checks in branch protection. `seo-automerge` merges only when, on the exact commit it merges, the newest `seo-check` (and `seo-review`) status posted by `github-actions[bot]` is `success`, no status with that name failed (whoever posted it), and no `seo-check` or `seo-review` run on that commit failed. A check run named `build` is not accepted: any workflow can have a job with that name. The scheduled `seo-autopilot` loop runs check and review itself (`start_checks: false`), and the same statuses let its merge step see them.
+
+What the agents may do on these branches:
+- The drafter may create and push only `seo/issue-<its issue>` (`seo/revert-*` branches belong to `seo-watch`) and may not pass `--label` to `gh pr create`. The autopilot policy reads labels, so a later workflow step removes any label on the new pull request and copies the kind of change from the issue.
+- Claude Code reads `.claude/` (settings and hooks), `CLAUDE.md` and `.mcp.json` from the folder it starts in. On a `pull_request` run `claude-code-action` restores these from the base branch itself; on a dispatched run it does not, and the checkout is the drafted branch. So `seo-review` always restores them (and `.claude.json`, `CLAUDE.local.md`, `.gitmodules`, `.ripgreprc`, `.husky`) from the base branch before the reviewer starts.
+
+Two limits:
+- A dispatched run's completion does not start `workflow_run` workflows, so with `SEO_AUTOMERGE` alone a draft from a label is not merged automatically. The `seo-autopilot` loop merges its own drafts. Otherwise merge by hand, or use the token below.
+- Some organisations turn off "Allow GitHub Actions to create and approve pull requests" (**Settings > Actions > General**). Then `gh pr create` in `seo-implement` fails until that is allowed for the repository or a token below is used.
+
+Optional, instead of the workflow token: a GitHub App installation token (for example from `actions/create-github-app-token`) or a fine-grained personal access token with Contents, Pull requests and Issues read/write, passed as `github_token` to the action in `seo-implement`. Pull requests opened that way start the normal `pull_request` runs and `workflow_run` merges. Keep it in a secret, scope it to the one repository, and remember the drafting agent can use it within its allowed commands.

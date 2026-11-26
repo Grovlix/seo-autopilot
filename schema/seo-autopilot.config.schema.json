@@ -14,6 +14,21 @@
       "type": "string",
       "description": "Where reports and memory are kept (default .seo-autopilot)."
     },
+    "llm": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional AI step for wording, judging and ideas. Without it every job runs rule-based.",
+      "properties": {
+        "provider": {
+          "enum": ["claude-code", "anthropic", "openai", "none"],
+          "description": "claude-code: the Claude Code CLI on your Claude subscription (CLAUDE_CODE_OAUTH_TOKEN, no API key). anthropic or openai: pay-per-use API keys. none: AI off. Default: whichever login is set."
+        },
+        "model": {
+          "type": "string",
+          "description": "Model name or alias (claude-code default: sonnet). SEO_MODEL overrides it."
+        }
+      }
+    },
     "dataDir": {
       "type": "string",
       "description": "Editable data files, playbooks and agents (default seo-autopilot)."

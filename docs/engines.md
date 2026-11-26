@@ -37,12 +37,14 @@ Two agents run here, because they only need to read, fetch and write reports: th
 
 ```bash
 pip install claude-agent-sdk
-export ANTHROPIC_API_KEY=...        # or CLAUDE_CODE_OAUTH_TOKEN (your Claude subscription)
+export ANTHROPIC_API_KEY=...        # this runtime needs an API key (see below)
 npx github:bishal-paul-git/seo-autopilot#v2 run agent seo-strategist --issue
 npx github:bishal-paul-git/seo-autopilot#v2 run agent seo-researcher --issues
 ```
 
-In GitHub Actions the optional `seo-agent` workflow does this weekly once you set the repository variable `SEO_AGENT` to `true`.
+This runtime needs `ANTHROPIC_API_KEY`. The Agent SDK documentation says: "Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK." So the subscription route for these two agents is the GitHub workflow instead.
+
+In GitHub Actions the optional `seo-agent` workflow runs both agents weekly once you set the repository variable `SEO_AGENT` to `true`. It runs them with `anthropics/claude-code-action` and the secret `CLAUDE_CODE_OAUTH_TOKEN` (your Claude subscription, no API key): the agent reads the saved reports and playbooks and writes a report (and, for the researcher, a proposals file) into a scratch folder; then `run agent <name> --issue --report-file ...` / `--issues --proposals-file ...` checks those files with the same limits as the Python tools and opens the issues. In that route the agent reads files and (researcher only) may use web search; it has no shell and cannot write anywhere else.
 
 ### What an agent can and cannot do
 It can: list and read your saved reports, read the playbooks, search them, see your top queries, topics and traffic anomalies, fetch public web pages, run the read-only jobs `audit`, `analyze`, `geo`, `priorities` and `deepdive`, save one report and record topic proposals.
