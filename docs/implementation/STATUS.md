@@ -4,7 +4,21 @@ Kept short; read at the start of every session. Plan: [../product/SYSTEM-READINE
 
 ## 0d. Branch `feat/cms-discard-slug-update` (2026-11-26, Grovlix fork, on main fc34f93, D77)
 - Implemented: `cms discard` (removes the mirror's own preview draft from a published post through EmDash 0.1.0's discard-draft route; refuses foreign drafts, a changed live post, unpublished posts, writes off; exit 4 when there is nothing to discard); id-less files update the published post they made (live equals one of the file's committed versions); read-only keys may be added with the CMS's values; SEO compared only when the file has SEO keys. Verified: `npm test` 769/767/0/2 with the in-memory stand-in and local git repositories; R8's simulation re-run against this branch (ops repository evidence `T16`). **Not verified:** the discard-draft route against a running EmDash (read in its 0.1.0 source only), any live CMS call. Not deployed.
-- Next: the ops repository adds a `pull_request: closed` job that runs `cms discard` per changed file (exit 4 = nothing to do), then re-runs R8's walk on its side.
+- Round 2 (review R10, code `fad3e77`, D77 amended). Each fix has a test that failed first:
+  - discard refuses an admin autosave (`_rev`) and a scheduled draft;
+  - exit 4 is checked first;
+  - only the closed head's draft counts, and `--keep-refs` protects other open pull requests;
+  - id-less claims use only the `--base-ref` version (no history) and are high-risk;
+  - first-time SEO keys over an editor's SEO are drift;
+  - removing all SEO keys is invalid.
+
+  Verified:
+  - `npm test` 780/778/0/2;
+  - R10's sim, adapted to assert the fixes: 20/20;
+  - R8's walk unchanged (31/36).
+
+  Still **not verified** against a running EmDash. Not deployed.
+- Next: the ops repository adds a `pull_request: closed` job that runs `cms discard` per changed file with `--keep-refs` set to the other open pull requests' heads (exit 4 = nothing to do; `not-published` for a new file = a notice). It ships in the same change as the fork pin bump past fc34f93 (R10 F10). Then it re-runs R8's walk on its side.
 
 ## 0b. Branch `feat/arabic-languages-style` (2026-11-26, Grovlix fork, on main 1924190)
 - Implemented: languages per site with translation groups and a Search Console country and language filter; hreflang pair check in `seo-check`; style-guide hook with a built-in Arabic MSA guide (D74). Verified: `npm test` 689/687/0/2 (main 638/636/0/2) with injected fetch and local files only. **Not verified:** a live Search Console call with the filter, a real `seo-check` run, a model run with the style prompts. Not deployed.

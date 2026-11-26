@@ -1322,3 +1322,31 @@ Review R2b (2026-11-26): only the current file goes live; file names and post fi
 **Why not write the id back.** The brief asked for no write to the repository from the publish job (a push from a job that holds the CMS token, branch protection unavailable on the plan). The id-less rule keeps the proof in git history, which the job already has.
 **Tradeoffs and limits.** Discard and publish both lack a revision token in 0.1.0, so a draft saved between the re-read and the call is discarded (it stays in the revision history) or published (the read-back reports it). A file without an id can claim a published post that has no mirror file if one of its committed versions is an exact copy of that post; every post that converts back has a file after an export, so this concerns posts created in the admin since the last export, and a reviewer sees a new file that duplicates a live page. A file that adds SEO keys for the first time writes them with no drift check on SEO. Discard cannot remove an unpublished post made from a closed pull request's new file; a person deletes it in the admin.
 **Checked.** `test/cms-discard-idless.test.mjs` (23 tests, stand-in plus real local git repositories): discard success, foreign draft, an editor's draft over ours, no draft (4), live changed, writes off (0 requests), no base, unpublished post, a draft saved between the re-read and the call, dry run, Arabic slug, id-less closed preview; id-less refresh preview and publish, retried publish, admin edit refused, a post the mirror did not make refused, a second file for the same post refused, id added right and wrong, wrong read-only value, export after a new post, a file renamed in history (edit in the move refused, pure rename accepted), Arabic id-less post, writes off for draft, publish and discard (0 requests). R8's simulation re-run against this branch: see the ops repository evidence `T16`.
+**Amended 2026-11-26 after review R10 (verdict: merge after fixes).** The Leader decided each point below; the code change is `fad3e77`.
+- **F1, autosave.** The re-read before discard now also compares `_rev`. The admin editor autosaves 2 seconds after typing with `skipRevision: true`, which rewrites the existing draft revision in place under the same id (0.1.0 `src/emdash-runtime.ts:1484-1486`). Every save still bumps the row's version and `updated_at`, so `_rev` changes (`src/database/repositories/content.ts:548-549`, `src/api/rev.ts:19-21`). With no `_rev` on either read, the draft's words are compared again instead.
+- **F6/F7, claim gap (replaces decision 2's "any committed version").** An id-less file claims a published post only when the post's words equal the file's version at `--base`/`--base-ref`, or already equal this version. Without a previous version, only an exact match counts, and then nothing is written. History no longer counts:
+  - a pull request could supply the proof itself (a first commit copying a live page, then a rewrite; a merge commit then published over the owner's post);
+  - a path reused for an unrelated article matched the exported file removed from it.
+
+  The claim is added to the report's `highRisk`. Residual: a copy that reaches the default branch through its own reviewed pull request can be updated by the next one. That first pull request shows a whole new file duplicating a live page.
+- **F4.** No pending draft returns exit 4 before the scheduled, base, claim and ownership checks; that path writes nothing.
+- **F2.** A published post with `scheduledAt` set is refused (`scheduled`), on the first read and on the re-read. A person's schedule is never dropped (0.1.0 keeps `status = 'published'` and sets `scheduled_at`, `src/database/repositories/content.ts:797`).
+- **F5, which pull request made the draft.** A marker is not possible in 0.1.0:
+  - A revision stores only `data` and `authorId` (`src/database/repositories/revision.ts:8-15`), and `authorId` would also change the live row's author.
+  - A `_`-prefixed data key is accepted (`contentUpdateBody.data` is `z.record`) and skipped on publish (`src/database/repositories/content.ts:1056-1059`) and by the loader (`src/loader.ts:162-169`).
+  - But the admin's "restore revision" strips only `_slug` and passes every other key to `contentRepo.update`, which writes each one as a column (`src/api/handlers/revision.ts:112-118`, `src/database/repositories/content.ts:577-582`). Restoring any revision the mirror made would then fail.
+
+  So the fallback applies: discard accepts only a draft equal to the file at the closed pull request's head (or a no-change draft), never an earlier push or older history. That alone does not separate a stacked pull request B from its open parent A when B's head still holds A's file. New `--keep-refs a,b` refuses (`kept-ref`) when the draft equals the file at another ref; the ops job passes the other open pull requests' heads.
+- **F8.** A file whose previous version had no SEO keys and that now has them is refused as drift when the CMS's SEO is non-empty and differs (`writePlan`). An empty CMS SEO is set.
+- **F9.** Removing every SEO key from a file that had them is a `validate` error with the way to clear them (keys set to null, `noIndex: false`).
+- **Decisions 2 to 4 (Leader):**
+  - discard keeps refusing never-published posts (`not-published`);
+  - the publish/discard one-round-trip race is accepted for explicit saves, now that F1 is fixed;
+  - exit 4 means success for the ops job.
+- **Checked:**
+  - 11 new tests, red on `8b4903d` first (10 failed, 1 stand-in check passed);
+  - `npm test` 780/778/0/2;
+  - R10's sim adapted to assert each fix: 20/20 on `fad3e77`, 10/20 on `8b4903d`;
+  - R8's walk unchanged (31/36, same as round 1).
+
+  Evidence is in the ops repository, `T16/round2`.
