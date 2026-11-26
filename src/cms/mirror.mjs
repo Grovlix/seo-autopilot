@@ -80,21 +80,27 @@ function imageOf(img) {
 export function itemToMirror(item, { fields = DEFAULT_FIELDS, categories = [], tags = [], rev = null } = {}) {
   const data = item.data || {};
   const seo = item.seo || {};
-  const img = imageOf(data[fields.image]);
   const blocks = Array.isArray(data[fields.body]) ? data[fields.body] : [];
   const { markdown, opaque, problems } = toMarkdown(blocks);
   const back = fromMarkdown(markdown);
   const a = normalizeBlocks(blocks), b = normalizeBlocks(back);
   const differences = [];
   for (let i = 0; i < Math.max(a.length, b.length); i++) if (JSON.stringify(a[i]) !== JSON.stringify(b[i])) differences.push(i);
+  const ro = readOnlyOf(item, { fields, categories, tags });
   const meta = {
-    id: item.id, slug: item.slug, title: data[fields.title] ?? "", excerpt: orNull(data[fields.excerpt]),
-    status: item.status, publishedAt: orNull(item.publishedAt),
+    id: ro.id, slug: ro.slug, title: data[fields.title] ?? "", excerpt: orNull(data[fields.excerpt]),
+    status: ro.status, publishedAt: ro.publishedAt,
     seoTitle: orNull(seo.title), seoDescription: orNull(seo.description), seoImage: orNull(seo.image), canonical: orNull(seo.canonical), noIndex: seo.noIndex === true,
-    categories, tags, image: img.src, imageAlt: img.alt, byline: orNull(item.byline?.displayName), locale: orNull(item.locale), baseRev: rev,
+    categories: ro.categories, tags: ro.tags, image: ro.image, imageAlt: ro.imageAlt, byline: ro.byline, locale: ro.locale, baseRev: rev,
   };
   if (!item.seo) for (const k of Object.keys(SEO_KEYS)) delete meta[k];
   return { text: stringifyMirror(meta, markdown), slug: item.slug, roundTrip: { ok: differences.length === 0, opaque, problems, differences } };
+}
+
+/** The read-only keys of a mirror file (READ_ONLY) as export writes them for this CMS item. extra: { categories, tags }. */
+export function readOnlyOf(item, { fields = DEFAULT_FIELDS, categories = [], tags = [] } = {}) {
+  const img = imageOf((item.data || {})[fields.image]);
+  return { id: item.id, slug: item.slug, status: item.status, publishedAt: orNull(item.publishedAt), categories, tags, image: img.src, imageAlt: img.alt, byline: orNull(item.byline?.displayName), locale: orNull(item.locale) };
 }
 
 /** The comparable state of a post: what a publish changes. From a CMS item or from a mirror file. */
@@ -125,6 +131,24 @@ export function stateOfFile(parsed) {
 export function diffState(a, b, parts = ["slug", "title", "excerpt", "body", "seo"]) {
   return parts.filter((p) => JSON.stringify(a?.[p] ?? null) !== JSON.stringify(b?.[p] ?? null));
 }
+
+/**
+ * The parts to compare between two states. The SEO fields count only when both sides have them: a file without SEO keys
+ * never writes them (publish skips setSeo), so the CMS's SEO row is neither a change nor drift for it. Before, a new post
+ * written without SEO keys looked drifted ("seo") against its own live post on every later edit.
+ */
+export function partsFor(a, b) {
+  return ["slug", "title", "excerpt", "body", ...(a?.seo && b?.seo ? ["seo"] : [])];
+}
+
+/** Has any SEO field a value (a state's seo object)? */
+export const seoIsSet = (seo) => !!seo && Object.values(seo).some((v) => v !== null && v !== false);
+
+/** The parts a post's words and address live in (everything but SEO). */
+export const CONTENT_PARTS = ["slug", "title", "excerpt", "body"];
+
+/** Does the live state equal this file state, on the parts the file manages? */
+export const sameState = (live, file) => diffState(live, file, partsFor(live, file)).length === 0;
 
 // --------------------------------------------------------------------------------------------- validation
 
@@ -162,18 +186,27 @@ export function validateFile(parsed, { file = "", base = null, slugPattern = LAT
   const facts = fileFacts(parsed);
   if (facts.opaque) warnings.push(`${facts.opaque} block(s) kept as <!--ec:block --> JSON (not editable as Markdown)`);
   if (!facts.words) errors.push("the body has no words");
+  const addedReadOnly = [];
   if (base) {
     const b = base.meta;
     for (const k of READ_ONLY) {
       if (JSON.stringify(b[k] ?? null) === JSON.stringify(m[k] ?? null)) continue;
+      // A read-only key the previous version did not have (a new post's file getting its id, status... from an export
+      // or a write-back) is allowed here; draft, publish and discard check it equals the CMS post before any write.
+      if (k !== "slug" && blank(b[k]) && !blank(m[k])) { addedReadOnly.push(k); continue; }
       if (k === "slug" && !blank(b.id)) errors.push(`slug changed from "${b.slug}" to "${m.slug}": changing a live URL needs a person and a redirect, not a mirror edit`);
       else if (k === "id") errors.push(`id changed: a file must stay tied to one CMS post`);
       else if (k !== "slug") errors.push(`${k} is a read-only copy of the CMS and cannot be changed here`);
     }
     if (JSON.stringify(b.canonical ?? null) !== JSON.stringify(m.canonical ?? null)) highRisk.push(`canonical changes from ${JSON.stringify(b.canonical ?? null)} to ${JSON.stringify(m.canonical ?? null)}`);
     if (b.noIndex !== true && m.noIndex === true) highRisk.push("noIndex turned on");
+    // A file without SEO keys leaves the CMS's SEO alone (publish never writes it), so removing every key would not clear
+    // anything: the run would be green while the old SEO stays live (review R10 F9). Clearing is done with null / false.
+    const seoKeys = (x) => Object.keys(SEO_KEYS).filter((k) => k in x);
+    if (seoKeys(b).length && !seoKeys(m).length) errors.push(`SEO keys removed (${seoKeys(b).join(", ")}): a file without SEO keys leaves the CMS's SEO as it is; to clear them keep the keys and set them to null (noIndex: false)`);
+    if (addedReadOnly.length) warnings.push(`read-only ${addedReadOnly.join(", ")} added (absent in the previous version): draft and publish refuse unless ${addedReadOnly.length > 1 ? "they equal" : "it equals"} the CMS post`);
   }
-  return { errors: [...new Set(errors)], warnings, highRisk, facts };
+  return { errors: [...new Set(errors)], warnings, highRisk, facts, addedReadOnly };
 }
 
 /** Check a set of mirror files together: each file, plus slugs and ids unique across the set. */
@@ -249,24 +282,57 @@ export function seoPayload(parsed) {
 }
 
 /**
+ * The text of the live-older-version refusal (also in docs/cms-mirror.md; keep them in step). The refusal cannot tell two
+ * causes apart, so it names both and the two ways out (review R10 round 3, R3-1).
+ */
+export function olderVersionReason(liveSha, newestSha) {
+  const a = liveSha.slice(0, 12), b = newestSha.slice(0, 12);
+  return `the live post equals the file at ${a}, an older version than the newest earlier version of it on this branch (${b}). Either someone went back to ${a} in the CMS admin (a rollback), or ${b} was merged but never published (the kill switch was on, its run was cancelled, or it stopped before any request). Before exporting, compare the live post with the file at both commits: if it is the second case, an export would revert the reviewed text. Ways out: (A) re-run with --base-ref ${a} (on the ops side, a dispatch with before=${a}), only when no other file is pending, because it also drops every other file changed up to ${a}; or (B) publish the text of ${b} (or of this file) in the CMS admin, then re-run. If it was a rollback made on purpose, export the post into the file instead.`;
+}
+
+/**
  * Is it safe to write this file to the CMS? Compares the live item with the file's previous version (base) and looks at
  * any pending CMS draft. Returns { ok, reason, changes } where changes lists what the write will change.
  * live: state of the live item (or null for a new post); base: state of the previous file (or null);
  * pendingDraft: state of an unpublished CMS draft (or null); head: state of this file.
+ * between: [{ sha, state }] the file's versions after base on the published branch (first-parent commits in
+ * base..head, newest first), for a file that already owns its post. When live is not base but equals the newest of them
+ * that differs from this file, that version is the previous version: a run that went red on another file still published
+ * this one, and the caller's base stayed behind (review R8 round 2, item 1). The result then has `matched: sha`. Live
+ * equal to an OLDER version in the window is a person's rollback in the admin, not the mirror's last publish: refused
+ * with `refusal: "live-older-version"` (review R10 round 2, R1).
  */
-export function writePlan({ live, base, foreignDraft = false, head }) {
+export function writePlan({ live, base, foreignDraft = false, head, between = [] }) {
   if (!live) return { ok: true, reason: "new post", changes: diffState(null, head) };
   // A re-run after a publish that already landed (a retried job): the CMS matches the new file, nothing to do.
-  if (!diffState(live, head).length) return { ok: true, reason: "the CMS already matches the file", changes: [] };
+  if (sameState(live, head)) return { ok: true, reason: "the CMS already matches the file", changes: [] };
   // Publishing would publish that draft too (its words, and a pending slug change with no redirect).
   if (foreignDraft) return { ok: false, reason: "the CMS has an unpublished draft that this mirror did not make; publish or discard it in the CMS first", changes: [] };
+  let matched = null;
+  if (base && diffState(live, base, partsFor(live, base)).length) {
+    const v = between.find((x) => sameState(live, x.state));
+    // diffState, not sameState: sameState skips SEO when one side has no SEO keys, so a newest commit that only adds them would be skipped (R10 round 3, X4).
+    const last = between.find((x) => diffState(x.state, head).length > 0);
+    if (v && last && v.sha !== last.sha)
+      return { ok: false, refusal: "live-older-version", reason: olderVersionReason(v.sha, last.sha), changes: [] };
+    if (v) { matched = v.sha; base = v.state; }
+  }
+  const plan = planAgainst({ live, base, head });
+  return matched && plan.ok ? { ...plan, reason: `live matches the file at ${matched.slice(0, 12)} (published after the given previous version)`, matched } : plan;
+}
+
+function planAgainst({ live, base, head }) {
+  // SEO keys appear in the file for the first time: the previous version never managed SEO, so whatever the CMS has was
+  // set there (an editor in the admin). Overwriting it is drift, unless the CMS has none yet (review R10 F8).
+  if (head.seo && !base?.seo && live.seo && seoIsSet(live.seo) && JSON.stringify(live.seo) !== JSON.stringify(head.seo))
+    return { ok: false, reason: `the CMS has SEO fields the previous file did not manage (${Object.keys(live.seo).filter((k) => live.seo[k] !== null && live.seo[k] !== false).join(", ")}), and this file sets SEO for the first time: it would overwrite them; export again to get them into the file, then edit`, changes: [] };
   if (base) {
-    const drift = diffState(live, base);
+    const drift = diffState(live, base, partsFor(live, base));
     // An SEO write that failed after the content was published: the content already equals this file and the SEO
     // fields are still the previous file's. Finishing the job is safe.
     if (drift.length && !diffState(live, head, ["slug", "title", "excerpt", "body"]).length && !diffState(live, base, ["seo"]).length)
-      return { ok: true, reason: "resuming: the content is already published, the SEO fields are not yet", changes: diffState(live, head) };
+      return { ok: true, reason: "resuming: the content is already published, the SEO fields are not yet", changes: diffState(live, head, partsFor(live, head)) };
     if (drift.length) return { ok: false, reason: `the CMS changed outside the mirror (${drift.join(", ")} differ from the previous file); export again before editing`, changes: [] };
   }
-  return { ok: true, reason: base ? "live matches the previous file" : "no previous file given", changes: diffState(live, head) };
+  return { ok: true, reason: base ? "live matches the previous file" : "no previous file given", changes: diffState(live, head, partsFor(live, head)) };
 }

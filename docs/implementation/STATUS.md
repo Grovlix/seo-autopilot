@@ -2,6 +2,27 @@
 
 Kept short; read at the start of every session. Plan: [../product/SYSTEM-READINESS-PLAN.md](../product/SYSTEM-READINESS-PLAN.md) (phases 0 to 8). Agent detail: [../product/AGENT-INTELLIGENCE-PLAN.md](../product/AGENT-INTELLIGENCE-PLAN.md). History: [history/STATUS-to-2026-11-12.md](history/STATUS-to-2026-11-12.md) (full capability table and earlier checks), [history/STATUS-to-2026-11-03.md](history/STATUS-to-2026-11-03.md). Detail: [CHANGELOG.md](CHANGELOG.md), [DECISIONS.md](DECISIONS.md). Deployed state: [../deployment-status.md](../deployment-status.md).
 
+## 0d. Branch `feat/cms-discard-slug-update` (2026-11-26, Grovlix fork, on main fc34f93, D77)
+- Implemented: `cms discard` (removes the mirror's own preview draft from a published post through EmDash 0.1.0's discard-draft route; refuses foreign drafts, a changed live post, unpublished posts, writes off; exit 4 when there is nothing to discard); id-less files update the published post they made (live equals one of the file's committed versions); read-only keys may be added with the CMS's values; SEO compared only when the file has SEO keys. Verified: `npm test` 769/767/0/2 with the in-memory stand-in and local git repositories; R8's simulation re-run against this branch (ops repository evidence `T16`). **Not verified:** the discard-draft route against a running EmDash (read in its 0.1.0 source only), any live CMS call. Not deployed.
+- Round 2 (review R10, code `fad3e77`, D77 amended). Each fix has a test that failed first:
+  - discard refuses an admin autosave (`_rev`) and a scheduled draft;
+  - exit 4 is checked first;
+  - only the closed head's draft counts, and `--keep-refs` protects other open pull requests;
+  - id-less claims use only the `--base-ref` version (no history) and are high-risk;
+  - first-time SEO keys over an editor's SEO are drift;
+  - removing all SEO keys is invalid.
+
+  Verified:
+  - `npm test` 780/778/0/2;
+  - R10's sim, adapted to assert the fixes: 20/20;
+  - R8's walk unchanged (31/36).
+
+  Still **not verified** against a running EmDash. Not deployed.
+- Round 2, extra (review R8 round 2 item 1, code `9039b94`): the drift check of a file that owns its post also accepts live equal to the file at a first-parent commit in `--base-ref..HEAD`, so a red run that still published a file no longer blocks that file's next edit. Id-less claims unchanged (base-ref or head only). Verified: `npm test` 784/782/0/2; R8's round-2 sim 35/35 with the fix asserted (32/35 on `53a1026`); R10 sim 20/20; R8 walk 31/36 unchanged. Not verified against a running EmDash. Not deployed.
+- Round 3 (review R10 round 2, code `d771fdd`): the window accepts only the newest earlier version (an admin rollback is `live-older-version`), needs `--base-ref` to be an ancestor of HEAD, is used by `publish` only, and is listed in `highRisk`; option-like refs never reach git. Verified: `npm test` 789/787/0/2; R10 window sim 12/12 with the fixes asserted; R10 round-1 sim 20/20; R8 round-2 sim 35/35. Not verified against a running EmDash. Not deployed. Ops side (T11): pass `--keep-refs`, show `highRisk`.
+- Round 4 (review R10 round 3, verdict merge after fixes): `live-older-version` now names both causes (admin rollback, or a newer merged version that was never published) and both ways out (R3-1, wording only; the same text is in `docs/cms-mirror.md`); `last` uses `diffState` so a newest commit that only adds SEO keys no longer causes a false refusal (R3-2, X4); R3-3 documented as a known limit. Verified: `npm test` 791/788/0/3 (the extra skip is the missing python 3.10 on this Mac); R10 round-3 sim 9/9 with the X1 and X4 assertions flipped (7/9 as written); T16 window sim 12/12; T16 round-2 sim 20/20. Not verified against a running EmDash, the CMS revisions endpoint (the better fix for R3-1 and R3-3), or the git version on the ovh runner (`--end-of-options` needs git 2.24+). Not deployed.
+- Next: the ops repository adds a `pull_request: closed` job that runs `cms discard` per changed file with `--keep-refs` set to the other open pull requests' heads (exit 4 = nothing to do; `not-published` for a new file = a notice). It ships in the same change as the fork pin bump past fc34f93 (R10 F10). Then it re-runs R8's walk on its side.
+
 ## 0b. Branch `feat/arabic-languages-style` (2026-11-26, Grovlix fork, on main 1924190)
 - Implemented: languages per site with translation groups and a Search Console country and language filter; hreflang pair check in `seo-check`; style-guide hook with a built-in Arabic MSA guide (D74). Verified: `npm test` 689/687/0/2 (main 638/636/0/2) with injected fetch and local files only. **Not verified:** a live Search Console call with the filter, a real `seo-check` run, a model run with the style prompts. Not deployed.
 - Next: open the PR, run `seo-check` on a test pull request in a site repository with `translations` and `hreflang.buildDir` set, send one filtered Search Console query to confirm the alpha-3 country code and the page regex, then a first Arabic draft through `seo-implement`.

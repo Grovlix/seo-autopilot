@@ -10,6 +10,11 @@
 // - PUT must not carry "status": that changes the live status at once.
 // - POST /_emdash/api/revisions/{id}/restore writes the live row and skips the cache purge. Do not use it; to go back,
 //   save the old content as a draft and publish it.
+// - POST /_emdash/api/content/{collection}/{id}/discard-draft (needs content:write, and the token's user must own the
+//   entry or be allowed to edit any) only sets the entry's draft_revision_id to NULL: the row already holds the published
+//   version, the revision stays in the history, and the cache is purged. With no pending draft it changes nothing. It
+//   takes no _rev. (0.1.0 source: src/astro/routes/api/content/[collection]/[id]/discard-draft.ts,
+//   src/api/handlers/content.ts handleContentDiscardDraft, src/database/repositories/content.ts discardDraft.)
 
 export class EmDashError extends Error {
   constructor(status, code, message, path) {
@@ -98,6 +103,8 @@ export function createClient({ url, token, fetch: f = globalThis.fetch, userAgen
       return call("PUT", `${c(collection)}/${enc(id)}`, body);
     },
     publish: (collection, id) => call("POST", `${c(collection)}/${enc(id)}/publish`, {}),
+    /** Drop the pending draft revision of a published entry; the live row is not touched. Callers check whose draft it is. */
+    discardDraft: (collection, id) => call("POST", `${c(collection)}/${enc(id)}/discard-draft`, {}),
     /** A signed preview link for the draft; fails with NOT_CONFIGURED when the site has no EMDASH_PREVIEW_SECRET. */
     previewUrl: (collection, id, { expiresIn = "1d", pathPattern } = {}) =>
       call("POST", `${c(collection)}/${enc(id)}/preview-url`, pathPattern ? { expiresIn, pathPattern } : { expiresIn }),

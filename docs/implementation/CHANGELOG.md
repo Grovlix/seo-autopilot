@@ -2,6 +2,63 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26, round 4 (D77 amended: review R10 round 3 fixes to the drift window, on feat/cms-discard-slug-update; code change, nothing deployed)
+- **Code:**
+  - `src/cms/mirror.mjs`: the `live-older-version` refusal text is built by `olderVersionReason`; it names both causes (a rollback in the admin, or a newer merged version that was never published) and both ways out (`--base-ref` = the first commit named, only when no other file is pending; or publish the newest version's text in the admin), and says to compare the live post with both commits before exporting (R3-1). The refusal logic is unchanged.
+  - `writePlan`: `last` is the newest window version with `diffState(x.state, head).length > 0` (was `!sameState`, which skips SEO when one side has no SEO keys) (R3-2, R10's X4).
+- **Tests:** 2 "R10r3" tests in `test/cms-discard-idless.test.mjs`, both red before the change (X4 refused, X1 old wording). `npm test`: 791 tests, 788 pass, 0 fail, 3 skipped (the third is "python 3.10+ not installed" on this Mac, environment).
+- **Sims (scratchpad copies, not committed):** R10's `sim/r10-r3.mjs` as written: 7/9, the two misses are X1 and X4, whose "finding" assertions describe the old behaviour; with those two assertions flipped to the fix: 9/9. T16 round-3 window sim 12/12; T16 round-2 sim 20/20.
+- **Documentation:** `docs/cms-mirror.md` (same error text, causes, ways out, and the R3-3 known limit: a rollback to the `--base-ref` version itself is not detected while the point is stuck), root `CHANGELOG.md`, D77 amendment, STATUS.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call.
+
+## 2026-11-26, round 3 (D77 amended: review R10 round 2 fixes to the drift window, on feat/cms-discard-slug-update; code change, nothing deployed)
+- **Code (`d771fdd`):**
+  - `src/cms/mirror.mjs` `writePlan`: a window match must be the newest window version that differs from this file; an older one is refused `live-older-version` (R1).
+  - `src/cms/commands.mjs`: `rangeVersionsOf` returns nothing unless `--base-ref` is an ancestor of HEAD (R2); `draft` no longer passes a base ref to the window (R3); `safeRef` keeps refs starting with `-` away from git and `--end-of-options` is passed (R6); a window match is added to `highRisk` (R1).
+- **Tests:** 5 "R10r2" tests in `test/cms-discard-idless.test.mjs`, all 5 red on `561277b` first. `npm test`: 789 tests, 787 pass, 0 fail, 2 skipped. cms tests 93/93.
+- **Sims (ops repository evidence `T16/round3`):** R10's window sim with W1, W3, W4 asserting refusal: 12/12 on `d771fdd` (7/12 on `561277b`); R10's unchanged window sim on `d771fdd`: 8/12, exactly W1, W3, W4 and W7's 60-back match flipped. R10's round-1 sim 20/20; R8's round-2 sim 35/35.
+- **Documentation:** `docs/cms-mirror.md` (window rule, rebase merges, `live-older-version`), root `CHANGELOG.md`, D77 amendment, STATUS.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call.
+
+## 2026-11-26, later still (D77 amended: review R8 round 2 item 1, stuck published point, on feat/cms-discard-slug-update; code change, nothing deployed)
+- **Code (`9039b94`):**
+  - `src/cms/commands.mjs`: `rangeVersionsOf(file, baseRef)` lists the file's versions on HEAD's first-parent history after `--base-ref`; `saveDraft` passes them to `writePlan` only for a file that owns its post (id, or accepted claim); reports `liveMatchedVersion`. `claimProblem` unchanged.
+  - `src/cms/mirror.mjs`: `writePlan` takes `between`; when live drifts from base but equals one of those versions, that version becomes the previous version (`planAgainst`).
+- **Tests:** 4 new "R8r2 stuck point" tests in `test/cms-discard-idless.test.mjs`. The id case failed before the change (exit 3); the 3 guards passed before and each fails under a matching mutation (no `--first-parent`, whole history, window from the start of history, claim from history, window off). `npm test`: 784 tests, 782 pass, 0 fail, 2 skipped.
+- **Sims (ops repository evidence `T16/round2`):** R8's round-2 sim with the stuck-point scenarios asserting the fix: 35/35 on `9039b94`, 32/35 on `53a1026`. R10's round-2 sim 20/20; R8's walk 31/36, same lines as before.
+- **Documentation:** `docs/cms-mirror.md` drift rule, root `CHANGELOG.md`, D77 amendment, STATUS.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call.
+
+## 2026-11-26, later (D77 amended: review R10 fixes on feat/cms-discard-slug-update; code change, nothing deployed)
+- **Code (`fad3e77`):**
+  - `src/cms/commands.mjs`:
+    - `discard` checks "no pending draft" (exit 4) first;
+    - refuses `scheduled`;
+    - accepts only a draft equal to the file at the closed pull request's head;
+    - adds `--keep-refs` (`kept-ref`);
+    - compares `_rev` on the re-read (autosave).
+  - `claimProblem` accepts only the previous version (`--base-ref`) or this version, no git history. Claims are high-risk.
+  - `src/cms/mirror.mjs`:
+    - `writePlan` refuses first-time SEO keys over non-empty, different CMS SEO;
+    - `validateFile` rejects removing every SEO key;
+    - adds `seoIsSet` and `CONTENT_PARTS`.
+  - `test/fixtures/fake-emdash.mjs`: a `skipRevision` autosave rewrites the draft revision in place; `adminAutosave` helper.
+- **Found in EmDash 0.1.0:** no revision field can carry a pull-request marker safely (see D77 amendment for file:line).
+- **Tests:**
+  - 11 new tests in `test/cms-discard-idless.test.mjs`, written first: 10 red on `8b4903d` (the 11th checks the stand-in).
+  - `npm test`: 780 tests, 778 pass, 0 fail, 2 skipped.
+  - R10's sim adapted to assert the fixes: 20/20 (`8b4903d`: 10/20).
+  - R8's walk: 31/36, identical to round 1.
+- **Documentation:** `docs/cms-mirror.md` (discard rules, autosave, marker limit, `--keep-refs`, id-less rule, SEO rules, workflow, limits), root `CHANGELOG.md`, D77 amendment.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call.
+
+## 2026-11-26 (D77: `cms discard` and files without an id, review R8 F4/F5, on feat/cms-discard-slug-update from main fc34f93; code change, nothing deployed)
+- **Code:** `src/cms/commands.mjs`: `discard` command; `gitVersionsOf`; `claimProblem` (an id-less file may claim the published post with its slug when live equals one of its committed versions and no other file stands for it); `checkAdded` (read-only keys added must equal the CMS); refusal codes in the report; `readFile` returns the folder. `src/cms/mirror.mjs`: `readOnlyOf`, `partsFor`, `sameState`; `writePlan` compares SEO only when both sides have it; `validateFile` returns `addedReadOnly`. `src/cms/emdash.mjs`: `discardDraft` and the 0.1.0 source facts. `test/fixtures/fake-emdash.mjs`: the discard-draft route as 0.1.0 has it.
+- **Found in EmDash 0.1.0 (npm package source):** a discard-draft route exists and only clears the draft pointer (see D77 for file:line).
+- **Tests:** new `test/cms-discard-idless.test.mjs` (23). `npm test` 769 tests, 767 pass, 0 fail, 2 skipped (main fc34f93: 746/744/0/2, no failures before the change).
+- **Documentation:** `docs/cms-mirror.md` (command, exit code 4, refusal codes, safety rules, pull-request workflow, limits), root `CHANGELOG.md`, `bin/seo-autopilot.mjs` usage line.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call was made.
+
 ## 2026-11-26 (D70 follow-up: settings `revisionsProven: false` turns writes off, on fix/cms-revisions-proven-false from main e54723d; code change, nothing deployed)
 - **Code:** `src/cms/commands.mjs`: `options()` sets `writesOff` when the settings file has `revisionsProven: false`. `draft` and `publish` refuse at the start (exit 3) unless `--dry`; `writeGuard` checks it before the schema. Found on a live export: with a token that has schema:read, the schema answer ("revisions") let draft saves through despite `false`, and an SEO-only publish never reached the guard.
 - **Tests:** new `test/cms-mirror-revisions-off.test.mjs` (6). The 5 refusal and dry-run tests fail at e54723d and pass after; the `true` control passes on both.

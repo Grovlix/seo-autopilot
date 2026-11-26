@@ -28,6 +28,13 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
     if (slug !== undefined) merged._slug = slug;
     const rid = id(); revs.set(rid, { id: rid, data: merged }); r.draftRevisionId = rid; r.updatedAt = now(); r.version++;
   }
+  /** Test helper: the admin editor's autosave (skipRevision: rewrites the existing draft revision in place, same id). */
+  function adminAutosave(k, { data = {} } = {}) {
+    const r = find(k);
+    if (!r.draftRevisionId) return adminDraft(k, { data });
+    const d = revs.get(r.draftRevisionId);
+    d.data = { ...d.data, ...structuredClone(data) }; r.updatedAt = now(); r.version++;
+  }
   const view = (r) => { const { terms, ...v } = structuredClone(r); if (seo) v.seo = { ...seoRows.get(r.id) }; return v; };
   const rev = (r) => Buffer.from(`${r.version}:${r.updatedAt}`).toString("base64");
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -66,9 +73,10 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
         if (body.data) {
           if (revisions) {
             const baseData = r.draftRevisionId ? revs.get(r.draftRevisionId).data : r.data;
-            const rid = id();
-            revs.set(rid, { id: rid, data: { ...baseData, ...structuredClone(body.data), ...(body.slug !== undefined ? { _slug: body.slug } : {}) } });
-            r.draftRevisionId = rid;
+            const merged = { ...baseData, ...structuredClone(body.data), ...(body.slug !== undefined ? { _slug: body.slug } : {}) };
+            // 0.1.0 emdash-runtime.ts:1484-1486: an autosave (skipRevision) rewrites the existing draft revision in place.
+            if (body.skipRevision && r.draftRevisionId) revs.get(r.draftRevisionId).data = merged;
+            else { const rid = id(); revs.set(rid, { id: rid, data: merged }); r.draftRevisionId = rid; }
           } else r.data = { ...r.data, ...structuredClone(body.data) };
         }
         if (body.status) r.status = body.status;
@@ -85,6 +93,11 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
         if (typeof _slug === "string") r.slug = _slug;
         r.liveRevisionId = pick; r.draftRevisionId = null; r.status = "published";
         r.publishedAt = r.publishedAt || now(); r.updatedAt = now();
+        return ok({ item: view(r) });
+      }
+      // 0.1.0 discardDraft: only draft_revision_id = NULL and updated_at; the revision row stays.
+      if (sub === "discard-draft" && method === "POST") {
+        if (r.draftRevisionId) { r.draftRevisionId = null; r.updatedAt = now(); }
         return ok({ item: view(r) });
       }
       if (sub === "compare") return ok({ hasChanges: !!r.draftRevisionId && r.draftRevisionId !== r.liveRevisionId, live: r.liveRevisionId ? revs.get(r.liveRevisionId).data : null, draft: r.draftRevisionId ? revs.get(r.draftRevisionId).data : null });
@@ -109,5 +122,5 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
     if (p === "/rss.xml") return new Response(`<rss>${[...rows.values()].filter((r) => r.status === "published" && r.publishedAt).map((r) => `<link>${u.origin}/posts/${r.slug}</link>`).join("")}</rss>`);
     return err(404, "NOT_FOUND");
   }
-  return { fetch, rows, revs, seoRows, log, find, findAny, adminDraft };
+  return { fetch, rows, revs, seoRows, log, find, findAny, adminDraft, adminAutosave };
 }
