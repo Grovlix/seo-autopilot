@@ -2,6 +2,15 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26, later still (D77 amended: review R8 round 2 item 1, stuck published point, on feat/cms-discard-slug-update; code change, nothing deployed)
+- **Code (`9039b94`):**
+  - `src/cms/commands.mjs`: `rangeVersionsOf(file, baseRef)` lists the file's versions on HEAD's first-parent history after `--base-ref`; `saveDraft` passes them to `writePlan` only for a file that owns its post (id, or accepted claim); reports `liveMatchedVersion`. `claimProblem` unchanged.
+  - `src/cms/mirror.mjs`: `writePlan` takes `between`; when live drifts from base but equals one of those versions, that version becomes the previous version (`planAgainst`).
+- **Tests:** 4 new "R8r2 stuck point" tests in `test/cms-discard-idless.test.mjs`. The id case failed before the change (exit 3); the 3 guards passed before and each fails under a matching mutation (no `--first-parent`, whole history, window from the start of history, claim from history, window off). `npm test`: 784 tests, 782 pass, 0 fail, 2 skipped.
+- **Sims (ops repository evidence `T16/round2`):** R8's round-2 sim with the stuck-point scenarios asserting the fix: 35/35 on `9039b94`, 32/35 on `53a1026`. R10's round-2 sim 20/20; R8's walk 31/36, same lines as before.
+- **Documentation:** `docs/cms-mirror.md` drift rule, root `CHANGELOG.md`, D77 amendment, STATUS.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call.
+
 ## 2026-11-26, later (D77 amended: review R10 fixes on feat/cms-discard-slug-update; code change, nothing deployed)
 - **Code (`fad3e77`):**
   - `src/cms/commands.mjs`:

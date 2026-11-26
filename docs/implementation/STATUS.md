@@ -18,6 +18,7 @@ Kept short; read at the start of every session. Plan: [../product/SYSTEM-READINE
   - R8's walk unchanged (31/36).
 
   Still **not verified** against a running EmDash. Not deployed.
+- Round 2, extra (review R8 round 2 item 1, code `9039b94`): the drift check of a file that owns its post also accepts live equal to the file at a first-parent commit in `--base-ref..HEAD`, so a red run that still published a file no longer blocks that file's next edit. Id-less claims unchanged (base-ref or head only). Verified: `npm test` 784/782/0/2; R8's round-2 sim 35/35 with the fix asserted (32/35 on `53a1026`); R10 sim 20/20; R8 walk 31/36 unchanged. Not verified against a running EmDash. Not deployed.
 - Next: the ops repository adds a `pull_request: closed` job that runs `cms discard` per changed file with `--keep-refs` set to the other open pull requests' heads (exit 4 = nothing to do; `not-published` for a new file = a notice). It ships in the same change as the fork pin bump past fc34f93 (R10 F10). Then it re-runs R8's walk on its side.
 
 ## 0b. Branch `feat/arabic-languages-style` (2026-11-26, Grovlix fork, on main 1924190)

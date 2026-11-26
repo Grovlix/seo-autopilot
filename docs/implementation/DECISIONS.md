@@ -1350,3 +1350,18 @@ Review R2b (2026-11-26): only the current file goes live; file names and post fi
   - R8's walk unchanged (31/36, same as round 1).
 
   Evidence is in the ops repository, `T16/round2`.
+
+**Amended 2026-11-26 after review R8 round 2, item 1 (stuck published point).** Code change `9039b94`.
+- **Problem.** A publish run that goes red on one file still publishes the others. The caller's published point (its `--base-ref`) stays behind. The next edit of a file that went out was refused ("the CMS changed outside the mirror"), because live already held the version after the point, and the refusal repeats on every later run until a person works out the right point.
+- **Decision.** In the drift check of a file that already owns its post (an id, or an id-less claim that passed), live may also equal the file at a commit in `--base-ref..HEAD` that touches it, on HEAD's first-parent history (`rangeVersionsOf`: `git log --first-parent <base-ref>..HEAD -- <file>`, at most 200). That version then serves as the previous version for the drift, resume and first-time-SEO checks; the report names it (`liveMatchedVersion`).
+- **Kept separate from the claim.** `claimProblem` is unchanged: only the `--base-ref` version or this version prove an id-less claim (R10 F6/F7). The window is only consulted after ownership is settled.
+- **Why first-parent.** It is what each merge put on the branch being published. A merged branch's intermediate commits were never on the branch, so a live text equal to one of them was not published by the mirror from this branch.
+- **Tradeoffs and limits.**
+  - Every version in the window was reviewed and merged into the published branch, so accepting live at one of them never overwrites an admin edit. It can overwrite a revert that a person made in the admin back to an earlier version in the window; the mirror would have done the same on a green run.
+  - With `--base` (a file) there is no window.
+  - A red run that published a file's content but failed its SEO write is not covered: live then equals no single version in the window.
+- **Checked.**
+  - 4 tests, `test/cms-discard-idless.test.mjs` "R8r2 stuck point": the id case failed before the change; the three guards (admin edit, first-parent and window start, claim) each fail under a matching mutation.
+  - `npm test` 784/782/0/2.
+  - R8's round-2 sim with the stuck-point scenarios asserting the fix: 35/35 on `9039b94`; the same assertions fail on `53a1026` (32/35).
+  - R10's sim 20/20 and R8's walk 31/36, both unchanged. Evidence: ops repository, `T16/round2/r8r2`.
