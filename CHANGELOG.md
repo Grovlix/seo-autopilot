@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Fix:** `stateBranch` (documented, default `seo-data`) was never read: `loadConfig` did not return it, so `state save` and `state restore` always used `seo-data`. It is now returned and used. Because the state is force-pushed, a name that is not a plain git branch name, or that is `main`, `master`, `develop`, `dev`, `trunk`, `head`, `production`, `prod`, `release` or `gh-pages`, is refused when the config loads. Schema updated. A project that already set `stateBranch` and relied on it being ignored keeps its state on `seo-data` only until it removes the key or moves the saved state.
+
 Languages, hreflang pairs and an Arabic style guide (D74).
 
 - **New:** `translations` (the same page per language), `searchConsole` (`country`, `languagePaths`), `hreflang` (`buildDir`, `xDefault`, `block`) and `styleGuide` (`files`, `builtin`) site settings; every language code must be one of `market.languages`.

@@ -33,6 +33,11 @@
       "type": "string",
       "description": "Editable data files, playbooks and agents (default seo-autopilot)."
     },
+    "stateBranch": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$",
+      "description": "Git branch that holds the saved state (default seo-data). It is force-pushed: never name a branch the site is built or released from (main, master, ... are refused)."
+    },
     "sites": {
       "type": "array",
       "minItems": 1,
