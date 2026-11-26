@@ -2,6 +2,21 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-25 23:45 UTC (D69 review R1 fixes on fix/content-loss-guard; code and documentation change, nothing deployed)
+- **Code:** `src/lib/git-history.mjs` (new: `gitNames` with quotepath off and -z, `revertBase` for merge/rebase/squash);
+  `src/analysis/content-loss.mjs` (`stripInvisible`, page-setting controls, `headingSimilarity`, unrounded drop, override
+  after head time); `src/jobs/content-guard.mjs` (`--repo`, `baseSettings`, `exactRevert`, `--revert-of`);
+  `src/analysis/watch.mjs` (`failStreak`, 2-day rule, new-page publish window and not-live rule);
+  `src/jobs/watch.mjs` (`--git-revert`, unpublish verification, `revert-failed`, `failed=` output);
+  `src/adapters/index.mjs` (`unpublishSetting`, pure `unpublishText`).
+- **Workflows:** `templates/workflows/seo-check.yml` guard step only (runs from `$RUNNER_TEMP`, base config, `created_at`,
+  revert-of); `templates/workflows/seo-watch.yml` (`--git-revert`, reverts with state, `unpublish-failed` job). seo-check
+  `on:`/permissions and seo-watch's check job permissions unchanged (owned by T7).
+- **Tests:** `test/content-loss.test.mjs`, `test/watch.test.mjs`, `test/workflows.test.mjs`, `test/jobs-e2e.test.mjs`. The
+  new tests were run against 3f11cd7 and fail there (9 in content-loss, 8 in watch). Local git repos and a local HTTP
+  server only; no GitHub or provider call.
+- **Docs:** `docs/content-automation.md`, `docs/jobs.md`, `docs/configuration.md`, D69 additions, root `CHANGELOG.md`.
+
 ## 2026-11-26 (Unicode / Arabic tokens and slugs; code change)
 - **Code:** new `src/lib/text.mjs` (`normalizeArabic`, `tokens`, `slugify`); `src/adapters/index.mjs` (`tokens` re-exported from it, `makeCovered` normalises page text), `src/audit/links.mjs` (phrase matching no longer ASCII-only), `src/jobs/optimize.mjs` (slug via `slugify`, percent-encoded non-ASCII URL paths decoded first). `docs/cloudflare/runtime-matrix.json` regenerated (one more module in the import graph).
 - **Tests:** `test/text.test.mjs` (English tokens and Latin slugs identical to the old code; Arabic variants; coverage; slugs). Unit tests only; no external service involved.
@@ -19,6 +34,22 @@ Dated session entries; history is preserved. Product release notes are in the ro
 - **Tests:** new `test/market.test.mjs` (13), `test/market-fixtures.mjs`; payload tests in `test/features-2.test.mjs`; existing tests given an explicit market.
 - **Checks:** `npm test` 739 tests, 698 pass, 0 fail, 41 skipped (before: 722, 681 pass, 0 fail, 41 skipped). No live provider call was made.
 - **Deployment:** none.
+
+## 2026-11-25 23:10 UTC (D69 rebased on fork main d25fbff; revert provenance; backlinks kill switch; code change)
+- **Code:** `revertTrusted` in `src/analysis/content-loss.mjs` and its use in `src/jobs/content-guard.mjs` (a `seo/revert-<n>` restore passes only when the pull request's author and its last `seo-revert` labeller are `github-actions[bot]`); `templates/workflows/seo-check.yml` guard step finds the pull request by branch when called from seo-watch and reads label events for `seo-revert`; `templates/workflows/seo-backlinks.yml` browser, submit and screenshot steps skipped while paused; `src/jobs/backlinks-submit.mjs` refuses to run while paused. Decision renumbered D68 to D69 (D68 is the market config).
+- **Tests:** `test/content-loss.test.mjs` (+1 unit; the job test now covers the trusted undo and five spoofed cases); `test/workflows.test.mjs` (+2 backlinks kill switch, revert lookup assertions). `test/cf-worker.test.mjs` and `docs/cloudflare/runtime-matrix.*` are gone on main (strip).
+- **Documentation:** `docs/content-automation.md`, `docs/jobs.md` (kill switch table: reverts and backlinks), `docs/backlinks.md`, D69.
+- **Checks:** `npm test` 544 tests, 542 pass, 0 fail, 2 skipped (main d25fbff: 516, 514, 0, 2). No real GitHub Actions run of the templates.
+- **Deployment:** none. The pre-rebase version is kept on branch `up/content-loss-guard` (5e14f77, on upstream a96ba04).
+
+## 2026-11-25 (D69 content-loss guard and content watch; code change)
+- **Code:** new `src/analysis/content-loss.mjs` (pure guard, Unicode word count, override rule, report table) and job `src/jobs/content-guard.mjs` (registered in `src/jobs/index.mjs`); `src/analysis/watch.mjs` (`clickHarm` shared, `judgeContent`, `mergeWatchlist`, `relatedPages`, `topicWords`, `watchUntil`); `src/jobs/watch.mjs` (content watch, `--content`, `--reverts`, `--unpublish`, kill switch); `src/adapters/index.mjs` (`unpublishPages`); `src/core/config.mjs` and `schema/seo-autopilot.config.schema.json` (`contentGuard`, `watch`, `content.unpublish`).
+- **Workflows:** `templates/workflows/seo-check.yml` (guard step before install; job steps only), `templates/workflows/seo-watch.yml` (content watch, state save, unpublish, paused gates on every job, content reverts never auto-merge; concurrency group `seo-data`).
+- **Tests:** new `test/content-loss.test.mjs` (16); `test/watch.test.mjs` (+5); `test/workflows.test.mjs` (+2); `test/jobs-e2e.test.mjs` (+1, guard and watch to revert to unpublish with real git and the fake network); `test/cf-worker.test.mjs` job count 59.
+- **Generated:** `docs/registry.*`, `docs/cloudflare/runtime-matrix.*`.
+- **Documentation:** `docs/content-automation.md`, `docs/jobs.md` (kill switch table), `docs/configuration.md`.
+- **Checks:** `npm test` 747 tests, 706 pass, 0 fail, 41 skipped (base a96ba04: 722, 681, 0, 41). No real GitHub Actions run; no live site; no paid call.
+- **Deployment:** none (product code; sites get it on `upgrade`).
 
 ## 2026-11-24 (D66 deployed; D67 pilot reports; code change)
 - **Deployment:** #89 (D66) squash-merged as 739f7c3; migration `20261126000000_job_guards.sql` applied to production (both triggers present); Worker deployed by deploy-seo-god run 24 (success, 19:49 UTC). Run at 20:00 UTC: no errors; no job refused by the new guard; no direct inserts recorded.

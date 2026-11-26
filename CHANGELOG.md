@@ -10,6 +10,21 @@ Every provider call now uses the site's own market (location and language). **Br
 - **New:** `languages` for sites in several languages. Each query, seed or question is researched in the language it is written in (when the site lists it), or with `--language`, or a `"language"` on the question. A built-in table of 61 countries and 28 languages; any other DataForSEO location code works with a `country`.
 - **New:** `init --market 2682:ar,en` writes the market. Without it init says that no market is set; it never writes a default.
 
+Content-loss guard and watch after merging (D69).
+
+- **New:** `content-guard` job, run by `seo-check` before install and build on every `seo/*` pull request. Fails when a changed page loses more than 15% of its words (`contentGuard.maxWordDropPercent`, read from the base branch), any heading, internal link, image or structured data, or the page itself. Markdown/MDX, HTML and JSON page lists; Unicode word count (Arabic counts correctly). Per-page before/after table in the check summary. Human-only override: label `allow-content-shrink` added by a person who is not the author.
+- **New:** `seo-watch` watches every refresh and new page merged from a `seo/*` branch for 28 days (`watch.days`) and opens a `seo-revert` pull request when it does harm: a refresh is reverted (previous content), a new page that takes clicks from the pages on its topic is unpublished through the adapter (`draft: true` and `hold: true`; never deleted, same URL). These reverts wait for a person. The watch list is saved on the `seo-data` branch.
+- **Changed:** the kill switch `SEO_AUTOPILOT_PAUSED` now stops `seo-watch` completely (before, it still opened revert pull requests) and `seo-backlinks` (no listing form is opened, live or dry; before, only `BACKLINKS_LIVE` controlled it).
+- **Security:** a `seo/revert-*` branch may restore older content past the guard only when `seo-watch` opened it (author and `seo-revert` labeller are the workflow's bot); the branch name alone is not trusted.
+- **Security:** the guard runs from the runner's temp folder with the base branch's config, so nothing in the pull request (`.npmrc`, `package.json`, `node_modules`) runs or sets its limits first. A `seo/revert-<n>` branch is also checked to be exactly the undo of #n, or exactly the unpublish of the pages #n added, with #n merged from a `seo/*` branch.
+- **Fix:** Arabic and other non-ASCII file names were skipped by the guard (git quoted them); they are now checked.
+- **New:** the guard fails on page settings that take a page out of search without losing words (draft, noindex, canonical, permalink, slug, status in front matter, JSON or the HTML head) and ignores hidden or commented-out text. A deleted heading replaced by an unrelated one counts as removed. The 15% limit is compared exactly.
+- **Changed:** `allow-content-shrink` must be added after the latest push.
+- **Changed:** a page must fail on two check days in a row before the watch proposes a revert; a new page that is not live is never unpublished and is judged from its publish date. Reverts handle merge commits (`-m 1`) and rebase merges (`watch --git-revert`). Two days after an unpublish is merged the page is checked again; if it is still live the entry becomes `revert-failed` and an issue is opened.
+- **Upgrade:** `seo-autopilot upgrade --apply` refreshes `seo-check.yml` and `seo-watch.yml`. Make your build leave out pages with the unpublish field set (`draft: true` by default, `content.unpublish` to change it); not every stack does by default (see docs/content-automation.md).
+
+### Earlier unreleased
+
 Connect any website to the client portal with just its address.
 
 - **New:** "Add and scan" in the portal. The `scan` Edge Function (Supabase, `cloud/portal/supabase/functions/scan`) crawls the site daily with the product's own crawler and audit rules, with no repository and no GitHub Actions minutes. pg_cron wakes it every 10 minutes; "Scan now" wakes it at once.
