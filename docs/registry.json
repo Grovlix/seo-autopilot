@@ -1,7 +1,7 @@
 {
  "generatedFrom": "code (scripts/build-registry.mjs)",
  "counts": {
-  "jobs": 59,
+  "jobs": 60,
   "agents": 38,
   "skills": 7,
   "mcpTools": 6,
@@ -1744,6 +1744,47 @@
    "permissions": "read-only",
    "usesLLM": true,
    "onError": "the workflow step logs the error; most steps use continue-on-error so one failing job does not stop the run; no automatic retry",
+   "verification": "unit/fixture tests only (external calls mocked)"
+  },
+  {
+   "name": "aeo",
+   "purpose": "AI answers: do Google's AI Overview / AI Mode or ChatGPT answers to your buyer questions mention or cite you (DataForSEO, capped per run, Arabic supported)",
+   "source": "src/jobs/aeo.mjs",
+   "owner": "maintainers (product core)",
+   "mode": "manual (CLI, MCP or workflow_dispatch)",
+   "triggers": [],
+   "credentials": [
+    "ANTHROPIC_API_KEY",
+    "BRAVE_API_KEY",
+    "DATAFORSEO_LOGIN",
+    "DATAFORSEO_PASSWORD",
+    "GEMINI_API_KEY",
+    "OPENAI_API_KEY",
+    "PERPLEXITY_API_KEY",
+    "SERPAPI_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_THREAD_ID"
+   ],
+   "hosts": [
+    "api.anthropic.com",
+    "api.dataforseo.com",
+    "api.openai.com",
+    "api.perplexity.ai",
+    "api.search.brave.com",
+    "api.telegram.org",
+    "brave.com",
+    "dataforseo.com",
+    "docs.dataforseo.com",
+    "generativelanguage.googleapis.com",
+    "serpapi.com"
+   ],
+   "writes": [
+    "aeo.md"
+   ],
+   "permissions": "read-only",
+   "usesLLM": true,
+   "onError": "exits non-zero; no automatic retry",
    "verification": "unit/fixture tests only (external calls mocked)"
   },
   {

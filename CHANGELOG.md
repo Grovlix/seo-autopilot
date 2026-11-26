@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+AI answer tracking (D73).
+
+- **New:** `aeo` job and `aeo` config (`prompts` with `lang`, `aliases`, `mode`, `schedule`, `maxCostPerRunUsd`): asks Google AI Mode (default), the AI Overview or ChatGPT with web search the buyer questions through DataForSEO and records mentions (Arabic aliases normalised) and citations. Every call goes through the cost guard; the report shows the measured cost. See docs/aeo.md. Not scheduled by a workflow template yet.
+- **New:** `dataforseo` engine in `ai-engines.mjs` (opt-in: name it in `research.engines`; credentials alone never start it).
+
 Every provider call now uses the site's own market (location and language). **Breaking for projects that use the research jobs:** add a `market` to each site.
 
 - **Changed:** the live search, keyword, autocomplete, Keyword Planner, YouTube, Wikipedia and entity calls take location and language from the site's new `market` setting, for example `"market": { "location_code": 2682, "language_code": "ar", "languages": ["ar", "en"] }`. Before, `language_code: "en"` was hard-coded in the DataForSEO requests (and `hl=en` in SerpAPI and autocomplete, `en-<country>` in Bing, language id 1000 in Keyword Planner), and a missing or unrecognised country silently meant the United Kingdom. A Saudi Arabian site in Arabic got UK English data, and paid for it.
