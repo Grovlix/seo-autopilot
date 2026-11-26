@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Posts kept in an EmDash CMS can be edited as Markdown files (D70).
+
+- **New:** `seo-autopilot cms export|validate|draft|publish|preview-check|schema` keeps posts that live in an EmDash CMS as Markdown files in git (decision D70, `docs/cms-mirror.md`). A pull request changes a file; merging publishes it through the CMS API; reverting publishes the old file. Writes to a live post refuse to run until the collection is proven to keep drafts apart from the live post. Dependency-free client and Portable Text converter (`src/cms/`); export only writes files that convert back unchanged. A file only writes to its own published post (same id, same slug, not taken down, scheduled or trashed), never publishes someone else's pending draft or slug change, and a failed SEO write is finished by running the publish again. `revisionsProven` is read from a per-site `--settings` file. Only the current file is ever published (a pending draft of an older version is replaced first); export skips slugs that cannot be file names or are shared by two locales; symbolic links are refused.
+
 - **Fix:** `stateBranch` (documented, default `seo-data`) was never read: `loadConfig` did not return it, so `state save` and `state restore` always used `seo-data`. It is now returned and used. Because the state is force-pushed, a name that is not a plain git branch name, or that is `main`, `master`, `develop`, `dev`, `trunk`, `head`, `production`, `prod`, `release` or `gh-pages`, is refused when the config loads. Schema updated. A project that already set `stateBranch` and relied on it being ignored keeps its state on `seo-data` only until it removes the key or moves the saved state.
 
 Languages, hreflang pairs and an Arabic style guide (D74).

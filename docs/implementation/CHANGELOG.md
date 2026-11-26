@@ -2,6 +2,25 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D70 review R2b fixes on feat/emdash-cms-mirror; code and documentation change, nothing deployed)
+- **Code:** rebased on main 0f16c54. `src/cms/commands.mjs`: publish only the current file (a pending older version is overwritten first; `confirmDraft` re-reads it before the publish call); export skips unsafe slugs, slugs shared by several posts, and symbolic links; `unsafePostFile` refuses symbolic links and files outside the posts folder in `validate` and `publish`; `validate` defaults to the files' folder and rejects an id on a new file. `src/cms/mirror.mjs`: U+2028/U+2029 escaped in front matter. Stand-in: posts may set `locale`.
+- **Tests:** new `test/cms-mirror-r2b.test.mjs` (8 tests: F1 twice, F2, F3, F4, F5, F6, symbolic links). All 8 fail at c2cc6c6 (the rebased R2 head) and pass after. The review's proof scripts t1 to t12, run against this tree: t8 no longer publishes the old text, t9 R2/R3 and t10 L1 skip or report, t11 validates; t9 R1 (a draft saved at the publish call itself) still lands and is reported by the read-back (exit 2), as documented. `npm test` 736 tests, 734 pass, 0 fail, 2 skipped.
+- **Documentation:** `docs/cms-mirror.md` (only the current file goes live, plain post files, `--dir` in the CI line, finish a half-done publish before reverting, race and locale limits), D70 "Review R2b".
+- **Deployment:** none. No live CMS write.
+
+## 2026-11-26 (D70 review R2 fixes on feat/emdash-cms-mirror; code and documentation change, nothing deployed)
+- **Code:** rebased on main 1924190. `src/cms/commands.mjs` (`loadTarget` refuses: id without a base, 404/trashed, slug mismatch, status not published, a new file on someone else's row; `foreignDraft` compares the whole pending data with `_slug` against the file's versions; `--settings` file with `revisionsProven` that the flag cannot override), `src/cms/mirror.mjs` (`draftMatches`, `writePlan` resume state, `preserveBlocks`, non-JSON front matter rejected, duplicates on every file), `src/cms/portable-text.mjs` (`markdownProblems`, `blank:false` links, strike mark name kept), `src/cms/emdash.mjs` (URL with credentials refused).
+- **Tests:** new `test/cms-mirror-safety.test.mjs` (11 tests: fixes 1, 2, 3 (two), 4, 5, 6, 8, 9d, 10 and a trashed post). All 11 fail at b14d0bd (each on the behaviour, not on an import) and pass after. Stand-in `test/fixtures/fake-emdash.mjs` gained trashed and scheduled rows, editor drafts with `_slug`, and slug changes on publish. `npm test` 670 tests, 668 pass, 0 fail, 2 skipped.
+- **Documentation:** `docs/cms-mirror.md` (settings file, ownership rules, resume, new-post undo, block keys), D70 "Review R2", root `CHANGELOG.md`.
+- **Deployment:** none. No live CMS write.
+
+## 2026-11-26 (D70 CMS mirror for EmDash; code change, nothing deployed)
+- **Code:** new `src/cms/emdash.mjs` (client), `src/cms/portable-text.mjs` (converter with per-block round-trip check), `src/cms/mirror.mjs` (file format, validation, write plan), `src/cms/commands.mjs`; `bin/seo-autopilot.mjs` gains `cms`.
+- **Tests:** `test/cms-portable-text.test.mjs` (9), `test/cms-mirror.test.mjs` (12) against an in-memory stand-in (`test/fixtures/fake-emdash.mjs`). `npm test` 537 tests, 535 pass, 0 fail, 2 skipped (before: 516, 514 pass, 2 skipped).
+- **Local end to end:** a local EmDash 0.1.0 (`astro dev`, local database only): export (9 posts, 0 skipped, 1 JSON block), validate, draft refused without proof (exit 3), preview-check ok (revisions true, preview 200, public 404, not in sitemap or RSS, 3 pages unchanged), draft (live page unchanged, preview shows the change), publish (verified), re-run (no-op), git revert and publish (content, SEO and re-export identical to the original). Found: the EmDash 0.1.0 loader does not hydrate SEO, so `getSeoMeta` templates show the excerpt (documented in `docs/cms-mirror.md`).
+- **Documentation:** `docs/cms-mirror.md`, D70, root `CHANGELOG.md`.
+- **Deployment:** none. No live CMS was written to from this repository.
+
 ## 2026-11-26 (D74: languages, hreflang pairs, Arabic style guide on feat/arabic-languages-style, on main 1924190; code, tests, docs; nothing deployed)
 - **Code:** `src/lib/languages.mjs` (new: translation groups, `searchConsole`, `hreflang` and `styleGuide` validation, Search Console filter), `src/lib/google-auth.mjs` (`searchAnalytics` filters), `src/core/config.mjs` (validation), `src/analysis/hreflang.mjs` and `src/jobs/hreflang.mjs`, `src/analysis/style-guide.mjs` and `src/jobs/style.mjs`, `src/jobs/gsc.mjs`, `daily`, `digest`, `research`, `rank` (pass `--language`), `src/jobs/index.mjs`.
 - **Product content:** `knowledge/arabic-msa-style-guide.md`, `departments/skills/language-style-guide/SKILL.md`, the writer agents (`seo-drafter`, `seo-refresher`, `seo-snippet-optimizer`, `seo-local-content-writer`) and `seo-editor`.
