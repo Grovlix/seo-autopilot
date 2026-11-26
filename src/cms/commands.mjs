@@ -1,26 +1,29 @@
-// seo-autopilot cms <export|validate|draft|publish|preview-check|schema>: keep CMS posts as Markdown files in git.
+// seo-autopilot cms <export|validate|draft|publish|discard|preview-check|schema>: keep CMS posts as Markdown files in git.
 //
 //   export          read every published post, write <dir>/<slug>.md (only posts that convert back unchanged)
 //   validate        check mirror files (and, with --base-ref, what a pull request changed); no network
 //   draft           save one file as a CMS draft (live page unchanged) and ask for a preview link
 //   publish         save one file as a draft, publish it, then set its SEO fields; also used to revert (publish the old file)
+//   discard         remove the pending draft that draft made from one file (a closed pull request's preview); live unchanged
 //   preview-check   create one throwaway draft and prove it is invisible to the public and has a preview link
 //   schema          can the token read the collection settings; are revisions and SEO on
 //
 // Connection: EMDASH_URL (or --url) and EMDASH_TOKEN (environment only, never a flag). Writes refuse to run on a live
 // post unless the collection is known to keep drafts apart from the live post (see writeGuard below).
 // Output: a JSON report on stdout. Exit codes: 0 ok, 1 error or invalid files, 2 published but the CMS does not match
-// the file afterwards, 3 refused for safety (conflict, unknown revisions setting, slug taken).
+// the file afterwards (or a discard moved the live post), 3 refused for safety (conflict, unknown revisions setting, slug
+// taken; "refusal" in the report names the reason), 4 discard found no pending draft (nothing was done).
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, lstatSync, realpathSync } from "node:fs";
 import { join, dirname, basename, resolve, relative, isAbsolute } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createClient, revisionsSupported, EmDashError } from "./emdash.mjs";
-import { parseMirror, stringifyMirror, itemToMirror, stateOfItem, stateOfFile, diffState, validateFile, validateSet, draftData, draftMatches, seoPayload, writePlan, DEFAULT_FIELDS, LATIN_SLUG } from "./mirror.mjs";
+import { parseMirror, stringifyMirror, itemToMirror, stateOfItem, stateOfFile, diffState, partsFor, sameState, readOnlyOf, validateFile, validateSet, draftData, draftMatches, seoPayload, writePlan, DEFAULT_FIELDS, LATIN_SLUG } from "./mirror.mjs";
 import { fromMarkdown, countWords } from "./portable-text.mjs";
 import { mainScope, visibleText } from "../audit/extract.mjs";
 
-class Refused extends Error { constructor(msg) { super(msg); this.exit = 3; } }
+/** A refusal for safety (exit 3). code: a short machine-readable reason ("foreign-draft", "live-changed", ...). */
+class Refused extends Error { constructor(msg, code = null) { super(msg); this.exit = 3; this.refusal = code; } }
 
 /**
  * Why a post file may not be read or written, or null. A post file is a regular file directly inside the posts folder:
@@ -225,55 +228,89 @@ export function validateCmd(flags) {
 // A PUT with data on a collection without revisions overwrites the live post, so a write needs proof first: the
 // schema says so (schema:read scope), or the operator ran preview-check and set --revisions-proven.
 async function writeGuard(api, o, liveItem) {
-  if (o.writesOff) throw new Refused(writesOffMessage(o));
+  if (o.writesOff) throw new Refused(writesOffMessage(o), "writes-off");
   if (!liveItem || liveItem.status !== "published") return "not live";
   const r = await revisionsSupported(api, o.collection);
   if (r === true) return "schema";
-  if (r === false) throw new Refused(`collection "${o.collection}" does not keep revisions: a draft save would change the live post`);
+  if (r === false) throw new Refused(`collection "${o.collection}" does not keep revisions: a draft save would change the live post`, "no-revisions");
   if (o.revisionsProven) return `proven by preview-check (${o.revisionsProvenFrom})`;
-  throw new Refused(`revisions are not proven for this collection (${o.revisionsProvenFrom}); run "cms preview-check", and once it shows revisions: true set "revisionsProven": true in the settings file (or pass --revisions-proven when no settings file is used)`);
+  throw new Refused(`revisions are not proven for this collection (${o.revisionsProvenFrom}); run "cms preview-check", and once it shows revisions: true set "revisionsProven": true in the settings file (or pass --revisions-proven when no settings file is used)`, "revisions-unproven");
 }
 
-// The settings file is what a person commits after preview-check; until it says true, no draft or publish reaches
-// the CMS, not even an SEO-only edit (which needs no draft) or a collection whose schema shows revisions.
+// The settings file is what a person commits after preview-check; until it says true, no draft, publish or discard
+// reaches the CMS, not even an SEO-only edit (which needs no draft) or a collection whose schema shows revisions.
 const writesOffMessage = (o) => `writes are off: "revisionsProven" is false in the ${o.revisionsProvenFrom}; run "cms preview-check", and once it shows revisions: true commit "revisionsProven": true`;
 function refuseIfWritesOff(o, flags, report) {
   if (!o.writesOff) return;
   if (flags.dry) { report.writesOff = true; return; }
-  throw new Refused(writesOffMessage(o));
+  throw new Refused(writesOffMessage(o), "writes-off");
 }
 
-/** The file's own versions: this file, its previous version, and every version committed in git (newest first). */
-export function versionsOf(file, parsed, base) {
-  const out = [parsed];
-  if (base) out.push(base);
+/**
+ * Every version of the file committed in git at this path, newest first (at most 50): [{ sha, parsed }]. Only this
+ * path counts (no --follow): a version under another name had another slug, and so belonged to another post.
+ */
+export function gitVersionsOf(file) {
+  const out = [];
   try {
     const shas = execFileSync("git", ["log", "--format=%H", "-n", "50", "--", basename(file)], { cwd: dirname(resolve(file)), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean);
-    for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push(parseMirror(t)); }
+    for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push({ sha, parsed: parseMirror(t) }); }
   } catch { /* not a git checkout */ }
   return out;
 }
 
+/** The file's own versions: this file, its previous version, and every version committed in git (newest first). */
+export function versionsOf(file, parsed, base) {
+  return [parsed, ...(base ? [base] : []), ...gitVersionsOf(file).map((v) => v.parsed)];
+}
+
+/**
+ * Why a file without an id may not write to the published post that has its slug, or null (decision D77, review R8 F5).
+ * A new post published from a file leaves the file without an id (no write-back to the repository). Such a file may
+ * later update that post only when the live post equals one of this file's own committed git versions: that shows the
+ * mirror made the post from this file and nobody changed it since. No other mirror file may claim the slug or the post.
+ */
+function claimProblem(o, file, dir, parsed, item) {
+  const m = parsed.meta;
+  for (const n of existsSync(dir) ? readdirSync(dir).filter((x) => x.endsWith(".md")) : []) {
+    const p = join(dir, n);
+    if (resolve(p) === resolve(file) || unsafePostFile(p, dir)) continue;
+    const other = parseMirror(readFileSync(p, "utf8")).meta;
+    if (other.slug === m.slug || (other.id != null && other.id !== "" && String(other.id) === String(item.id))) return `another mirror file (${n}) already stands for post "${m.slug}"`;
+  }
+  const live = stateOfItem(item, o.fields);
+  const hit = gitVersionsOf(file).find(({ parsed: v }) => v.meta.slug === m.slug && (v.meta.id == null || v.meta.id === "" || String(v.meta.id) === String(item.id)) && sameState(live, stateOfFile(v)));
+  if (!hit) return `slug "${m.slug}" is already used by a published post, and this file has no id: the live post equals none of this file's committed versions, so the mirror cannot show it made that post (it was edited in the CMS, or it belongs to someone else); export it to get its file`;
+  return { sha: hit.sha };
+}
+
 // Which CMS post a file may write to. A file with an id: only that published post, with the same slug, and only with
 // its previous version at hand (to see edits made in the CMS). A new file: only a slug nobody uses, or an unpublished
-// draft this mirror made from this file (a re-run). Scheduled, unpublished and trashed posts are never touched.
-async function loadTarget(api, o, parsed, report, versions) {
+// draft this mirror made from this file (a re-run), or the published post this file made (see claimProblem).
+// Scheduled, unpublished and trashed posts are never touched.
+async function loadTarget(api, o, parsed, report, versions, file, dir) {
   const m = parsed.meta;
   if (m.id != null && m.id !== "") {
-    if (!report.base) throw new Refused(`${m.slug}: a file with an id needs its previous version (--base or --base-ref), so edits made in the CMS are not overwritten`);
+    if (!report.base) throw new Refused(`${m.slug}: a file with an id needs its previous version (--base or --base-ref), so edits made in the CMS are not overwritten`, "no-base");
     const got = await api.get(o.collection, String(m.id));
-    if (!got) throw new Refused(`post ${m.id} (${m.slug}) is not in the CMS: deleted or in the trash`);
-    if (got.item.slug !== m.slug) throw new Refused(`post ${m.id} is "${got.item.slug}" in the CMS but the file says "${m.slug}": the file does not belong to that post`);
-    if (got.item.deletedAt) throw new Refused(`post ${m.slug} is in the trash`);
-    if (got.item.status !== "published") throw new Refused(`post ${m.slug} is ${got.item.status} in the CMS; the mirror only updates published posts (it was taken down or scheduled there)`);
+    if (!got) throw new Refused(`post ${m.id} (${m.slug}) is not in the CMS: deleted or in the trash`, "no-post");
+    if (got.item.slug !== m.slug) throw new Refused(`post ${m.id} is "${got.item.slug}" in the CMS but the file says "${m.slug}": the file does not belong to that post`, "other-post");
+    if (got.item.deletedAt) throw new Refused(`post ${m.slug} is in the trash`, "not-published");
+    if (got.item.status !== "published") throw new Refused(`post ${m.slug} is ${got.item.status} in the CMS; the mirror only updates published posts (it was taken down or scheduled there)`, "not-published");
     return got;
   }
   const got = await api.get(o.collection, String(m.slug));
   if (!got) return null;
   const it = got.item;
-  if (it.status !== "draft" || it.publishedAt || it.liveRevisionId || it.deletedAt) throw new Refused(`slug "${m.slug}" is already used by a ${it.status} post`);
+  if (it.status === "published" && !it.deletedAt && it.slug === m.slug) {
+    const claim = claimProblem(o, file, dir, parsed, it);
+    if (typeof claim === "string") throw new Refused(claim, "slug-taken");
+    report.claimedBySlug = { id: it.id, matchedVersion: claim.sha };
+    return got;
+  }
+  if (it.status !== "draft" || it.publishedAt || it.liveRevisionId || it.deletedAt) throw new Refused(`slug "${m.slug}" is already used by a ${it.status} post`, "slug-taken");
   const data = it.draftRevisionId ? (await api.compare(o.collection, it.id))?.draft : it.data;
-  if (!versions.some((v) => draftMatches(data, { version: v, fields: o.fields, slug: m.slug }))) throw new Refused(`an unpublished draft with slug "${m.slug}" already exists and was not made from this file; pick another slug or remove that draft in the CMS`);
+  if (!versions.some((v) => draftMatches(data, { version: v, fields: o.fields, slug: m.slug }))) throw new Refused(`an unpublished draft with slug "${m.slug}" already exists and was not made from this file; pick another slug or remove that draft in the CMS`, "foreign-draft");
   report.reusedDraft = it.id;
   return got;
 }
@@ -290,14 +327,15 @@ async function confirmDraft(api, o, id, parsed) {
   const pending = now?.draftRevisionId && now.draftRevisionId !== now.liveRevisionId;
   const data = pending ? (await api.compare(o.collection, id))?.draft : now?.data;
   if (!now || !draftMatches(data, { base: now.data || {}, version: parsed, fields: o.fields, slug: parsed.meta.slug })) {
-    throw new Refused(`the CMS draft of "${parsed.meta.slug}" is not the file any more (someone saved a draft after ours); nothing was published. Check the CMS, then run the publish again`);
+    throw new Refused(`the CMS draft of "${parsed.meta.slug}" is not the file any more (someone saved a draft after ours); nothing was published. Check the CMS, then run the publish again`, "draft-changed");
   }
 }
 
-async function saveDraft(api, o, parsed, report, file) {
+async function saveDraft(api, o, parsed, report, file, { dir, added = [] } = {}) {
   const head = stateOfFile(parsed);
   const versions = versionsOf(file, parsed, report.base);
-  let got = await loadTarget(api, o, parsed, report, versions);
+  let got = await loadTarget(api, o, parsed, report, versions, file, dir);
+  await checkAdded(api, o, got?.item, parsed, added);
   if (!got) {
     const created = await api.createDraft(o.collection, { slug: parsed.meta.slug, data: draftData(parsed, o.fields) });
     report.created = created.item.id;
@@ -312,7 +350,7 @@ async function saveDraft(api, o, parsed, report, file) {
   const foreign = item.status === "published" && hasPending ? foreignDraft(o, item, pendingData, versions) : false;
   const plan = writePlan({ live, base, foreignDraft: foreign, head });
   report.plan = { ok: plan.ok, reason: plan.reason, changes: plan.changes };
-  if (!plan.ok) throw new Refused(plan.reason);
+  if (!plan.ok) throw new Refused(plan.reason, foreign ? "foreign-draft" : "live-changed");
   // Only the current file may go live. A pending draft equal to an older version of the file (a publish that failed
   // before a revert, say) may be overwritten, never published: it is replaced by the current file first, also when
   // only the SEO fields changed.
@@ -337,12 +375,31 @@ async function saveDraft(api, o, parsed, report, file) {
 
 function readFile(flags) {
   const file = String(flags.file || "");
-  if (file) checkFolder(flags.dir ? String(flags.dir) : dirname(file));
-  const bad = file ? unsafePostFile(file, flags.dir ? String(flags.dir) : dirname(file)) : null;
-  if (bad) throw new Refused(bad);
+  const dir = flags.dir ? String(flags.dir) : dirname(file);
+  if (file) checkFolder(dir);
+  const bad = file ? unsafePostFile(file, dir) : null;
+  if (bad) throw new Refused(bad, "unsafe-file");
   if (!file || !existsSync(file)) throw new Error("--file <mirror file> is required");
   const parsed = parseMirror(readFileSync(file, "utf8"));
-  return { file, parsed };
+  return { file, dir, parsed };
+}
+
+/**
+ * Read-only keys the file added (absent in its previous version; validateFile lets them through) must equal the CMS
+ * post, checked before any write. Categories and tags are read the way export reads them.
+ */
+async function checkAdded(api, o, item, parsed, added) {
+  if (!added?.length) return;
+  if (!item) throw new Refused(`${parsed.meta.slug}: read-only ${added.join(", ")} added, but no CMS post has this slug`, "read-only-mismatch");
+  const terms = {};
+  for (const [key, tax] of [["categories", "category"], ["tags", "tag"]]) {
+    if (!added.includes(key)) continue;
+    try { terms[key] = o.taxonomies.includes(tax) ? (await api.terms(o.collection, item.id, tax)).map((x) => x.slug) : []; }
+    catch { terms[key] = []; }
+  }
+  const cms = readOnlyOf(item, { fields: o.fields, ...terms });
+  const bad = added.filter((k) => JSON.stringify(parsed.meta[k] ?? null) !== JSON.stringify(cms[k] ?? null));
+  if (bad.length) throw new Refused(`${parsed.meta.slug}: read-only ${bad.map((k) => `${k} ${JSON.stringify(parsed.meta[k])} (CMS: ${JSON.stringify(cms[k] ?? null)})`).join(", ")} added to the file but not what the CMS has; a read-only key may only be added with the CMS's own value`, "read-only-mismatch");
 }
 
 function checkFile(file, parsed, base, o) {
@@ -353,13 +410,13 @@ function checkFile(file, parsed, base, o) {
 
 export async function draftCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const o = options(flags);
-  const { file, parsed } = readFile(flags);
+  const { file, dir, parsed } = readFile(flags);
   const base = baseOf(file, flags);
   const v = checkFile(file, parsed, base, o);
   const api = client(flags, f);
   const report = { action: "draft", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
   refuseIfWritesOff(o, flags, report);
-  const { item } = await saveDraft(api, o, parsed, report, file);
+  const { item } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly });
   delete report.base;
   report.id = item.id;
   report.liveUrl = item.status === "published" ? pageUrl(api.base, o.urlPattern, item.slug) : null;
@@ -377,13 +434,13 @@ export async function draftCmd(flags, { fetch: f = globalThis.fetch } = {}) {
 
 export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const o = options(flags);
-  const { file, parsed } = readFile(flags);
+  const { file, dir, parsed } = readFile(flags);
   const base = baseOf(file, flags);
   const v = checkFile(file, parsed, base, o);
   const api = client(flags, f);
   const report = { action: "publish", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
   refuseIfWritesOff(o, flags, report);
-  const { item, head, changes, pendingIsHead } = await saveDraft(api, o, parsed, report, file);
+  const { item, head, changes, pendingIsHead } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly });
   delete report.base;
   report.id = item.id;
   report.changes = changes;
@@ -414,6 +471,61 @@ export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   report.calls = api.calls;
   out(report);
   return report.verified ? 0 : 2;
+}
+
+// ------------------------------------------------------------------------------------------------ discard
+
+// EmDash 0.1.0: POST /_emdash/api/content/{collection}/{id}/discard-draft clears the entry's draft revision pointer and
+// nothing else (the row already holds the published version; the revision itself stays in the history). It takes no
+// _rev, so the draft is read again just before the call. See src/cms/emdash.mjs.
+export async function discardCmd(flags, { fetch: f = globalThis.fetch } = {}) {
+  const o = options(flags);
+  const { file, dir, parsed } = readFile(flags);
+  const base = baseOf(file, flags);
+  const v = checkFile(file, parsed, base, o);
+  const api = client(flags, f);
+  const m = parsed.meta;
+  const report = { action: "discard", file, slug: m.slug, dry: !!flags.dry, discarded: false };
+  refuseIfWritesOff(o, flags, report);
+  const got = await api.get(o.collection, String(m.id != null && m.id !== "" ? m.id : m.slug));
+  if (!got || got.item.deletedAt) { report.refusal = "no-draft"; report.reason = "no CMS post for this file: nothing to discard"; report.calls = api.calls; out(report); return 4; }
+  const item = got.item;
+  if (item.slug !== m.slug) throw new Refused(`post ${m.id} is "${item.slug}" in the CMS but the file says "${m.slug}": the file does not belong to that post`, "other-post");
+  report.id = item.id;
+  // Only drafts on live posts: an unpublished post made from a new file is the post itself, and removing it would delete it.
+  if (item.status !== "published") throw new Refused(`post ${m.slug} is ${item.status} in the CMS: discard only removes a pending draft from a published post; an unpublished post stays (delete it in the CMS admin if it is not wanted)`, "not-published");
+  // The live post must still be the version the draft was made against: without it at hand, "changed under it" cannot be seen.
+  if (!base) throw new Refused(`${m.slug}: discard needs the file's previous version (--base or --base-ref, the pull request's base), so a live post changed in the meantime is not mistaken for the mirror's`, "no-base");
+  if (m.id == null || m.id === "") {
+    const claim = claimProblem(o, file, dir, parsed, item);
+    if (typeof claim === "string") throw new Refused(claim, "slug-taken");
+    report.claimedBySlug = { id: item.id, matchedVersion: claim.sha };
+  }
+  await checkAdded(api, o, item, parsed, v.addedReadOnly);
+  const hasPending = !!item.draftRevisionId && item.draftRevisionId !== item.liveRevisionId;
+  if (!hasPending) { report.refusal = "no-draft"; report.reason = "the post has no pending draft: nothing to discard"; report.calls = api.calls; out(report); return 4; }
+  const draft = (await api.compare(o.collection, item.id))?.draft || {};
+  if (foreignDraft(o, item, draft, versionsOf(file, parsed, base))) throw new Refused(`the pending draft of "${m.slug}" was not made by this mirror from this file (it differs from every version of it): someone else's work, left in place; check it in the CMS admin`, "foreign-draft");
+  const live = stateOfItem(item, o.fields);
+  const was = stateOfFile(base);
+  const drift = diffState(live, was, partsFor(live, was));
+  if (drift.length) throw new Refused(`the live post "${m.slug}" changed since the file's previous version (${drift.join(", ")} differ): the draft was left in place; check the CMS and export again`, "live-changed");
+  report.guard = await writeGuard(api, o, item);
+  report.draftRevision = item.draftRevisionId;
+  if (flags.dry) { report.wouldDiscard = true; report.calls = api.calls; out(report); return 0; }
+  // Re-read just before the call: a draft saved by someone else since the check would be discarded with ours.
+  const now = (await api.get(o.collection, item.id))?.item;
+  if (!now || now.draftRevisionId !== item.draftRevisionId || diffState(live, stateOfItem(now, o.fields)).length) throw new Refused(`the post "${m.slug}" changed while checking (another draft or edit); nothing was discarded; run discard again`, "draft-changed");
+  await api.discardDraft(o.collection, item.id);
+  const after = (await api.get(o.collection, item.id))?.item;
+  const moved = after ? diffState(live, stateOfItem(after, o.fields)) : ["post"];
+  if (moved.length || after.status !== "published") { const e = new Error(`DANGER: discarding the draft changed the live post (${moved.join(", ") || after.status}); restore it from the previous mirror file`); e.exit = 2; throw e; }
+  if (after.draftRevisionId && after.draftRevisionId !== after.liveRevisionId) { const e = new Error("the discard left a pending draft"); e.exit = 2; throw e; }
+  report.discarded = true;
+  report.liveUrl = pageUrl(api.base, o.urlPattern, after.slug);
+  report.calls = api.calls;
+  out(report);
+  return 0;
 }
 
 // ------------------------------------------------------------------------------------------------ preview-check
@@ -516,11 +628,11 @@ export async function schemaCmd(flags, { fetch: f = globalThis.fetch } = {}) {
 
 export async function cms({ flags = {}, positional = [] } = {}, deps = {}) {
   const sub = positional[0];
-  const run = { export: exportCmd, validate: validateCmd, draft: draftCmd, publish: publishCmd, "preview-check": previewCheckCmd, schema: schemaCmd }[sub];
-  if (!run) throw new Error("usage: cms export|validate|draft|publish|preview-check|schema (see docs/cms-mirror.md)");
+  const run = { export: exportCmd, validate: validateCmd, draft: draftCmd, publish: publishCmd, discard: discardCmd, "preview-check": previewCheckCmd, schema: schemaCmd }[sub];
+  if (!run) throw new Error("usage: cms export|validate|draft|publish|discard|preview-check|schema (see docs/cms-mirror.md)");
   try { return await run(flags, deps); }
   catch (e) {
-    if (e instanceof Refused || e.exit) { out({ action: sub, refused: e instanceof Refused, error: e.message }); return e.exit || 3; }
+    if (e instanceof Refused || e.exit) { out({ action: sub, refused: e instanceof Refused, ...(e.refusal ? { refusal: e.refusal } : {}), error: e.message }); return e.exit || 3; }
     if (e.report) { out({ action: sub, error: e.message, ...e.report }); return 1; }
     if (e instanceof EmDashError) { out({ action: sub, error: e.message, status: e.status, code: e.code }); return 1; }
     throw e;

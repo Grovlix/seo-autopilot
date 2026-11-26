@@ -87,6 +87,11 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
         r.publishedAt = r.publishedAt || now(); r.updatedAt = now();
         return ok({ item: view(r) });
       }
+      // 0.1.0 discardDraft: only draft_revision_id = NULL and updated_at; the revision row stays.
+      if (sub === "discard-draft" && method === "POST") {
+        if (r.draftRevisionId) { r.draftRevisionId = null; r.updatedAt = now(); }
+        return ok({ item: view(r) });
+      }
       if (sub === "compare") return ok({ hasChanges: !!r.draftRevisionId && r.draftRevisionId !== r.liveRevisionId, live: r.liveRevisionId ? revs.get(r.liveRevisionId).data : null, draft: r.draftRevisionId ? revs.get(r.draftRevisionId).data : null });
       const t = sub?.match(/^terms\/(.+)$/);
       if (t) return ok({ terms: (r.terms[t[1]] || []).map((s) => ({ id: s, name: t[1], slug: s, label: s, parentId: null })) });

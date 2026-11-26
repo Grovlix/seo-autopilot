@@ -2,6 +2,13 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D77: `cms discard` and files without an id, review R8 F4/F5, on feat/cms-discard-slug-update from main fc34f93; code change, nothing deployed)
+- **Code:** `src/cms/commands.mjs`: `discard` command; `gitVersionsOf`; `claimProblem` (an id-less file may claim the published post with its slug when live equals one of its committed versions and no other file stands for it); `checkAdded` (read-only keys added must equal the CMS); refusal codes in the report; `readFile` returns the folder. `src/cms/mirror.mjs`: `readOnlyOf`, `partsFor`, `sameState`; `writePlan` compares SEO only when both sides have it; `validateFile` returns `addedReadOnly`. `src/cms/emdash.mjs`: `discardDraft` and the 0.1.0 source facts. `test/fixtures/fake-emdash.mjs`: the discard-draft route as 0.1.0 has it.
+- **Found in EmDash 0.1.0 (npm package source):** a discard-draft route exists and only clears the draft pointer (see D77 for file:line).
+- **Tests:** new `test/cms-discard-idless.test.mjs` (23). `npm test` 769 tests, 767 pass, 0 fail, 2 skipped (main fc34f93: 746/744/0/2, no failures before the change).
+- **Documentation:** `docs/cms-mirror.md` (command, exit code 4, refusal codes, safety rules, pull-request workflow, limits), root `CHANGELOG.md`, `bin/seo-autopilot.mjs` usage line.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call was made.
+
 ## 2026-11-26 (D70 follow-up: settings `revisionsProven: false` turns writes off, on fix/cms-revisions-proven-false from main e54723d; code change, nothing deployed)
 - **Code:** `src/cms/commands.mjs`: `options()` sets `writesOff` when the settings file has `revisionsProven: false`. `draft` and `publish` refuse at the start (exit 3) unless `--dry`; `writeGuard` checks it before the schema. Found on a live export: with a token that has schema:read, the schema answer ("revisions") let draft saves through despite `false`, and an SEO-only publish never reached the guard.
 - **Tests:** new `test/cms-mirror-revisions-off.test.mjs` (6). The 5 refusal and dry-run tests fail at e54723d and pass after; the `true` control passes on both.
