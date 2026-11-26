@@ -9,6 +9,7 @@ import { terms, readability, stem } from "../src/analysis/text.mjs";
 import { mergeCandidates, label, groupKeywords, difficulty, explore, demand } from "../src/analysis/keywords.mjs";
 import { bing, dataforseo, openpagerank, suggest } from "../src/lib/research-sources.mjs";
 import { UK, US, CONFIG } from "./market-fixtures.mjs";
+import { testGuard } from "./dfs-fixtures.mjs";
 
 test("text: light stemming merges plural and -ing forms; readability needs enough words", () => {
   assert.deepEqual(terms("Invoices invoice pricing price companies hosting hosted"), ["invoic", "invoic", "pric", "pric", "company", "host", "host"]);
@@ -79,11 +80,12 @@ test("sources: request shapes and parsing for Bing, DataForSEO, Open PageRank an
   const env = { BING_WEBMASTER_API_KEY: "bk", DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p", OPENPAGERANK_API_KEY: "ok" };
   assert.deepEqual(await bing.related("web hosting", UK, { fetch: f, env, today: new Date("2026-10-20") }), [{ query: "web hosting uk", bingImpressions: 120 }]);
   assert.match(calls[0].url, /country=gb&language=en-GB&startDate=2026-07-20&endDate=2026-10-18/);
-  const ideas = await dataforseo.ideas(["hosting"], US, { fetch: f, env });
+  const guard = testGuard({ fetch: f, env });
+  const ideas = await dataforseo.ideas(["hosting"], US, { guard });
   assert.deepEqual(ideas[0], { query: "cheap hosting", volume: 1900, cpc: 2, competition: null, difficulty: 33, intent: "commercial", trend: [1, 2] });
   assert.deepEqual([JSON.parse(calls[1].init.body)[0].location_code, JSON.parse(calls[1].init.body)[0].language_code], [2840, "en"]);
   assert.match(calls[1].init.headers.Authorization, /^Basic /);
-  assert.deepEqual(await dataforseo.ranked("c.test", UK, { fetch: f, env }), [{ query: "vps hosting", position: 4, url: "https://c.test/vps", volume: 700, traffic: 55, intent: null }]);
+  assert.deepEqual(await dataforseo.ranked("c.test", UK, { guard }), [{ query: "vps hosting", position: 4, url: "https://c.test/vps", volume: 700, traffic: 55, intent: null }]);
   assert.deepEqual(await openpagerank.authority(["https://www.a.test/x", "zz.test"], { fetch: f, env }), { "a.test": 5.5 });
   assert.equal(calls[3].init.headers["API-OPR"], "ok");
   assert.deepEqual((await suggest.expand("web hosting", UK, { fetch: f, max: 2, delayMs: 0 })).map((x) => x.query), ["web hosting free", "web hosting uk"]);

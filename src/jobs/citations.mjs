@@ -3,6 +3,7 @@
 // Writes <state>/<site>/citations.json (with run history) and citations.md.   npx seo-autopilot run citations [--json]
 import { readJson, writeJson, writeText, today, sleep } from "../core/util.mjs";
 import { pickProvider, SETUP_HELP } from "../lib/serp.mjs";
+import { costGuardFor } from "../lib/dataforseo.mjs";
 import { siteMarket, withLocation, languageFor, marketLabel } from "../lib/market.mjs";
 import { normaliseQuestions, analyseCitations, appendHistory, citationsMarkdown } from "../analysis/citations.mjs";
 
@@ -12,6 +13,7 @@ export const description = "Track whether the site is cited in search results an
 export async function run({ site, flags = {} }, deps = {}) {
   const env = deps.env || process.env;
   const provider = pickProvider(env);
+  const guard = costGuardFor(site, "citations", { env, fetch: deps.fetch || globalThis.fetch, guard: deps.guard, now: deps.now });
   if (!provider) { console.log(SETUP_HELP); return; }
   const file = `${site.paths.data}/questions.json`;
   const raw = readJson(file, []);
@@ -32,7 +34,7 @@ export async function run({ site, flags = {} }, deps = {}) {
   for (const [i, { q, m }] of planned.entries()) {
     const market = marketLabel(m);
     if (i) await sleep(delay);
-    try { answers.push({ q, market, ...(await provider.search(q, m, { fetch: deps.fetch || globalThis.fetch, env })) }); }
+    try { answers.push({ q, market, ...(await provider.search(q, m, { fetch: deps.fetch || globalThis.fetch, env, guard, aiOverview: true })) }); }
     catch (e) { answers.push({ q, market, error: e.message }); console.log(`citations: "${q}" failed: ${e.message}`); }
   }
   const r = analyseCitations({ domain, answers });

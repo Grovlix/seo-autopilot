@@ -14,6 +14,7 @@ import { routeAgents } from "../src/analysis/agent-router.mjs";
 import { validate, DEFAULTS } from "../src/core/config.mjs";
 import { JOBS } from "../src/jobs/index.mjs";
 import { UK, SA_AR, SA_EN, CONFIG } from "./market-fixtures.mjs";
+import { testGuard, DFS_ENV } from "./dfs-fixtures.mjs";
 
 const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-ABC123"></script><script>gtag('config','G-ABC123')</script>`;
 
@@ -186,7 +187,7 @@ test("serp: dataforseo posts one task with Basic auth and reads organic and ai_o
       { type: "people_also_ask" },
     ] }] }] });
   };
-  const r = await dataforseo.search("q", UK, { fetch, env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" } });
+  const r = await dataforseo.search("q", UK, { guard: testGuard({ fetch }) });
   assert.equal(seen.url, "https://api.dataforseo.com/v3/serp/google/organic/live/advanced");
   assert.equal(seen.init.headers.Authorization, "Basic " + Buffer.from("l:p").toString("base64"));
   const body = JSON.parse(seen.init.body);
@@ -199,8 +200,8 @@ test("serp: dataforseo posts one task with Basic auth and reads organic and ai_o
 test("serp: a Saudi site sends 2682 and Arabic for its Arabic pages and 2682 and English for its English pages, on every provider", async () => {
   const sent = [];
   const fetch = async (url, init) => { sent.push({ url: new URL(url), body: init?.body ? JSON.parse(init.body)[0] : null }); return jsonRes({ tasks: [{ status_code: 20000, result: [{ items: [] }] }], web: { results: [] }, organic_results: [] }); };
-  await dataforseo.search("q", SA_AR, { fetch, env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" } });
-  await dataforseo.search("q", SA_EN, { fetch, env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" } });
+  await dataforseo.search("q", SA_AR, { guard: testGuard({ fetch }) });
+  await dataforseo.search("q", SA_EN, { guard: testGuard({ fetch }) });
   assert.deepEqual(sent.map((s) => [s.body.location_code, s.body.language_code]), [[2682, "ar"], [2682, "en"]]);
   sent.length = 0;
   await brave.search("q", SA_AR, { fetch, env: { BRAVE_API_KEY: "k" } });
@@ -213,7 +214,7 @@ test("serp: a call without a resolved market throws before any request (no UK de
   let calls = 0;
   const fetch = async () => { calls++; return jsonRes({}); };
   for (const [p, env] of [[brave, { BRAVE_API_KEY: "k" }], [serpapi, { SERPAPI_KEY: "k" }], [dataforseo, { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }]]) {
-    for (const bad of [undefined, null, "GB", "UK", { country: "GB" }]) await assert.rejects(() => p.search("q", bad, { fetch, env }), /no market given/, `${p.name} with ${JSON.stringify(bad)}`);
+    for (const bad of [undefined, null, "GB", "UK", { country: "GB" }]) await assert.rejects(() => p.search("q", bad, { fetch, env, guard: testGuard({ fetch }) }), /no market given/, `${p.name} with ${JSON.stringify(bad)}`);
   }
   assert.equal(calls, 0);
 });
@@ -221,7 +222,7 @@ test("serp: a call without a resolved market throws before any request (no UK de
 test("serp: errors never contain the key", async () => {
   const fetch = async () => jsonRes({}, 401);
   for (const [p, env] of [[brave, { BRAVE_API_KEY: "TOPSECRET" }], [serpapi, { SERPAPI_KEY: "TOPSECRET" }], [dataforseo, { DATAFORSEO_LOGIN: "TOPSECRET", DATAFORSEO_PASSWORD: "TOPSECRET" }]]) {
-    await assert.rejects(() => p.search("q", UK, { fetch, env }), (e) => /401/.test(e.message) && !/TOPSECRET/.test(e.message));
+    await assert.rejects(() => p.search("q", UK, { fetch, env, guard: testGuard({ fetch, env }) }), (e) => /401/.test(e.message) && !/TOPSECRET/.test(e.message));
   }
   await assert.rejects(() => serpapi.search("q", UK, { fetch: async () => { throw new Error("https://serpapi.com/?api_key=TOPSECRET"); }, env: { SERPAPI_KEY: "TOPSECRET" } }), (e) => !/TOPSECRET/.test(e.message));
 });
@@ -309,10 +310,11 @@ test("citations job: a Saudi site researches Arabic questions in 2682/ar and Eng
   const sent = [];
   const fetch = async (url, init) => { sent.push(JSON.parse(init.body)[0]); return jsonRes({ tasks: [{ status_code: 20000, result: [{ items: [] }] }] }); };
   const env = { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" };
-  await withLog(() => run({ site, flags: {} }, { env, fetch, delayMs: 0 }));
+  const guard = testGuard({ fetch, env });
+  await withLog(() => run({ site, flags: {} }, { env, fetch, delayMs: 0, guard }));
   assert.deepEqual(sent.map((b) => [b.location_code, b.language_code]), [[2682, "ar"], [2682, "en"], [2682, "en"]]);
   sent.length = 0;
-  await withLog(() => run({ site, flags: { language: "ar" } }, { env, fetch, delayMs: 0 }));
+  await withLog(() => run({ site, flags: { language: "ar" } }, { env, fetch, delayMs: 0, guard }));
   assert.deepEqual(sent.map((b) => b.language_code), ["ar", "ar", "en"], "--language sets the default; a question's own language still wins");
 });
 

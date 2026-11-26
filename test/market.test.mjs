@@ -9,6 +9,7 @@ import { validate, loadConfig } from "../src/core/config.mjs";
 import { init } from "../src/cli/init.mjs";
 import { marketReport } from "../src/cli/doctor.mjs";
 import { SA_AR } from "./market-fixtures.mjs";
+import { testGuard } from "./dfs-fixtures.mjs";
 
 const SA = { location_code: 2682, language_code: "ar", languages: ["ar", "en"] };
 const res = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -166,7 +167,9 @@ test("keywords: with a key or seeds that would call a provider, no market keeps 
   const warn = console.warn; console.warn = () => {};
   const sentTo = [];
   try {
-    await quiet(() => run({ site, flags: {}, positional: ["hosting"] }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: async (u, init) => { if (init?.body) { const t = JSON.parse(init.body)[0]; sentTo.push([t.location_code, t.language_code]); } return res({}, 500); }, delayMs: 0 }));
+    const f = async (u, init) => { if (init?.body) { const t = JSON.parse(init.body)[0]; sentTo.push([t.location_code, t.language_code]); } return res({}, 500); };
+    const env = { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" };
+    await quiet(() => run({ site, flags: {}, positional: ["hosting"] }, { env, fetch: f, delayMs: 0, guard: testGuard({ fetch: f, env }) }));
   } finally { console.warn = warn; }
   assert.deepEqual(sentTo, [[2826, "en"]], "no market: the old United Kingdom / English request, as before");
   await assert.rejects(() => quiet(() => run({ site: { ...site, market: { location: "Atlantis", language_code: "en" } }, flags: {}, positional: ["hosting"] }, { env: { BRAVE_API_KEY: "k" }, fetch: g.fetch, delayMs: 0 })), /unknown location "Atlantis"/);
@@ -186,11 +189,12 @@ test("keywords: a Saudi site asks DataForSEO for Arabic ideas for Arabic seeds a
     if (url.includes("keyword_ideas")) { const t = JSON.parse(init.body)[0]; sent.push([t.location_code, t.language_code, t.keywords]); return res({ tasks: [{ status_code: 20000, result: [{ items: [] }] }] }); }
     return res({}, 404);
   };
-  await quiet(() => run({ site, flags: { "no-open-data": true }, positional: ["استضافة مواقع", "web hosting for the shop", "خوادم"] }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: f, delayMs: 0 }));
+  const dfsEnv = { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, guard = testGuard({ fetch: f, env: dfsEnv });
+  await quiet(() => run({ site, flags: { "no-open-data": true }, positional: ["استضافة مواقع", "web hosting for the shop", "خوادم"] }, { env: dfsEnv, fetch: f, delayMs: 0, guard }));
   assert.deepEqual(sent, [[2682, "ar", ["استضافة مواقع", "خوادم"]], [2682, "en", ["web hosting for the shop"]]]);
   assert.equal(JSON.parse(readFileSync(join(state, "keywords.json"), "utf8")).market, "Saudi Arabia (2682), ar");
   sent.length = 0;
-  await quiet(() => run({ site, flags: { "no-open-data": true, language: "en" }, positional: ["استضافة مواقع"] }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: f, delayMs: 0 }));
+  await quiet(() => run({ site, flags: { "no-open-data": true, language: "en" }, positional: ["استضافة مواقع"] }, { env: dfsEnv, fetch: f, delayMs: 0, guard }));
   assert.deepEqual(sent.map((s) => s[1]), ["en"], "--language overrides detection");
   await assert.rejects(() => quiet(() => run({ site, flags: { language: "fr" }, positional: ["x"] }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: f, delayMs: 0 })), /"fr" is not one of this site's languages/);
 });
@@ -202,7 +206,7 @@ test("rank --serp: tracked queries are checked in the language they are written 
   const sent = [];
   const f = async (url, init) => { sent.push(JSON.parse(init.body)[0]); return res({ tasks: [{ status_code: 20000, result: [{ items: [] }] }] }); };
   const env = { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" };
-  const deps = { env, fetch: f, delayMs: 0, today: "2026-11-20" };
+  const deps = { env, fetch: f, delayMs: 0, today: "2026-11-20", guard: testGuard({ fetch: f, env }) };
   await quiet(() => run({ site, flags: { offline: true, serp: true } }, deps));
   assert.deepEqual(sent.map((b) => [b.location_code, b.language_code]), [[2682, "ar"], [2682, "en"]]);
   sent.length = 0;

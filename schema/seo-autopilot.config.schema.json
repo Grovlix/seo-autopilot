@@ -219,6 +219,15 @@
             },
             "additionalProperties": false
           },
+          "dataforseo": {
+            "type": "object",
+            "description": "Cost guard for every paid DataForSEO call (see docs/configuration.md#dataforseo-cost-guard). Calls are refused, with no request sent, when this month's recorded spend plus an estimate would pass monthlyCapUsd, or when the live account balance would fall under minBalanceUsd.",
+            "properties": {
+              "monthlyCapUsd": { "type": "number", "minimum": 0, "default": 8, "description": "Most this site's jobs may spend on DataForSEO in one calendar month (UTC), in US dollars." },
+              "minBalanceUsd": { "type": "number", "minimum": 0, "default": 10, "description": "Paid calls stop when the account balance (read from the free appendix/user_data endpoint) would fall under this, in US dollars." }
+            },
+            "additionalProperties": false
+          },
           "citations": {
             "type": "object",
             "properties": {

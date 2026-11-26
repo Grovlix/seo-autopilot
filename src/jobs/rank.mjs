@@ -7,6 +7,7 @@
 import { readJson, writeJson, writeText, today as todayFn, addDays, sleep } from "../core/util.mjs";
 import { getToken, SCOPES, searchAnalytics } from "../lib/google-auth.mjs";
 import { pickProvider } from "../lib/serp.mjs";
+import { costGuardFor } from "../lib/dataforseo.mjs";
 import { trackedSet, mergeSeries, trackQueries, summarise, liveCheck, rankMarkdown } from "../analysis/rank.mjs";
 import { marketOf } from "./keywords.mjs";
 import { languageFor, marketLabel } from "../lib/market.mjs";
@@ -57,10 +58,11 @@ export async function run({ site, flags = {} }, deps = {}) {
     const provider = pickProvider(env);
     if (!provider) console.log("rank: --serp needs a SERP provider key (BRAVE_API_KEY, SERPAPI_KEY or DataForSEO). Positions above are from Search Console only.");
     else {
+      const guard = costGuardFor(site, "rank", { env, fetch: deps.fetch || globalThis.fetch, guard: deps.guard, now: deps.now });
       const m = serpMarket, serps = {}, limit = site.research?.serpLimit || 50;
       for (const [i, q] of tracked.queries.slice(0, limit).entries()) {
         if (i) await sleep(deps.delayMs ?? 1200);
-        try { serps[q] = await provider.search(q, languageFor(m, q, flags.language), { fetch: deps.fetch || globalThis.fetch, env }); } catch (e) { serps[q] = { error: e.message }; }
+        try { serps[q] = await provider.search(q, languageFor(m, q, flags.language), { fetch: deps.fetch || globalThis.fetch, env, guard }); } catch (e) { serps[q] = { error: e.message }; }
       }
       live = { provider: provider.name, market: marketLabel(m), date: day, ...liveCheck(serps, new URL(site.url).hostname) };
     }
