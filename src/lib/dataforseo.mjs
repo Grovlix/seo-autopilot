@@ -8,13 +8,15 @@
 //      endpoint). A call that times out or drops after it was sent may have been charged, so its estimate is recorded (flagged).
 //      The state folder is what `seo-autopilot state save` keeps on the data branch, so the ledger survives runs.
 //   3. When it refuses: one alert per day per reason through the generic notifier (src/lib/notify.mjs, TELEGRAM_* env).
-// Scope: the cap counts one ledger, which is one site in one state folder. The balance floor is the only account-wide limit.
+// Scope: the cap counts one ledger, which is one site in one state folder. The balance floor is the only account-wide limit (and,
+// within one process, every guard on the same login sees what the others spent since the last balance reading).
+// Endpoint paths are lowercase words joined by "/" (anything else is refused), so a priced prefix cannot reach another endpoint.
 // Config, per site: "dataforseo": { "monthlyCapUsd": 8, "minBalanceUsd": 10 }. Credentials: DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD
 // (only in the Authorization header; never logged, never in an error or an alert). `fetch`, `now`, the ledger and the notifier are
 // injectable so tests never touch the network.
 import { randomUUID } from "node:crypto";
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, linkSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { writeJson } from "../core/util.mjs";
 import { sendTelegram } from "./notify.mjs";
 import { DEFAULT_CAP_USD, DEFAULT_MIN_BALANCE_USD } from "./budget-defaults.mjs";
@@ -30,9 +32,13 @@ const TIMEOUT_MS = 30 * 1000;
 // so it is counted as spent at its estimate.
 const STALE_RESERVATION_MS = 10 * 60 * 1000;
 const LOCK_STALE_MS = 10 * 1000, LOCK_WAIT_MS = 15 * 1000;
+const UNWRITABLE = new Set(["EACCES", "EPERM", "EROFS"]);
+// Errors that never reached a billable task: the key was refused, or the request was rate limited. Any other error with no readable
+// cost (a 5xx, a gateway page) may have been billed, so its estimate is recorded.
+const UNBILLED_STATUS = new Set([401, 403, 429]);
 
 export class BudgetError extends Error {
-  /** reason: "monthly-cap" | "min-balance" | "balance-unavailable" | "no-estimate" | "ledger-invalid" | "ledger-locked" | "invalid-config" | "no-guard" */
+  /** reason: "monthly-cap" | "min-balance" | "balance-unavailable" | "no-estimate" | "bad-path" | "ledger-invalid" | "ledger-locked" | "ledger-unwritable" | "invalid-config" | "no-guard" */
   constructor(message, reason, details = {}) { super(message); this.name = "BudgetError"; this.reason = reason; this.details = details; }
 }
 
@@ -51,6 +57,9 @@ const ESTIMATES = [
 const INPUT_LISTS = ["keywords", "targets"];
 
 const round = (n) => Math.round(n * 1e6) / 1e6;
+// Estimates round up to the next millionth, so a tiny one never becomes $0 and slips under a cap of 0 or a full month.
+// (The 1e-6 slack absorbs float noise such as 0.003 + 0.0004 * 10 = 0.007000000000000001.)
+const roundUp = (n) => Math.max(Math.ceil(n * 1e6 - 1e-6), n > 0 ? 1 : 0) / 1e6;
 const monthOf = (d) => d.toISOString().slice(0, 7);
 const dayOf = (d) => d.toISOString().slice(0, 10);
 // Whole cents for normal amounts, up to four decimals for small ones, so a $0.001 cap does not read as $0.00.
@@ -62,9 +71,14 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
 
 /** "/v3/serp/..." and "/serp/..." are "serp/...". */
 export const normalizePath = (p) => String(p ?? "").trim().replace(/^\/+/, "").replace(/^v3\//, "");
+// An endpoint path is lowercase words joined by single slashes. Anything else ("..", ".", "%2e", "\", "?", "//", a trailing "/")
+// could make the URL resolve to an endpoint other than the one that was priced, so it is refused before any estimate.
+const VALID_PATH = /^[a-z0-9_]+(\/[a-z0-9_]+)*$/;
+export const isValidPath = (p) => VALID_PATH.test(normalizePath(p));
 
 /** { usd } for one task of a known endpoint, { unknown } for an endpoint with no price, { error } for a bad limit or depth. */
 function estimateTask(path, task) {
+  if (!VALID_PATH.test(path)) return { error: "not an endpoint path" };
   const hit = ESTIMATES.find(([re]) => re.test(path));
   if (!hit) return { unknown: true };
   const { base, per, size, dflt } = hit[1];
@@ -76,7 +90,7 @@ function estimateTask(path, task) {
     items = n;
   }
   for (const k of INPUT_LISTS) if (Array.isArray(t[k])) items = Math.max(items, t[k].length);
-  return { usd: round(base + per * items) };
+  return { usd: roundUp(base + per * items) };
 }
 
 /** Conservative USD estimate for one task of `path` (for example "dataforseo_labs/google/keyword_ideas/live"), or null when the
@@ -98,7 +112,7 @@ function estimateCall(path, list, opts) {
     if (r.unknown) unknown = true; else table += r.usd;
   }
   if (unknown && given === undefined) return { error: `no price is known for "${path}", so the call cannot be checked against the cap. Pass a generous { estimateUsd } for the whole call.` };
-  return { usd: round(unknown ? given : Math.max(table, given ?? 0)) };
+  return { usd: roundUp(unknown ? given : Math.max(table, given ?? 0)) };
 }
 
 // ---- the ledger ------------------------------------------------------------------------------------------------------------------
@@ -126,23 +140,61 @@ export function checkLedger(l) {
 }
 
 const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-/** Run `fn` holding an exclusive lock file next to `file` (O_EXCL), so processes sharing the file never interleave a read-modify-write.
- *  `fn` is synchronous, so the lock is held for milliseconds; a lock older than LOCK_STALE_MS was left by a killed process. */
+const lockedError = (lock) => Object.assign(new Error(`the ledger is locked by another run (${lock})`), { code: "LEDGER_LOCKED" });
+const readOr = (f, dflt) => { try { return readFileSync(f, "utf8"); } catch { return dflt; } };
+const isStale = (f) => { try { return Date.now() - statSync(f).mtimeMs > LOCK_STALE_MS; } catch { return null; } };
+
+/** A lock older than LOCK_STALE_MS was left by a killed process. A process that stat'ed it and was then paused could remove a live
+ *  lock created after its stat, so takeovers go one at a time through a second O_EXCL file (`.takeover`, held for microseconds) and
+ *  look again under it: only a lock that is still stale is moved (renamed to a name only this process uses), and only when the moved
+ *  file is still the one that was seen is it removed. Anything else is put back. While a stale lock exists nobody can create a new
+ *  one, and nobody else can remove it without the gate, so a live lock is moved only if its own holder kept it past LOCK_STALE_MS
+ *  (a suspended process); that holder then sees it lost the lock and writes nothing. */
+function takeOver(lock, token) {
+  const gate = `${lock}.takeover`;
+  try { writeFileSync(gate, token, { flag: "wx" }); } catch (e) {
+    if (e.code !== "EEXIST") throw e;
+    if (isStale(gate)) rmSync(gate, { force: true }); // its holder died in the middle of a takeover
+    return; // someone else is taking over: try the lock again
+  }
+  try {
+    const seen = readOr(lock, null);
+    if (seen === null || isStale(lock) !== true) return; // released, or a fresh lock is there now
+    const aside = `${lock}.stale-${token}`;
+    try { renameSync(lock, aside); } catch (e) { if (e.code === "ENOENT") return; throw e; }
+    if (readOr(aside, null) === seen && isStale(aside) === true) { rmSync(aside, { force: true }); return; }
+    try { linkSync(aside, lock); } catch { /* a newer lock is already there; the moved one's holder sees it lost the lock */ }
+    rmSync(aside, { force: true });
+  } finally { if (readOr(gate, null) === token) rmSync(gate, { force: true }); }
+}
+
+/** Run `fn(held)` holding an exclusive lock file next to `file` (created with O_EXCL, holding a random token), so processes sharing
+ *  the file never interleave a read-modify-write. `fn` is synchronous, so the lock is held for milliseconds. `held()` throws when the
+ *  lock no longer holds this run's token (another process took it over); callers check it right before they write. The lock is
+ *  removed only when it still holds this run's token. */
 function withLock(file, fn) {
-  const lock = `${file}.lock`;
+  const lock = `${file}.lock`, token = `${process.pid}-${randomUUID()}`;
   mkdirSync(dirname(file), { recursive: true });
   const t0 = Date.now();
   for (;;) {
-    try { closeSync(openSync(lock, "wx")); break; } catch (e) {
+    try { writeFileSync(lock, token, { flag: "wx" }); break; } catch (e) {
       if (e.code !== "EEXIST") throw e;
-      let age;
-      try { age = Date.now() - statSync(lock).mtimeMs; } catch { continue; } // released meanwhile
-      if (age > LOCK_STALE_MS) { rmSync(lock, { force: true }); continue; }
-      if (Date.now() - t0 > LOCK_WAIT_MS) throw Object.assign(new Error(`the ledger is locked by another run (${lock})`), { code: "LEDGER_LOCKED" });
-      pause(5);
+      const stale = isStale(lock);
+      if (stale === null) continue; // released meanwhile
+      if (stale) takeOver(lock, token);
+      if (Date.now() - t0 > LOCK_WAIT_MS) throw lockedError(lock);
+      pause(stale ? 1 : 5);
     }
   }
-  try { return fn(); } finally { rmSync(lock, { force: true }); }
+  const held = () => { if (readOr(lock, null) !== token) throw lockedError(lock); };
+  try { return fn(held); } finally { if (readOr(lock, null) === token) rmSync(lock, { force: true }); }
+}
+
+/** The file's real location, so a ledger reached through a symlink (or a symlinked folder) is one ledger with one lock, and an atomic
+ *  write replaces the target rather than the link. */
+function realFile(file) {
+  try { return realpathSync(file); } catch { /* not there yet */ }
+  try { return join(realpathSync(dirname(file)), basename(file)); } catch { return resolve(file); }
 }
 
 /** The ledger file of a site: <state>/dataforseo-ledger.json. */
@@ -154,14 +206,14 @@ export const ledgerFile = (site) => `${site.paths.state}/dataforseo-ledger.json`
  * the money ledger, and a corrupt ledger can still be alerted about once a day.
  */
 export function fileLedger(file) {
-  const abs = resolve(file), alertsFile = `${abs.replace(/\.json$/i, "")}.alerts.json`;
+  const abs = realFile(file), alertsFile = realFile(`${abs.replace(/\.json$/i, "")}.alerts.json`);
   const load = () => (existsSync(abs) ? JSON.parse(readFileSync(abs, "utf8")) : emptyLedger());
   const loadAlerts = () => { try { const a = existsSync(alertsFile) ? JSON.parse(readFileSync(alertsFile, "utf8")) : {}; return isObj(a) ? a : {}; } catch { return {}; } };
   return {
     key: abs,
     load,
-    update: (fn) => withLock(abs, () => { const d = load(); const out = fn(d); writeJson(abs, d); return out; }),
-    alerts: { load: loadAlerts, update: (fn) => withLock(alertsFile, () => writeJson(alertsFile, fn(loadAlerts()))) },
+    update: (fn) => withLock(abs, (held) => { const d = load(); const out = fn(d); held(); writeJson(abs, d); return out; }),
+    alerts: { load: loadAlerts, update: (fn) => withLock(alertsFile, (held) => { const a = fn(loadAlerts()); held(); writeJson(alertsFile, a); }) },
   };
 }
 /** A ledger in memory (tests, one-off scripts). */
@@ -199,11 +251,19 @@ function settleStale(l, t) {
   return round(live);
 }
 
-/** What a response says it cost: the top-level `cost`, else the sum of the tasks' costs, else null. */
+/** What a response says it cost: the top-level `cost`, else the sum of the tasks' costs, else null (unknown). Only a finite number of
+ *  0 or more is a cost: a negative one would lower the ledger, and "", false, [] or " " would read as $0. A cost that is present but
+ *  not such a number makes the whole answer unknown, so the caller records its estimate instead. */
 export function costOf(json) {
-  if (Number.isFinite(Number(json?.cost)) && json?.cost != null) return Number(json.cost);
-  const tasks = (json?.tasks || []).filter((t) => t && Number.isFinite(Number(t.cost)) && t.cost != null);
-  return tasks.length ? tasks.reduce((s, t) => s + Number(t.cost), 0) : null;
+  if (!isObj(json)) return null;
+  if (json.cost != null) return isMoney(json.cost) ? json.cost : null;
+  let sum = 0, any = false;
+  for (const t of Array.isArray(json.tasks) ? json.tasks : []) {
+    if (!isObj(t) || t.cost == null) continue;
+    if (!isMoney(t.cost)) return null;
+    sum += t.cost; any = true;
+  }
+  return any ? round(sum) : null;
 }
 
 const authHeader = (env) => `Basic ${Buffer.from(`${env.DATAFORSEO_LOGIN}:${env.DATAFORSEO_PASSWORD}`).toString("base64")}`;
@@ -221,14 +281,19 @@ function checkCfg(cfg) {
   return { cap: pick("monthlyCapUsd", DEFAULT_CAP_USD), floor: pick("minBalanceUsd", DEFAULT_MIN_BALANCE_USD) };
 }
 
-// Balance readings shared by every guard over the same ledger in this process (keyed by the ledger and the transport).
-const SHARED = new Map();
-const balanceCache = (ledger, source) => {
-  const k = ledger.key ?? ledger;
-  if (!SHARED.has(k)) SHARED.set(k, new Map());
-  const m = SHARED.get(k);
-  if (!m.has(source)) m.set(source, { value: null, at: 0 });
-  return m.get(source);
+// The floor is per account, not per ledger: two sites on one DataForSEO login spend from one balance. Each account (login) keeps an
+// in-process total of what its calls cost, and each balance reading remembers that total when it was read, so a cached reading is
+// lowered by everything any guard on the same account spent since (whatever its ledger). Readings are shared per account and
+// transport (the transport keeps injected fakes apart; real runs use one).
+const ACCOUNTS = new Map();
+const accountOf = (login) => {
+  const k = String(login ?? "");
+  if (!ACCOUNTS.has(k)) ACCOUNTS.set(k, { spent: 0, readings: new Map() });
+  return ACCOUNTS.get(k);
+};
+const readingOf = (account, source) => {
+  if (!account.readings.has(source)) account.readings.set(source, { value: null, at: 0, spentAtRead: 0 });
+  return account.readings.get(source);
 };
 
 /**
@@ -248,13 +313,13 @@ export function createCostGuard({ cfg = {}, job = "unknown", env = process.env, 
   const { cap, floor } = checkCfg(cfg);
   const update = updater(ledger);
   const alertStore = ledger.alerts || memoryLedger().alerts;
-  const cache = balanceCache(ledger, getBalance || f);
+  const account = accountOf(env.DATAFORSEO_LOGIN), cache = readingOf(account, getBalance || f);
   const alertedThisRun = new Set();
   const send = notify || ((text) => sendTelegram(text, { env, fetch: notifyFetch || globalThis.fetch }));
 
   async function readBalance() {
     const t = now().getTime();
-    if (cache.value != null && t >= cache.at && t - cache.at < BALANCE_TTL_MS) return cache.value;
+    if (cache.value != null && t >= cache.at && t - cache.at < BALANCE_TTL_MS) return round(cache.value - (account.spent - cache.spentAtRead));
     let value;
     if (getBalance) value = await getBalance();
     else {
@@ -265,10 +330,9 @@ export function createCostGuard({ cfg = {}, job = "unknown", env = process.env, 
       value = j?.tasks?.[0]?.result?.[0]?.money?.balance;
     }
     if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("no balance in the response");
-    Object.assign(cache, { value, at: t });
+    Object.assign(cache, { value, at: t, spentAtRead: account.spent });
     return value;
   }
-  const lowerBalance = (cost) => { if (cache.value != null) cache.value = round(cache.value - cost); };
 
   async function alertOnce(reason, text) {
     if (alertedThisRun.has(reason)) return;
@@ -289,7 +353,9 @@ export function createCostGuard({ cfg = {}, job = "unknown", env = process.env, 
   }
   const ledgerProblem = (e) => (e?.code === "LEDGER_LOCKED"
     ? block("ledger-locked", `${e.message}, so the spend cannot be checked.`, { cause: e.message })
-    : block("ledger-invalid", `the spend ledger cannot be read (${String(e?.message || e).slice(0, 120)}). It is left as it is for a person to check.`, { cause: String(e?.message || e) }));
+    : UNWRITABLE.has(e?.code)
+      ? block("ledger-unwritable", `the spend ledger's folder cannot be written (${e.code}${e.path ? ` on ${dirname(e.path)}` : ""}), so no spend could be recorded.`, { cause: e.code })
+      : block("ledger-invalid", `the spend ledger cannot be read (${String(e?.message || e).slice(0, 120)}). It is left as it is for a person to check.`, { cause: String(e?.message || e) }));
 
   const guard = {
     cap, floor, job,
@@ -307,6 +373,7 @@ export function createCostGuard({ cfg = {}, job = "unknown", env = process.env, 
     async post(rawPath, tasks, opts = {}) {
       if (!dataforseoEnabled(env)) throw new Error("dataforseo: DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD are not set");
       const path = normalizePath(rawPath);
+      if (!VALID_PATH.test(path)) throw new BudgetError(`dataforseo: ${JSON.stringify(String(rawPath ?? "").slice(0, 80))} is not an endpoint path (lowercase letters, digits and "_", joined by single "/"). No request was sent.`, "bad-path", { path });
       const list = Array.isArray(tasks) ? tasks : [tasks];
       const e = estimateCall(path, list, opts);
       if (e.error) throw new BudgetError(`dataforseo: ${path}: ${e.error} No request was sent.`, "no-estimate", { path });
@@ -325,14 +392,22 @@ export function createCostGuard({ cfg = {}, job = "unknown", env = process.env, 
         const { spent, others } = verdict;
         return block("monthly-cap", `this month's spend ${usd(spent)}${others ? ` plus ${usd(others)} for calls in flight` : ""} plus about ${usd(est)} for this call would pass the monthly cap of ${usd(cap)}.`, { spent, inFlight: others, estimate: est, cap });
       }
-      let open = true;
+      // `sent` is set before the request goes out. From then on the call may have been billed, so its reservation is removed only
+      // together with recording its cost; if that record fails, the reservation stays in the ledger, still counted against the cap,
+      // and becomes estimated spend after STALE_RESERVATION_MS (settleStale).
+      let open = true, sent = false;
       const finish = (cost, estimated) => { // remove the reservation; record the cost when there is one
-        update((l) => {
-          if (l.reserved) delete l.reserved[id];
-          if (cost != null) addToLedger(l, { month: monthOf(now()), job, endpoint: path, cost, estimated });
-        });
+        try {
+          update((l) => {
+            if (l.reserved) delete l.reserved[id];
+            if (cost != null) addToLedger(l, { month: monthOf(now()), job, endpoint: path, cost, estimated });
+          });
+        } catch (err) {
+          if (!sent) throw err;
+          throw Object.assign(new Error(`dataforseo: the call was sent but its cost could not be recorded (${String(err.message).slice(0, 120)}); its reservation of ${usd(est)} stays in the ledger and counts as spent`), { cause: err });
+        }
         open = false;
-        if (cost != null) lowerBalance(cost);
+        if (cost != null) account.spent = round(account.spent + cost);
       };
       let json;
       try {
@@ -344,20 +419,23 @@ export function createCostGuard({ cfg = {}, job = "unknown", env = process.env, 
           return await block("min-balance", `the account balance ${usd(balance)} would fall under the floor of ${usd(floor)}.`, { balance, estimate: est, floor });
         }
         let r;
+        sent = true;
         try { r = await f(`${BASE}${path}`, { method: "POST", headers: { Authorization: authHeader(env), "Content-Type": "application/json" }, body: JSON.stringify(list), signal: AbortSignal.timeout(TIMEOUT_MS) }); }
         catch (err) {
           // DataForSEO may have received (and billed) the request before it timed out or the connection dropped: count the estimate.
           finish(est, true);
           throw new Error(`dataforseo: request failed (${err.name || "error"}); it may have been charged, so its estimate ${usd(est)} was recorded`);
         }
-        // A paid response may still carry a cost on an error status: record it when the body is readable.
+        // The response's own cost when it gives a valid one, on any status. Without one: $0 for a refused key or a rate limit (not a
+        // call), otherwise the estimate, flagged (a 5xx or a gateway page may have been billed).
         json = await r.json().catch(() => null);
         const real = costOf(json);
-        const cost = real ?? (r.ok ? est : 0);
-        finish(cost > 0 || r.ok ? cost : null, real == null);
+        if (real != null) finish(real > 0 || r.ok ? real : null, false);
+        else if (!r.ok && UNBILLED_STATUS.has(r.status)) finish(null);
+        else finish(est, true);
         if (!r.ok) throw Object.assign(new Error(`dataforseo: HTTP ${r.status}${r.status === 429 ? " (rate limited)" : r.status === 401 || r.status === 403 ? " (key rejected)" : ""}`), { status: r.status, body: json });
       } finally {
-        if (open) try { update((l) => { if (l.reserved) delete l.reserved[id]; }); } catch { /* left for settleStale */ }
+        if (open && !sent) try { update((l) => { if (l.reserved) delete l.reserved[id]; }); } catch { /* left for settleStale */ }
       }
       return json;
     },

@@ -2,6 +2,13 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D72 review R3b fixes on feat/dataforseo-cost-guard; code and documentation change, nothing deployed)
+- **Code:** `src/lib/dataforseo.mjs` only: path check (`bad-path`), estimate on any non-ok status without a cost except 401/403/429, `sent` flag keeps the reservation when recording fails, token lock, stale takeover one at a time behind a `.lock.takeover` gate with a re-check, and an ownership check before each write, strict `costOf`, estimates rounded up, `realpath` ledger, balance readings per account login, `ledger-unwritable` reason.
+- **Tests:** new `test/dataforseo-guard-r3b.test.mjs` (10 tests: A, C, three for D with child processes, E, F, G, H, I) and the HTTP-error test in `test/dataforseo-guard.test.mjs` (B). All 11 fail at 2e22928 and pass after. Stubbed fetch and local files only; no DataForSEO or Telegram call.
+- **Proof:** the R3b proof script refuses or records every scenario A-H (its tiny-estimate section needs a null-safe log line, as the refusal leaves no month entry). The scan-spelling section still shows split, base64 and reversed hosts missed: documented as a heuristic.
+- **Documentation:** D72 "Review R3b", `docs/configuration.md` (reasons, cost rule, lock, account-wide floor), root `CHANGELOG.md`.
+- **Deployment:** none.
+
 ## 2026-11-25 23:45 UTC (D69 review R1 fixes on fix/content-loss-guard; code and documentation change, nothing deployed)
 - **Code:** `src/lib/git-history.mjs` (new: `gitNames` with quotepath off and -z, `revertBase` for merge/rebase/squash);
   `src/analysis/content-loss.mjs` (`stripInvisible`, page-setting controls, `headingSimilarity`, unrounded drop, override

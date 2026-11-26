@@ -191,7 +191,7 @@ test("parallel calls count each other's estimate: only as many start as the cap 
   assert.equal(f.paid().length, 1);
 });
 
-test("a failed paid call (HTTP error) with a cost in the body is still recorded; one without is not", async () => {
+test("a failed paid call (HTTP error) with a cost in the body is still recorded; 401/403/429 without one count $0; any other error without one counts the estimate", async () => {
   const ledger = memoryLedger();
   const f = async (url) => String(url).endsWith("user_data") ? jsonRes({ tasks: [{ result: [{ money: { balance: 50 } }] }] }) : jsonRes({ cost: 0.01, tasks: [] }, 500);
   const guard = createCostGuard({ job: "j", env: DFS_ENV, fetch: f, ledger, notify: async () => ({}) , now: () => new Date("2026-11-01T00:00:00Z") });
@@ -199,6 +199,22 @@ test("a failed paid call (HTTP error) with a cost in the body is still recorded;
   assert.equal(ledger.data.months["2026-11"].usd, 0.01);
   const g2 = createCostGuard({ job: "j", env: DFS_ENV, fetch: async (u) => String(u).endsWith("user_data") ? jsonRes({ tasks: [{ result: [{ money: { balance: 50 } }] }] }) : jsonRes({}, 401), ledger: memoryLedger(), notify: async () => ({}) });
   await assert.rejects(() => g2.post(LABS, [{}]), (e) => /HTTP 401 \(key rejected\)/.test(e.message));
+  // R3b-B: a gateway 504 with an HTML body may have been billed: its estimate is recorded (flagged), so the cap still trips.
+  const bal = (u) => String(u).endsWith("user_data");
+  for (const [status, expect] of [[401, 0], [403, 0], [429, 0], [500, "est"], [502, "est"], [504, "est"]]) {
+    const l = memoryLedger(), html = { ok: false, status, json: async () => { throw new SyntaxError("Unexpected token <"); } };
+    const g = createCostGuard({ job: "j", env: DFS_ENV, fetch: async (u) => (bal(u) ? jsonRes({ tasks: [{ result: [{ money: { balance: 50 } }] }] }) : html), ledger: l, notify: async () => ({}), now: () => new Date("2026-11-01T00:00:00Z") });
+    await assert.rejects(() => g.post(LABS, [{ limit: 100 }]), new RegExp(`HTTP ${status}`));
+    const m = l.data.months["2026-11"];
+    assert.equal(m?.usd ?? 0, expect === "est" ? estimateCost(LABS, { limit: 100 }) : 0, `HTTP ${status}`);
+    assert.equal(m?.estimatedCalls ?? 0, expect === "est" ? 1 : 0, `HTTP ${status}`);
+  }
+  let sent = 0;
+  const g504 = createCostGuard({ cfg: { monthlyCapUsd: 0.05 }, job: "j", env: DFS_ENV, fetch: async (u) => { if (bal(u)) return jsonRes({ tasks: [{ result: [{ money: { balance: 50 } }] }] }); sent++; return { ok: false, status: 504, json: async () => { throw new SyntaxError("<"); } }; }, ledger: memoryLedger(), notify: async () => ({}), now: () => new Date("2026-11-01T00:00:00Z") });
+  let refused = null;
+  for (let i = 0; i < 50 && !refused; i++) await g504.post("serp/google/organic/live/advanced", { depth: 20 }).catch((e) => { if (e instanceof BudgetError) refused = e.reason; });
+  assert.equal(refused, "monthly-cap");
+  assert.equal(sent, Math.floor(0.05 / estimateCost("serp/google/organic/live/advanced", { depth: 20 })));
 });
 
 test("a task status other than 20000 throws from task(); credentials missing throws before any request", async () => {
