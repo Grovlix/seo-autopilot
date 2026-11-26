@@ -103,6 +103,8 @@ jobs:
     permissions:
       contents: read
       statuses: write   # its status job marks the drafted commit; the build itself stays read-only
+      issues: read      # requested by seo-check's build job (content-loss guard reads labels and events)
+      pull-requests: read
     uses: ./.github/workflows/seo-check.yml
     with:
       ref: ${{ needs.locate.outputs.branch }}

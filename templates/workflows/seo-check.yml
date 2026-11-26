@@ -41,6 +41,12 @@ jobs:
     if: startsWith(github.head_ref, 'seo/') || startsWith(inputs.ref, 'seo/')
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Read-only. issues/pull-requests: read are for the content-loss guard (labels, label events, pull requests by branch),
+    # which fails closed on a private repository when the token cannot read them. The build itself can write nothing.
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     outputs:
       sha: ${{ steps.head.outputs.sha }}
     steps:

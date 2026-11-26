@@ -277,7 +277,7 @@ test("drafted pull requests start seo-check and seo-review by dispatch, from a j
 test("dispatched and called runs post commit statuses on the checked commit; the build job never holds a write token", () => {
   const c = text("seo-check.yml");
   const build = c.slice(c.indexOf("\n  build:"), c.indexOf("\n  status:"));
-  assert.ok(!/statuses|permissions:/.test(build), "the build job keeps the read-only workflow permissions");
+  assert.ok(!/statuses/.test(build) && !/:\s*write\b/.test(build.slice(build.indexOf("permissions:"), build.indexOf("outputs:"))), "the build job holds read permissions only, never a write one");
   assert.match(build, /outputs:\n\s+sha: \$\{\{ steps\.head\.outputs\.sha \}\}/);
   assert.match(build, /id: head\n[\s\S]*?PR_HEAD: \$\{\{ github\.event\.pull_request\.head\.sha \|\| '' \}\}\n\s+run: echo "sha=\$\{PR_HEAD:-\$\(git rev-parse HEAD\)\}" >> "\$GITHUB_OUTPUT"/);
   assert.ok(build.indexOf("id: head") < build.indexOf("npm ci"), "recorded before any project code runs");
@@ -380,6 +380,9 @@ test("every job that calls a workflow grants at least the permissions the called
   const watch = permissionsOf(text("seo-watch.yml")).jobs.check;
   assert.equal(watch.uses, "seo-check.yml");
   assert.equal(watch.permissions.statuses, "write", "seo-check's status job asks for statuses: write");
+  const build = permissionsOf(text("seo-check.yml")).jobs.build.permissions;
+  assert.equal(build.issues, "read", "the guard reads labels and label events");
+  assert.equal(build["pull-requests"], "read", "the guard reads pull requests");
 });
 
 test("the drafter may create only its own issue branch and cannot label the pull request", () => {
