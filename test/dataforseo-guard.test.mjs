@@ -1,7 +1,7 @@
 // DataForSEO cost guard: monthly cap, balance floor, ledger maths, once-a-day alerts, and that nothing bypasses it.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BudgetError, createCostGuard, memoryLedger, fileLedger, estimateCost, costOf, addToLedger, requireGuard, costGuardFor, ledgerFile, ledgerSummary } from "../src/lib/dataforseo.mjs";
@@ -82,19 +82,19 @@ test("balance unreadable (key rejected, or no balance in the answer): refused, n
   await assert.rejects(() => b.post(LABS, [{}]), /no balance in the response/);
 });
 
-test("the balance is read once and cached for 10 minutes, then read again; each paid cost lowers the cached balance", async () => {
+test("the balance is read once and cached for 60 seconds, then read again; each paid cost lowers the cached balance", async () => {
   let t = Date.parse("2026-11-26T10:00:00Z");
   const { f, guard } = setup({ balance: 12, cost: 0.5, cfg: { minBalanceUsd: 10 }, now: () => new Date(t) });
   await guard.post(LABS, [{ limit: 10 }]);
   await guard.post(LABS, [{ limit: 10 }]);
   assert.equal(f.requests.filter((r) => r.method === "GET").length, 1, "one balance read for two calls");
   assert.ok(Math.abs((await guard.balance()) - 11) < 1e-9, "12 minus two calls of 0.50");
-  t += 9 * 60 * 1000;
+  t += 59 * 1000;
   await guard.balance();
   assert.equal(f.requests.filter((r) => r.method === "GET").length, 1);
-  t += 2 * 60 * 1000;
+  t += 2 * 1000;
   await guard.balance();
-  assert.equal(f.requests.filter((r) => r.method === "GET").length, 2, "re-read after 10 minutes");
+  assert.equal(f.requests.filter((r) => r.method === "GET").length, 2, "re-read after 60 seconds");
 });
 
 test("ledger maths: the response's own cost, per month, job and endpoint; sum of tasks when no top-level cost; estimate flagged when none", async () => {
@@ -174,7 +174,8 @@ test("alerts: once per day per reason, remembered across runs, and a failed send
   ok = true;
   await assert.rejects(() => mk().post(LABS, [{}]), BudgetError);
   assert.equal(sent.length, 5, "a send that failed is tried again on the next run");
-  assert.deepEqual(Object.keys(ledger.data.alerts), ["2026-11-28"], "older days are dropped");
+  assert.deepEqual(Object.keys(ledger.alerts.load()), ["2026-11-28"], "older days are dropped");
+  assert.deepEqual(ledger.data.alerts, {}, "alert memory is kept apart: the money ledger is never written by an alert");
 });
 
 test("an alert that throws never hides the BudgetError", async () => {
@@ -277,12 +278,8 @@ test("config: the dataforseo block has defaults (8 and 10), and wrong values are
   assert.match(bad([]).join(), /must be an object/);
 });
 
-test("every request to api.dataforseo.com is made in src/lib/dataforseo.mjs and nowhere else", () => {
-  const hits = [];
-  const walk = (dir) => { for (const n of readdirSync(dir)) { const p = join(dir, n); if (statSync(p).isDirectory()) walk(p); else if (/\.mjs$/.test(n) && /api\.dataforseo\.com/.test(readFileSync(p, "utf8"))) hits.push(p.split("/src/")[1]); } };
-  walk(join(import.meta.dirname, "..", "src"));
-  assert.deepEqual(hits, ["lib/dataforseo.mjs"], "a new DataForSEO caller must use createCostGuard / costGuardFor, not its own fetch");
-});
+// The scan that only src/lib/dataforseo.mjs reaches the API lives in test/dataforseo-guard-r3.test.mjs (R3-9): all file types,
+// src, bin, scripts, engines and skills.
 
 // ---- SERP rows that come back as Google redirect links (seen live at Saudi Arabia, location 2682) ----------------------------------
 const GOTO = (n) => `https://google.com/goto?url=CAESZAHEIkXX${n}`;

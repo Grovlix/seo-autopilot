@@ -22,7 +22,8 @@ export async function sendTelegram(text, { env = process.env, fetch: f = globalT
   try {
     const r = await f(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || j.ok === false) return { sent: false, reason: `telegram HTTP ${r.status}${j.description ? `: ${String(j.description).slice(0, 120)}` : ""}` };
+    // An error text that echoes the request URL would carry the token: it is cut out before the reason is returned.
+    if (!r.ok || j.ok === false) return { sent: false, reason: `telegram HTTP ${r.status}${j.description ? `: ${String(j.description).split(env.TELEGRAM_BOT_TOKEN).join("<token>").slice(0, 120)}` : ""}` };
     return { sent: true, messageId: j.result?.message_id ?? null };
   } catch (e) {
     return { sent: false, reason: `telegram request failed (${e.name || "error"})` };

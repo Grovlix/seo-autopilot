@@ -48,6 +48,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - name: Restore saved data (click history from seo-daily, the watch list)
+        id: restore
         run: npx --yes "$SEO" state restore
       - name: Check the watched changes
         id: watch
@@ -75,6 +76,9 @@ jobs:
           gh pr list --state all --limit 200 --json headRefName,state,mergedAt --jq '[.[] | select(.headRefName | startswith("seo/revert-"))]' > "$RUNNER_TEMP/reverts.json"
           npx --yes "$SEO" run watch --prs "$RUNNER_TEMP/prs.json" --content "$RUNNER_TEMP/content.json" --reverts "$RUNNER_TEMP/reverts.json"
       - name: Save the watch list
+        # Also after a failed or cancelled step (the DataForSEO spend of this run must be kept), but never when the restore
+        # failed: saving then would force-push empty state over the good one.
+        if: always() && steps.restore.outcome == 'success'
         run: npx --yes "$SEO" state save
       - name: Stop watching changes that passed
         if: steps.watch.outputs.done != ''

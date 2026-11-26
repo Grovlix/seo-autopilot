@@ -34,6 +34,7 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version: 20 }
       - name: Restore state
+        id: restore
         run: npx --yes "$SEO" state restore
       - name: Deeper analysis (query topics, unusual days, pages losing visibility)
         continue-on-error: true
@@ -105,4 +106,7 @@ jobs:
           npx --yes "$SEO" run agent seo-strategist --issue --report-file "seo-agent-out/{site}/strategist.md"
           npx --yes "$SEO" run agent seo-researcher --issues --report-file "seo-agent-out/{site}/researcher.md" --proposals-file "seo-agent-out/{site}/proposals.json"
       - name: Save state
+        # Also after a failed or cancelled step (the DataForSEO spend of this run must be kept), but never when the restore
+        # failed: saving then would force-push empty state over the good one.
+        if: always() && steps.restore.outcome == 'success'
         run: npx --yes "$SEO" state save
