@@ -2,6 +2,12 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D70 review R2c follow-up N1 on fix/cms-mirror-dir-guard, from main c47cdcb; code change, nothing deployed)
+- **Code:** `src/cms/commands.mjs` `mirrorFolderProblem`: the mirror folder must sit inside its git repository (found along the path as written) or the working folder, with no symbolic link below that point; checked by `export`, `validate` (every folder, `--dir` or the files' own) and `draft`/`publish` before any read, write or call.
+- **Tests:** new `test/cms-mirror-dir-guard.test.mjs` (4: linked `posts/` in validate and export, `--files` with `..`, plain folder still works and an outside folder is refused). All 4 fail at c47cdcb and pass after. Temporary folders in the other cms tests are now git repositories. `npm test` 740 tests, 738 pass, 0 fail, 2 skipped.
+- **Documentation:** `docs/cms-mirror.md` safety rule, root `CHANGELOG.md`.
+- **Deployment:** none.
+
 ## 2026-11-26 (D70 review R2b fixes on feat/emdash-cms-mirror; code and documentation change, nothing deployed)
 - **Code:** rebased on main 0f16c54. `src/cms/commands.mjs`: publish only the current file (a pending older version is overwritten first; `confirmDraft` re-reads it before the publish call); export skips unsafe slugs, slugs shared by several posts, and symbolic links; `unsafePostFile` refuses symbolic links and files outside the posts folder in `validate` and `publish`; `validate` defaults to the files' folder and rejects an id on a new file. `src/cms/mirror.mjs`: U+2028/U+2029 escaped in front matter. Stand-in: posts may set `locale`.
 - **Tests:** new `test/cms-mirror-r2b.test.mjs` (8 tests: F1 twice, F2, F3, F4, F5, F6, symbolic links). All 8 fail at c2cc6c6 (the rebased R2 head) and pass after. The review's proof scripts t1 to t12, run against this tree: t8 no longer publishes the old text, t9 R2/R3 and t10 L1 skip or report, t11 validates; t9 R1 (a draft saved at the publish call itself) still lands and is reported by the read-back (exit 2), as documented. `npm test` 736 tests, 734 pass, 0 fail, 2 skipped.

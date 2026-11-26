@@ -13,7 +13,7 @@
 // the file afterwards, 3 refused for safety (conflict, unknown revisions setting, slug taken).
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, lstatSync, realpathSync } from "node:fs";
-import { join, dirname, basename, resolve } from "node:path";
+import { join, dirname, basename, resolve, relative, isAbsolute } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createClient, revisionsSupported, EmDashError } from "./emdash.mjs";
 import { parseMirror, stringifyMirror, itemToMirror, stateOfItem, stateOfFile, diffState, validateFile, validateSet, draftData, draftMatches, seoPayload, writePlan, DEFAULT_FIELDS, LATIN_SLUG } from "./mirror.mjs";
@@ -36,6 +36,34 @@ export function unsafePostFile(file, dir = dirname(file)) {
   catch (e) { return `${file}: ${e.code || e.message}`; }
   return null;
 }
+
+/**
+ * Why a mirror folder may not be used, or null. It must sit inside the git repository that holds it (or, outside any
+ * repository, inside the working folder), and no part of its path below that point may be a symbolic link: a linked
+ * folder (posts -> ../../elsewhere) would let validate read and export write outside the repository. Links above the
+ * repository (macOS /var -> /private/var) do not count. The folder need not exist yet (export creates it).
+ */
+export function mirrorFolderProblem(dir) {
+  const abs = resolve(dir);
+  // The repository is found along the path as written (git itself would follow a linked folder out of it).
+  let anchor = null;
+  for (let p = abs; ; p = dirname(p)) { if (existsSync(join(p, ".git"))) { anchor = p; break; } if (dirname(p) === p) break; }
+  const kind = anchor ? "the git repository" : "the working folder";
+  anchor ??= process.cwd();
+  const under = relative(anchor, abs);
+  if (under.startsWith("..") || isAbsolute(under)) return `mirror folder ${dir} is not inside ${kind} ${anchor}`;
+  for (let p = abs; p !== anchor && dirname(p) !== p; p = dirname(p)) {
+    let st = null;
+    try { st = lstatSync(p); } catch { /* not created yet */ }
+    if (st?.isSymbolicLink()) return `mirror folder ${dir}: ${p} is a symbolic link; the mirror folder must be a plain folder inside ${kind} ${anchor}`;
+  }
+  let start = abs;
+  while (!existsSync(start)) start = dirname(start);
+  const real = relative(realpathSync(anchor), realpathSync(start));
+  if (real.startsWith("..") || isAbsolute(real)) return `mirror folder ${dir} is not inside ${kind} ${anchor}`;
+  return null;
+}
+function checkFolder(dir) { const bad = mirrorFolderProblem(dir); if (bad) throw new Refused(bad); }
 
 // A CMS slug becomes a file name: it must not hold path characters or start with a dot (EmDash 0.1.0 stores an
 // explicit slug as given, so "../../x" is possible).
@@ -89,6 +117,7 @@ export async function exportCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const o = options(flags);
   const dir = String(flags.dir || "");
   if (!dir) throw new Error("--dir is required (the mirror folder)");
+  checkFolder(dir);
   const api = client(flags, f);
   const status = flags.status === "all" ? undefined : String(flags.status || "published");
   const listed = await api.list(o.collection, { status });
@@ -151,6 +180,7 @@ export function validateCmd(flags) {
   const o = options(flags);
   const withBase = !!(flags.base || flags["base-ref"]);
   const folderOf = (file) => dir || dirname(file);
+  for (const d of new Set([...(dir ? [dir] : []), ...files.map(folderOf)])) checkFolder(d);
   const entries = [];
   const blocked = [];
   for (const file of files.filter((f) => existsSync(f) || unsafePostFile(f, folderOf(f)))) {
@@ -295,6 +325,7 @@ async function saveDraft(api, o, parsed, report, file) {
 
 function readFile(flags) {
   const file = String(flags.file || "");
+  if (file) checkFolder(flags.dir ? String(flags.dir) : dirname(file));
   const bad = file ? unsafePostFile(file, flags.dir ? String(flags.dir) : dirname(file)) : null;
   if (bad) throw new Refused(bad);
   if (!file || !existsSync(file)) throw new Error("--file <mirror file> is required");

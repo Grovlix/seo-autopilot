@@ -31,7 +31,8 @@ async function run(args, fake, env = {}) {
     for (const [k, v] of [["EMDASH_URL", saved.url], ["EMDASH_TOKEN", saved.token], ["EMDASH_REVISIONS_PROVEN", saved.proven]]) if (v === undefined) delete process.env[k]; else process.env[k] = v;
   }
 }
-const tmp = () => mkdtempSync(join(tmpdir(), "cms-r2b-"));
+// Each temporary folder is its own git repository: mirror folders must sit inside one (or inside the working folder).
+const tmp = () => { const d = mkdtempSync(join(tmpdir(), "cms-r2b-")); execFileSync("git", ["init", "-q"], { cwd: d }); return d; };
 const publishes = (fake) => fake.log.filter((l) => l.method === "POST" && l.path.endsWith("/publish"));
 function repo() {
   const dir = tmp();
