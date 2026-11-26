@@ -133,6 +133,16 @@ jobs:
         env:
           BASE: ${{ inputs.base || github.base_ref }}
         run: npx --yes "$SEO" run hreflang --base "origin/$BASE"
+      # Style guide: the exact phrases and the punctuation a program can find in the changed content, per language, against the
+      # built-in Arabic (Modern Standard Arabic) guide and the site's own file ("styleGuide" in seo-autopilot.config.json).
+      # Warns only (the editor agent reports every violation with its rule ID). A site with no guide for the language skips it.
+      - name: Style guide on the changed content
+        env:
+          BASE: ${{ inputs.base || github.base_ref }}
+        run: |
+          files=$(git diff --name-only "origin/$BASE...HEAD" -- '*.json' '*.md' '*.mdx' | { grep -v '^seo-autopilot' || true; } | paste -sd, -)
+          if [ -n "$files" ]; then npx --yes "$SEO" run style --language all --files "$files"
+          else echo "No content files changed."; fi
 
   # Posts the build result as the commit status "seo-check" on the commit the build job checked, where the pull request,
   # branch protection and seo-automerge see it (a dispatched or called run's own check is not listed on the pull request,

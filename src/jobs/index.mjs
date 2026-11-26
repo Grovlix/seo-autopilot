@@ -37,6 +37,7 @@ export const JOBS = {
   facts: () => import("./facts.mjs"),
   "content-guard": () => import("./content-guard.mjs"),
   hreflang: () => import("./hreflang.mjs"),
+  style: () => import("./style.mjs"),
   conversions: () => import("./conversions.mjs"),
   links: () => import("./links.mjs"),
   render: () => import("./render.mjs"),

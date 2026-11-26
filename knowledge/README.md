@@ -31,6 +31,7 @@ The drafting agent reads these before it writes or edits a page, and the audit, 
 | [SEO reporting](seo-reporting.md) | writing an honest report the owner can act on |
 | [Working on any kind of website](site-platforms.md) | the site is WordPress, Shopify, a framework, a static site or a hosted builder |
 | [International and multilingual SEO](international-seo.md) | the site serves more than one language or country |
+| [Arabic style guide (Modern Standard Arabic)](arabic-msa-style-guide.md) | writing or reviewing any Arabic text: formal MSA, no dialect, no calques, Arabic punctuation |
 | [Ecommerce SEO](ecommerce-seo.md) | category, product and faceted-navigation pages |
 | [Competitor analysis](competitor-analysis.md) | learning from who ranks above you, honestly |
 | [Images, video and media](media-and-image-seo.md) | alt text, formats, sizes, video and previews |

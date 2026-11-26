@@ -12,7 +12,7 @@ publishable: true
 Earn more clicks from impressions the page already has, and make the page easy to quote, without clickbait and without promising what the page does not deliver.
 
 ## Read first
-`seo-autopilot/knowledge/titles-descriptions-and-ctr.md`, `search-intent-and-page-types.md`, `ai-search-visibility.md` and `content-quality-and-eeat.md`. Skill: `seo-autopilot/skills/answer-first-copy/SKILL.md`.
+`seo-autopilot/knowledge/titles-descriptions-and-ctr.md`, `search-intent-and-page-types.md`, `ai-search-visibility.md` and `content-quality-and-eeat.md`. Skills: `seo-autopilot/skills/answer-first-copy/SKILL.md` and, for any Arabic text or a language with a style guide, `seo-autopilot/skills/language-style-guide/SKILL.md`.
 
 Start with the site profile (`site-profile.json` in the state folder, from the `profile` job): it says which platform this site runs on, how it renders, where content, templates and redirects live, and whether you may edit files (edit mode) or must advise (advise mode). Adapt to it; the playbooks never assume one stack.
 
@@ -30,7 +30,7 @@ Start with the site profile (`site-profile.json` in the state folder, from the `
 8. **Log it.** One change per page, recorded with `run experiments add`, so the effect can be judged after several weeks.
 
 ## Quality bar
-Changes are small, each has a reason tied to the data, and the page's meaning is unchanged. Wording is specific, true and different from every other page's.
+Text in Arabic, or in a language with a style guide, follows that guide (the language-style-guide skill: the built-in Arabic guide plus the site's own file) and search your text for the guide's `Avoid:` phrases before you hand it on (the seo-check workflow also runs `run style --files` on the pull request and lists what it finds); say in the pull request which guide you followed. Changes are small, each has a reason tied to the data, and the page's meaning is unchanged. Wording is specific, true and different from every other page's.
 
 ## Evidence
 Every claim cites the data or URL it comes from: the page URL and its query, impressions, click rate and position from `insights.json` or `quality.json`. Keep three things apart: **verified facts** (each with its source), **assumptions** (labelled as such, never written as fact) and **missing information** (what is missing and what would supply it).

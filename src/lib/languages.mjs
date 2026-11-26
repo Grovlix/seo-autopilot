@@ -159,3 +159,23 @@ export function withSiteFilter(site, body, { language } = {}) {
   const [first, ...rest] = own;
   return { ...body, dimensionFilterGroups: [{ ...first, groupType: "and", filters: [...(first.filters || []), ...groups[0].filters] }, ...rest] };
 }
+
+/** Config errors for a site's `styleGuide` block (the rules themselves are read by src/jobs/style.mjs). */
+export function validateStyleGuide(raw, owner, site) {
+  const key = `${owner}.styleGuide`, out = [];
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return [`${key} must be an object, for example { "files": { "ar": "style/ar.md" } }`];
+  const extra = Object.keys(raw).filter((k) => !["files", "builtin"].includes(k));
+  if (extra.length) out.push(`${key}: unknown key ${extra.map((k) => `"${k}"`).join(", ")}. Allowed: files, builtin`);
+  if (raw.builtin != null && typeof raw.builtin !== "boolean") out.push(`${key}.builtin must be true or false`);
+  if (raw.files != null) {
+    if (typeof raw.files !== "object" || Array.isArray(raw.files)) return [...out, `${key}.files must be an object of language code to file path, for example { "ar": "style/ar.md" }`];
+    const languages = marketLanguages(site.market);
+    if (!languages && Object.keys(raw.files).length) return [...out, `${key}.files needs the site's languages: add a "market" with "languages" first`];
+    for (const [lang, file] of Object.entries(raw.files)) {
+      const bad = languageError(lang, languages || [], `${key}.files.${lang}`);
+      if (bad) out.push(bad);
+      else if (typeof file !== "string" || !file.trim()) out.push(`${key}.files.${lang} must be the path of the style-guide file, relative to the config file`);
+    }
+  }
+  return out;
+}
