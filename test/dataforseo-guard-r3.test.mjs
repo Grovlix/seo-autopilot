@@ -286,7 +286,7 @@ const SCAN_DIRS = ["src", "bin", "scripts", "engines", "skills"];
 const SKIP = /(^|\/)(node_modules|\.venv|venv|__pycache__|\.git|dist|build|target)(\/|$)/;
 const GUARD = "src/lib/dataforseo.mjs";
 // Files that may name DataForSEO, each checked to reach it only through the guard. A new one must be reviewed and added here.
-const MAY_NAME = new Set([GUARD, "src/lib/budget-defaults.mjs", "src/lib/serp.mjs", "src/lib/research-sources.mjs", "src/core/config.mjs", "src/cli/doctor.mjs", "src/jobs/authority.mjs", "src/jobs/citations.mjs", "src/jobs/gap.mjs", "src/jobs/keywords.mjs", "src/jobs/optimize.mjs", "src/jobs/rank.mjs", "src/lib/notify.mjs", "src/lib/market.mjs", "src/cli/init.mjs", "src/cli/state.mjs", "src/analysis/authority.mjs"]);
+const MAY_NAME = new Set([GUARD, "src/lib/budget-defaults.mjs", "src/lib/serp.mjs", "src/lib/research-sources.mjs", "src/core/config.mjs", "src/cli/doctor.mjs", "src/jobs/authority.mjs", "src/jobs/citations.mjs", "src/jobs/gap.mjs", "src/jobs/keywords.mjs", "src/jobs/optimize.mjs", "src/jobs/rank.mjs", "src/lib/notify.mjs", "src/lib/market.mjs", "src/cli/init.mjs", "src/cli/state.mjs", "src/analysis/authority.mjs", "src/lib/ai-engines.mjs", "src/lib/aeo-config.mjs", "src/jobs/aeo.mjs", "src/jobs/ai-visibility.mjs"]);
 /** Problems in one file: the API host (however it is spelled) outside the guard, an unreviewed file naming DataForSEO, test hooks in product code. */
 function scanProblems(rel, text) {
   const out = [];

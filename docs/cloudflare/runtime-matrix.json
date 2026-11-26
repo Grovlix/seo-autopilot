@@ -1,6 +1,24 @@
 {
  "jobs": [
   {
+   "job": "aeo",
+   "path": "github-actions",
+   "where": "Node host: reads and writes the site's state files in its repository; runs in the existing GitHub Actions workflows",
+   "reason": "Workers have no persistent file system (/tmp is cleared per request); porting needs its state moved to Supabase first",
+   "needs": {
+    "node": [
+     "crypto",
+     "fs",
+     "path"
+    ],
+    "spawns": false,
+    "files": "read-write",
+    "network": false,
+    "llm": true
+   },
+   "modules": 12
+  },
+  {
    "job": "agent",
    "path": "hosted-equivalent",
    "where": "agent:<name> jobs in the Worker (src/god/agent-runner.mjs, advise only, user's own key): prompt build 0.6-1.1 ms CPU, the model call is I/O",
@@ -109,7 +127,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 13
+   "modules": 14
   },
   {
    "job": "backlinks-queue",
@@ -1022,9 +1040,9 @@
   }
  ],
  "summary": {
-  "total": 58,
+  "total": 59,
   "hostedEquivalent": 6,
-  "githubActions": 52,
+  "githubActions": 53,
   "workerCandidate": 0,
   "spawnProcesses": 6
  }

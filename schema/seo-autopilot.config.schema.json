@@ -228,6 +228,23 @@
             },
             "additionalProperties": false
           },
+          "aeo": {
+            "type": "object",
+            "description": "AI answer tracking (the `aeo` job, docs/aeo.md): buyer questions asked to Google's AI answers through DataForSEO, looking for your names and domain. Needs the site's market and DataForSEO credentials; every call goes through the cost guard.",
+            "properties": {
+              "prompts": {
+                "type": "array", "minItems": 1, "maxItems": 100,
+                "description": "The questions to ask. `lang` must be one of market.languages (default: the market's main language).",
+                "items": { "oneOf": [ { "type": "string", "minLength": 1, "maxLength": 500 }, { "type": "object", "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 500 }, "lang": { "type": "string", "pattern": "^[a-z]{2}$" } }, "required": ["text"], "additionalProperties": false } ] }
+              },
+              "aliases": { "type": "array", "items": { "type": "string", "minLength": 2 }, "description": "Names to look for in answers, in any script (Arabic is compared without diacritics). The site's domain is always looked for." },
+              "mode": { "enum": ["ai_overview", "ai_mode", "llm_responses"], "default": "ai_mode", "description": "Which AI answer to read: Google AI Overview, Google AI Mode, or ChatGPT with web search (LLM Responses API)." },
+              "schedule": { "enum": ["daily", "weekly", "monthly", "manual"], "default": "weekly", "description": "How often the job asks again; a run before it is due does nothing unless --force." },
+              "maxCostPerRunUsd": { "type": "number", "exclusiveMinimum": 0, "default": 1, "description": "Hard stop for one run, in US dollars, on top of the DataForSEO monthly cap." }
+            },
+            "required": ["prompts"],
+            "additionalProperties": false
+          },
           "citations": {
             "type": "object",
             "properties": {
@@ -330,7 +347,7 @@
               "competitors": { "type": "array", "items": { "type": "string" }, "description": "Competitor domains, for example [\"rival.com\"]. Otherwise found from share of voice." },
               "competitorNames": { "type": "array", "items": { "type": "string" }, "description": "Competitor names to look for in AI answers." },
               "aliases": { "type": "array", "items": { "type": "string" }, "description": "Other names of the business to detect in AI answers (short forms, misspellings)." },
-              "engines": { "type": "array", "items": { "enum": ["perplexity", "openai", "anthropic", "gemini"] }, "description": "AI engines to ask (default: every engine with a key)." },
+              "engines": { "type": "array", "items": { "enum": ["perplexity", "openai", "anthropic", "gemini", "dataforseo"] }, "description": "AI engines to ask (default: every engine with a key; dataforseo only when named here, because it spends through the cost guard)." },
               "aiRuns": { "type": "integer", "minimum": 1, "maximum": 5, "description": "Times each question is asked per engine (default 2)." },
               "logo": { "type": "string", "description": "Full URL of the logo image, used in suggested Organization markup." },
               "sameAs": { "type": "array", "items": { "type": "string" }, "description": "Your official profile URLs (social, Wikipedia, Wikidata, directories), used in suggested Organization markup and the entity check." },
