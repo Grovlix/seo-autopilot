@@ -89,6 +89,23 @@ export function validateSearchConsole(raw, owner, site) {
   return out;
 }
 
+/** Config errors for a site's `hreflang` block (the check itself is src/jobs/hreflang.mjs). */
+export function validateHreflang(raw, owner, site) {
+  const key = `${owner}.hreflang`, out = [];
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return [`${key} must be an object, for example { "buildDir": "dist", "xDefault": true, "block": false }`];
+  const extra = Object.keys(raw).filter((k) => !["buildDir", "xDefault", "block"].includes(k));
+  if (extra.length) out.push(`${key}: unknown key ${extra.map((k) => `"${k}"`).join(", ")}. Allowed: buildDir, xDefault, block`);
+  if (raw.buildDir != null && (typeof raw.buildDir !== "string" || !raw.buildDir.trim())) out.push(`${key}.buildDir must be the folder the build writes the pages to, for example "dist"`);
+  if (raw.block != null && typeof raw.block !== "boolean") out.push(`${key}.block must be true or false`);
+  const x = raw.xDefault;
+  if (x != null && typeof x !== "boolean") {
+    const languages = marketLanguages(site.market);
+    if (!languages) out.push(`${key}.xDefault names a language, so the site needs a "market" with "languages" first`);
+    else { const bad = languageError(x, languages, `${key}.xDefault`); if (bad) out.push(bad); }
+  }
+  return out;
+}
+
 /** Translation groups as absolute URLs: [{ ar: "https://site/ar/x/", en: "https://site/en/x/" }]. Throws on a bad group. */
 export function translationGroups(site) {
   if (site?.translations == null) return [];

@@ -1,7 +1,7 @@
 {
  "generatedFrom": "code (scripts/build-registry.mjs)",
  "counts": {
-  "jobs": 60,
+  "jobs": 61,
   "agents": 38,
   "skills": 7,
   "mcpTools": 6,
@@ -1136,6 +1136,41 @@
    "writes": [
     "content-guard.json",
     "content-guard.md"
+   ],
+   "permissions": "read-only",
+   "usesLLM": false,
+   "onError": "the workflow step logs the error; most steps use continue-on-error so one failing job does not stop the run; no automatic retry",
+   "verification": "unit/fixture tests only (external calls mocked)"
+  },
+  {
+   "name": "hreflang",
+   "purpose": "hreflang pairs: for each declared translation group, reciprocal hreflang links (and x-default if asked); warns, or blocks with hreflang.block",
+   "source": "src/jobs/hreflang.mjs",
+   "owner": "maintainers (product core)",
+   "mode": "scheduled (on by default)",
+   "triggers": [
+    {
+     "workflow": "seo-check.yml",
+     "cron": [],
+     "events": [
+      "workflow_dispatch",
+      "workflow_call",
+      "pull_request"
+     ],
+     "gatedBy": []
+    }
+   ],
+   "credentials": [
+    "GITHUB_ACTIONS",
+    "GITHUB_STEP_SUMMARY"
+   ],
+   "hosts": [
+    "github.com",
+    "s.test"
+   ],
+   "writes": [
+    "hreflang.json",
+    "hreflang.md"
    ],
    "permissions": "read-only",
    "usesLLM": false,
@@ -3662,12 +3697,14 @@
    "gatedBy": [],
    "jobGates": {
     "content-guard": [],
-    "facts": []
+    "facts": [],
+    "hreflang": []
    },
    "agentGate": [],
    "jobs": [
     "content-guard",
-    "facts"
+    "facts",
+    "hreflang"
    ],
    "agents": [],
    "continueOnError": 0

@@ -125,6 +125,14 @@ jobs:
         run: |
           files=$(git diff --name-only "origin/$BASE...HEAD" -- '*.json' '*.md' '*.mdx' | { grep -v '^seo-autopilot' || true; } | paste -sd, -)
           if [ -n "$files" ]; then npx --yes "$SEO" run facts --files "$files"; else echo "No content files changed."; fi
+      # hreflang pairs: for every translation group declared in the site config ("translations"), both pages must link to each
+      # other (and to themselves). A site with no groups skips this. It warns by default; "hreflang": { "block": true } makes a
+      # missing or one-way link fail the check. Pages are read from the folder named by hreflang.buildDir (what the build wrote).
+      # block, xDefault and buildDir come from the BASE branch's config, so a pull request cannot loosen its own check.
+      - name: hreflang pairs on the declared translations
+        env:
+          BASE: ${{ inputs.base || github.base_ref }}
+        run: npx --yes "$SEO" run hreflang --base "origin/$BASE"
 
   # Posts the build result as the commit status "seo-check" on the commit the build job checked, where the pull request,
   # branch protection and seo-automerge see it (a dispatched or called run's own check is not listed on the pull request,
