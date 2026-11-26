@@ -9,6 +9,11 @@ Dated session entries; history is preserved. Product release notes are in the ro
 - **Tests:** `test/languages.test.mjs`, `test/hreflang.test.mjs`, `test/style-guide.test.mjs`; the three fail on 1924190. `npm test`: 638 tests / 636 pass before, 689 / 687 after, 0 fail, 2 skipped. Local files, a local git repository and injected fetch only.
 - **Docs:** `docs/arabic.md`, `docs/jobs.md`, `docs/configuration.md`, D74, root `CHANGELOG.md`, `schema/seo-autopilot.config.schema.json`, regenerated `docs/registry.*` and `site/` (playbook count 30).
 - **Not verified:** any live Search Console query with the filter (alpha-3 country code and regex operators follow Google's documented API but were not sent to Google), a real `seo-check` run, a model following the style prompts.
+
+## 2026-11-26 (D76: weekly AEO workflow on feat/aeo-weekly-workflow, on main 253f32a; code (workflow template), tests and documentation; nothing deployed)
+- **Code:** `templates/workflows/aeo.yml` (new). No change to `src/`: `upgrade`/`init` read every `*.yml` in the folder, so the template is installed and refreshed without an entry list.
+- **Tests:** `test/workflows.test.mjs` (the aeo workflow test and an init/upgrade test; the generic per-file structure and security tests now cover `aeo.yml` too). Local simulation of the steps with a bare git remote and a stubbed DataForSEO host; no real provider or GitHub call.
+- **Docs:** `docs/aeo.md` (Weekly workflow), `docs/jobs.md`, `docs/system-architecture.md` (13 templates), regenerated `docs/registry.*`, root `CHANGELOG.md`, D76 in `DECISIONS.md`, `STATUS.md`.
 - **Deployment:** none.
 
 ## 2026-11-26 (D72 review R3b fixes on feat/dataforseo-cost-guard; code and documentation change, nothing deployed)

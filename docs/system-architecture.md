@@ -10,7 +10,7 @@ deployed and what is only built is in [deployment-status.md](deployment-status.m
 | # | Component | Source | Runs on | Talks to |
 |---|---|---|---|---|
 | 1 | **Engine** (CLI, 58 jobs, audit crawler, analysis) | `bin/`, `src/jobs`, `src/audit`, `src/analysis`, `src/lib` | the website's GitHub Actions, or locally | Search Console, GA4, PageSpeed, CrUX, Bing, optional providers (registry lists each job's keys) |
-| 2 | **Workflow templates** (12) | `templates/workflows` | copied into each website repository by `init`, refreshed by `upgrade` | the engine via `npx github:bishal-paul-git/seo-autopilot#v2` |
+| 2 | **Workflow templates** (13) | `templates/workflows` | copied into each website repository by `init`, refreshed by `upgrade` | the engine via `npx github:bishal-paul-git/seo-autopilot#v2` |
 | 3 | **Agents** (38 definitions, 8 departments) and skills (7) | `departments/` | Claude Code (plugin) on request; 7 of them from workflows (`seo-agent`, `seo-implement`, `seo-review`) | the site repository (branches `seo/*`, pull requests), reports |
 | 4 | **Autopilot policy** | `src/analysis/autonomy.mjs`, `seo-autopilot.yml`, `seo-automerge.yml`, `seo-watch.yml` | GitHub Actions, off until `SEO_AUTOPILOT=true` | merges low-risk PRs after all checks pass; watch proposes reverts |
 | 5 | **MCP server** (6 read-only tools) | `src/mcp` | locally (`seo-autopilot mcp`) | reads the state folder |

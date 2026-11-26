@@ -28,6 +28,15 @@ A bad mode, schedule, language (not in the market), empty prompt or unknown key 
 
 Run it: `npx seo-autopilot run aeo [--mode ai_overview] [--limit 5] [--lang ar] [--force] [--max-cost 0.3]`. It writes `aeo.json` (answers, per-question rows, history) and `aeo.md` in the state folder. The report states the cost **measured from the API responses**, not an estimate. The engine is also available as `dataforseo` in `src/lib/ai-engines.mjs` (and in `research.engines` for the `ai-visibility` job; it is never started just because credentials exist).
 
+## Weekly workflow
+
+`templates/workflows/aeo.yml` (installed by `init`, added or refreshed by `upgrade --apply`) runs the job every Monday at 04:00 UTC and on `workflow_dispatch`. It is paid, so the **schedule is off until the repository variable `SEO_AEO` is `true`**; running it by hand always works. Secrets: `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`; optional `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (secret or variable), `TELEGRAM_THREAD_ID` for the guard's once-a-day alert.
+
+- **State.** The state branch is restored first and saved last, also after a failed step, so the cost guard's ledger (`.seo-autopilot/<site id>/dataforseo-ledger.json`) and the run history (`aeo.json`) carry over from week to week. It is never saved when the restore failed.
+- **Scheduled runs are forced.** The workflow's own schedule is the weekly period, so a test run in between does not make the next Monday skip itself. A manual run follows `aeo.schedule` unless you tick `force`; `limit` asks only the first N prompts (a cheap test).
+- **Report.** The run log and the run summary (no artifacts): answers with AI content, answers that mention or cite the site, other sites cited, the measured cost of the run, the cost per prompt, why a run stopped early (per-run cap or cost guard), and this month's spend from the ledger across all runs and jobs.
+- **Cost.** About $0.10 for 25 prompts with `ai_mode`, hard-stopped at `aeo.maxCostPerRunUsd` and by the guard's monthly cap and balance floor.
+
 ## The three modes
 
 | mode | DataForSEO call | what you get |

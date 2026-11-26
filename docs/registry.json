@@ -5,7 +5,7 @@
   "agents": 38,
   "skills": 8,
   "mcpTools": 6,
-  "workflows": 12
+  "workflows": 13
  },
  "jobs": [
   {
@@ -1816,8 +1816,22 @@
    "purpose": "AI answers: do Google's AI Overview / AI Mode or ChatGPT answers to your buyer questions mention or cite you (DataForSEO, capped per run, Arabic supported)",
    "source": "src/jobs/aeo.mjs",
    "owner": "maintainers (product core)",
-   "mode": "manual (CLI, MCP or workflow_dispatch)",
-   "triggers": [],
+   "mode": "scheduled (off until an opt-in variable is set)",
+   "triggers": [
+    {
+     "workflow": "aeo.yml",
+     "cron": [
+      "0 4 * * 1"
+     ],
+     "events": [
+      "schedule",
+      "workflow_dispatch"
+     ],
+     "gatedBy": [
+      "SEO_AEO"
+     ]
+    }
+   ],
    "credentials": [
     "ANTHROPIC_API_KEY",
     "BRAVE_API_KEY",
@@ -1849,7 +1863,7 @@
    ],
    "permissions": "read-only",
    "usesLLM": true,
-   "onError": "exits non-zero; no automatic retry",
+   "onError": "the workflow step logs the error; most steps use continue-on-error so one failing job does not stop the run; no automatic retry",
    "verification": "unit/fixture tests only (external calls mocked)"
   },
   {
@@ -3629,6 +3643,32 @@
   "page_report"
  ],
  "workflows": [
+  {
+   "file": "aeo.yml",
+   "cron": [
+    "0 4 * * 1"
+   ],
+   "events": [
+    "schedule",
+    "workflow_dispatch"
+   ],
+   "gatedBy": [
+    "SEO_AEO"
+   ],
+   "jobGates": {
+    "aeo": [
+     "SEO_AEO"
+    ]
+   },
+   "agentGate": [
+    "SEO_AEO"
+   ],
+   "jobs": [
+    "aeo"
+   ],
+   "agents": [],
+   "continueOnError": 0
+  },
   {
    "file": "seo-agent.yml",
    "cron": [
