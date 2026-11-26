@@ -31,6 +31,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - name: Restore state
+        id: restore
         run: npx --yes "$SEO" state restore
       # Optional AI wording and judging on your Claude subscription: installs the Claude Code CLI only when the secret
       # CLAUDE_CODE_OAUTH_TOKEN is set (pinned version; update it deliberately). Without it the AI steps run rule-based.
@@ -105,4 +106,7 @@ jobs:
         run: |
           if [ -n "$SEO_PORTAL_TOKEN" ]; then npx --yes "$SEO" run portal --push; else npx --yes "$SEO" run portal; fi
       - name: Save state
+        # Also after a failed or cancelled step (the DataForSEO spend of this run must be kept), but never when the restore
+        # failed: saving then would force-push empty state over the good one.
+        if: always() && steps.restore.outcome == 'success'
         run: npx --yes "$SEO" state save

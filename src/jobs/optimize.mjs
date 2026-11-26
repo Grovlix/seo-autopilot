@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { writeJson, writeText, sleep } from "../core/util.mjs";
 import { pickProvider } from "../lib/serp.mjs";
+import { costGuardFor } from "../lib/dataforseo.mjs";
 import { extractPage, mainScope, blockText, headingOutline } from "../audit/extract.mjs";
 import { robotsDisallows } from "../audit/rules.mjs";
 import { PLATFORMS } from "../analysis/gap.mjs";
@@ -76,7 +77,8 @@ export async function run({ site, flags = {} }, deps = {}) {
     const provider = pickProvider(env);
     if (!provider) { console.log("optimize: pass --compare url1,url2,... or set a SERP provider key (BRAVE_API_KEY, SERPAPI_KEY or DataForSEO) to find the top pages."); return; }
     const m = languageFor(marketOf(site, flags.language), query, flags.language);
-    const r = await provider.search(query, m, { fetch: f, env });
+    const guard = costGuardFor(site, "optimize", { env, fetch: f, guard: deps.guard, now: deps.now });
+    const r = await provider.search(query, m, { fetch: f, env, guard });
     const skip = (d) => d === own || d.endsWith(`.${own}`) || PLATFORMS.has(d) || [...PLATFORMS].some((p) => d.endsWith(`.${p}`));
     urls = r.results.filter((x) => !skip(x.domain)).slice(0, Number(flags.top || 6)).map((x) => x.url);
     notes.push(`Top pages from ${provider.name} (${marketLabel(m)}); your site and large platforms skipped.`);

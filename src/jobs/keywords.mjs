@@ -12,6 +12,7 @@
 import { readJson, writeJson, writeText, sleep } from "../core/util.mjs";
 import { loadPages } from "../adapters/index.mjs";
 import { pickProvider } from "../lib/serp.mjs";
+import { costGuardFor } from "../lib/dataforseo.mjs";
 import { bing, dataforseo, openpagerank, suggest } from "../lib/research-sources.mjs";
 import { planner } from "../lib/google-ads.mjs";
 import { wikipedia, stackexchange } from "../lib/open-data.mjs";
@@ -28,6 +29,7 @@ export const marketOf = (site, language) => siteMarket(site, language);
 export async function run({ site, flags = {}, positional = [] }, deps = {}) {
   const env = deps.env || process.env, f = deps.fetch || globalThis.fetch, delay = deps.delayMs ?? 1000;
   const s = site.paths.state;
+  const guard = costGuardFor(site, "keywords", { env, fetch: f, guard: deps.guard, now: deps.now });
   const seeds = positional.map((x) => String(x).toLowerCase().trim()).filter(Boolean);
   const notes = [];
   // The market is needed only when something below will make a request. Resolved here, outside tryIt, so a missing or unknown
@@ -47,7 +49,7 @@ export async function run({ site, flags = {}, positional = [] }, deps = {}) {
     if (flags.suggest) sources.suggest.push(...(await tryIt("suggest", () => suggest.expand(seed, mk, { fetch: f, delayMs: delay, sleep }))));
   }
   if (seeds.length && planner.enabled(env)) for (const g of seedMarkets.values()) sources.planner.push(...(await tryIt("google-ads", () => planner.ideas(g.seeds, g.mk, { fetch: f, env, token: deps.adsToken }))));
-  if (seeds.length && dataforseo.enabled(env)) for (const g of seedMarkets.values()) sources.ideas.push(...(await tryIt("dataforseo", () => dataforseo.ideas(g.seeds, g.mk, { fetch: f, env }))));
+  if (seeds.length && dataforseo.enabled(env)) for (const g of seedMarkets.values()) sources.ideas.push(...(await tryIt("dataforseo", () => dataforseo.ideas(g.seeds, g.mk, { guard }))));
   if (!seeds.length && !sources.gsc.length) { console.log("keywords: give seed terms (run keywords \"your topic\") or run the daily job first."); return; }
 
   // Live results for the top candidates: the true test of which queries are one topic, and the input to difficulty.
@@ -58,7 +60,7 @@ export async function run({ site, flags = {}, positional = [] }, deps = {}) {
     const top = mergeCandidates(sources, { seeds, brandTerms, ignore: site.ignoreQueries || [] }).sort((a, b) => demand(b).value - demand(a).value).slice(0, Math.min(want, 100));
     for (const [i, k] of top.entries()) {
       if (i) await sleep(delay);
-      try { const r = await provider.search(k.query, languageFor(m, k.query, flags.language), { fetch: f, env }); serpResults[k.query] = r.results; serps[k.query] = r.results.slice(0, 10).map((x) => x.url); }
+      try { const r = await provider.search(k.query, languageFor(m, k.query, flags.language), { fetch: f, env, guard }); serpResults[k.query] = r.results; serps[k.query] = r.results.slice(0, 10).map((x) => x.url); }
       catch (e) { notes.push(`${provider.name} "${k.query}": ${e.message}`); }
     }
   }

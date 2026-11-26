@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { competitors, keywordGap, strengths, winningPages, gapTopics } from "../src/analysis/gap.mjs";
 import { CONFIG } from "./market-fixtures.mjs";
+import { testGuard } from "./dfs-fixtures.mjs";
 
 test("competitors: your list wins; otherwise share of voice, with platforms such as Wikipedia set apart", () => {
   assert.deepEqual(competitors({ configured: ["www.Rival.test", "s.test"], own: "s.test" }).domains, ["rival.test"]);
@@ -45,7 +46,7 @@ test("gap job: with DataForSEO, every competitor query against your Search Conso
   const site = { id: "s", name: "S", url: "https://s.test/", market: CONFIG.SA, research: { competitors: ["rival.test"] }, paths: { state, root, data: root } };
   const { run } = await import("../src/jobs/gap.mjs");
   const log = console.log; console.log = () => {};
-  try { await run({ site, flags: {} }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: f }); } finally { console.log = log; }
+  try { await run({ site, flags: {} }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: f, guard: testGuard({ fetch: f }) }); } finally { console.log = log; }
   assert.deepEqual(bodies, ["rival.test", "s.test"]);
   assert.deepEqual(sentMarkets, [[2682, "ar"], [2682, "ar"]], "DataForSEO is asked for the site's market, not a default");
   await withoutLog(() => assert.rejects(() => run({ site: { ...site, market: undefined }, flags: {} }, { env: { DATAFORSEO_LOGIN: "l", DATAFORSEO_PASSWORD: "p" }, fetch: async () => { throw new Error("no request may be made"); } }), /market: missing/));
