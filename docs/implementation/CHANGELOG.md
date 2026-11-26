@@ -2,6 +2,12 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D70 follow-up: settings `revisionsProven: false` turns writes off, on fix/cms-revisions-proven-false from main e54723d; code change, nothing deployed)
+- **Code:** `src/cms/commands.mjs`: `options()` sets `writesOff` when the settings file has `revisionsProven: false`. `draft` and `publish` refuse at the start (exit 3) unless `--dry`; `writeGuard` checks it before the schema. Found on a live export: with a token that has schema:read, the schema answer ("revisions") let draft saves through despite `false`, and an SEO-only publish never reached the guard.
+- **Tests:** new `test/cms-mirror-revisions-off.test.mjs` (6). The 5 refusal and dry-run tests fail at e54723d and pass after; the `true` control passes on both.
+- **Documentation:** `docs/cms-mirror.md` safety rule (also: `preview-check` is a write), root `CHANGELOG.md`.
+- **Deployment:** none.
+
 ## 2026-11-26 (D70 review R2c follow-up N1 on fix/cms-mirror-dir-guard, from main c47cdcb; code change, nothing deployed)
 - **Code:** `src/cms/commands.mjs` `mirrorFolderProblem`: the mirror folder must sit inside its git repository (found along the path as written) or the working folder, with no symbolic link below that point; checked by `export`, `validate` (every folder, `--dir` or the files' own) and `draft`/`publish` before any read, write or call.
 - **Tests:** new `test/cms-mirror-dir-guard.test.mjs` (4: linked `posts/` in validate and export, `--files` with `..`, plain folder still works and an outside folder is refused). All 4 fail at c47cdcb and pass after. Temporary folders in the other cms tests are now git repositories. `npm test` 740 tests, 738 pass, 0 fail, 2 skipped.
