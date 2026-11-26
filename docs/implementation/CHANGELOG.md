@@ -2,6 +2,15 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26 (D74: languages, hreflang pairs, Arabic style guide on feat/arabic-languages-style, on main 1924190; code, tests, docs; nothing deployed)
+- **Code:** `src/lib/languages.mjs` (new: translation groups, `searchConsole`, `hreflang` and `styleGuide` validation, Search Console filter), `src/lib/google-auth.mjs` (`searchAnalytics` filters), `src/core/config.mjs` (validation), `src/analysis/hreflang.mjs` and `src/jobs/hreflang.mjs`, `src/analysis/style-guide.mjs` and `src/jobs/style.mjs`, `src/jobs/gsc.mjs`, `daily`, `digest`, `research`, `rank` (pass `--language`), `src/jobs/index.mjs`.
+- **Product content:** `knowledge/arabic-msa-style-guide.md`, `departments/skills/language-style-guide/SKILL.md`, the writer agents (`seo-drafter`, `seo-refresher`, `seo-snippet-optimizer`, `seo-local-content-writer`) and `seo-editor`.
+- **Workflows (templates):** `seo-check.yml` (hreflang and style steps), `seo-implement.yml` and `seo-review.yml` (prompt text only). Not pushed to any `.github/workflows` path.
+- **Tests:** `test/languages.test.mjs`, `test/hreflang.test.mjs`, `test/style-guide.test.mjs`; the three fail on 1924190. `npm test`: 638 tests / 636 pass before, 689 / 687 after, 0 fail, 2 skipped. Local files, a local git repository and injected fetch only.
+- **Docs:** `docs/arabic.md`, `docs/jobs.md`, `docs/configuration.md`, D74, root `CHANGELOG.md`, `schema/seo-autopilot.config.schema.json`, regenerated `docs/registry.*` and `site/` (playbook count 30).
+- **Not verified:** any live Search Console query with the filter (alpha-3 country code and regex operators follow Google's documented API but were not sent to Google), a real `seo-check` run, a model following the style prompts.
+- **Deployment:** none.
+
 ## 2026-11-26 (D72 review R3b fixes on feat/dataforseo-cost-guard; code and documentation change, nothing deployed)
 - **Code:** `src/lib/dataforseo.mjs` only: path check (`bad-path`), estimate on any non-ok status without a cost except 401/403/429, `sent` flag keeps the reservation when recording fails, token lock, stale takeover one at a time behind a `.lock.takeover` gate with a re-check, and an ownership check before each write, strict `costOf`, estimates rounded up, `realpath` ledger, balance readings per account login, `ledger-unwritable` reason.
 - **Tests:** new `test/dataforseo-guard-r3b.test.mjs` (10 tests: A, C, three for D with child processes, E, F, G, H, I) and the HTTP-error test in `test/dataforseo-guard.test.mjs` (B). All 11 fail at 2e22928 and pass after. Stubbed fetch and local files only; no DataForSEO or Telegram call.

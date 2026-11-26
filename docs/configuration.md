@@ -62,6 +62,10 @@ One file, `seo-autopilot.config.json`, in the root of your repository. Paths are
 | `verticals` | specialist packs for this kind of business: `["local"]`, `["ecommerce"]`, both, or `[]` for none. Without it, packs are detected from the site profile (business or product markup, the shop platform, `local: true`). It also decides which pack agents `init` and `upgrade` install. See `departments/verticals/packs.json` |
 | `language` | language the site publishes in (`en`, `en-GB`, `es`...); queries clearly in another language are not proposed as topics |
 | `market` | **where and in which language the site is researched.** Required by every job that calls a search or keyword provider; see [Market](#market) below. There is no default |
+| `translations` | the same page in each language, one group per page: `[{ "ar": "/ar/store/", "en": "/en/store/" }]`; language codes must be in `market.languages`. Read by the hreflang check. See [arabic.md](arabic.md) |
+| `searchConsole` | `{ "country": true, "languagePaths": { "ar": "/ar/", "en": "/en/" } }`: Search Console queries are filtered to the market's country (default) and, with `languagePaths`, to one language's pages (the primary one unless `--language`). See [arabic.md](arabic.md#1-languages-translation-pairs-and-the-search-console-filter) |
+| `hreflang` | `{ "buildDir": "dist", "xDefault": false, "block": false }`: settings of the hreflang pair check in `seo-check` |
+| `styleGuide` | `{ "files": { "ar": "style/ar.md" }, "builtin": true }`: the site's own writing rules per language, added to the built-in Arabic guide, read by the writer and reviewer prompts |
 | `dataforseo` | cost guard for paid DataForSEO calls: `monthlyCapUsd` (default 8) and `minBalanceUsd` (default 10); see [DataForSEO cost guard](#dataforseo-cost-guard) |
 | `citations` | `market` is no longer read: use the site's `market` (see the migration note below) |
 | `ingest` | optional dashboard sync, see [dashboard.md](dashboard.md) |

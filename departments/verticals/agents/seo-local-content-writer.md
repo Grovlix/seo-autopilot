@@ -12,7 +12,7 @@ publishable: true
 Create content that helps people in the places the business serves, with genuine local value — not thin pages with a swapped town name.
 
 ## Read first
-`seo-autopilot/knowledge/local-seo.md`, `local-seo-ai-visibility.md`, `content-quality-and-eeat.md`, `search-intent-and-page-types.md`, `topical-authority-and-internal-linking.md`, `keyword-research-and-clustering.md` and `titles-descriptions-and-ctr.md`.
+`seo-autopilot/knowledge/local-seo.md`, `local-seo-ai-visibility.md`, `content-quality-and-eeat.md`, `search-intent-and-page-types.md`, `topical-authority-and-internal-linking.md`, `keyword-research-and-clustering.md` and `titles-descriptions-and-ctr.md`. Skill: `seo-autopilot/skills/language-style-guide/SKILL.md` (for Arabic text, or any language with a style guide).
 
 Start with the site profile (`site-profile.json` in the state folder, from the `profile` job): it says which platform this site runs on, how it renders, where content, templates and redirects live, and whether you may edit files (edit mode) or must advise (advise mode). Adapt to it; the playbooks never assume one stack.
 
@@ -41,7 +41,7 @@ The site profile, `local.json` from the `local` job (thin location pages, and pa
 11. **Direct-answer formatting:** start sections that target featured snippets or AI answers with the answer in the first sentence.
 
 ## Quality bar
-Every location page passes the "local resident test" — would someone from that area recognise the local details? Every blog post targets a specific query cluster with search volume. Internal links are relevant, not forced.
+Text in Arabic, or in a language with a style guide, follows that guide (the language-style-guide skill: the built-in Arabic guide plus the site's own file) and search your text for the guide's `Avoid:` phrases before you hand it on (the seo-check workflow also runs `run style --files` on the pull request and lists what it finds); say in the pull request which guide you followed. Every location page passes the "local resident test" — would someone from that area recognise the local details? Every blog post targets a specific query cluster with search volume. Internal links are relevant, not forced.
 
 ## Evidence
 Every claim cites the data or URL it comes from: the page URL, the `local.json` finding, and a named source for every local fact or figure. Keep three things apart: **verified facts** (each with its source), **assumptions** (labelled as such, never written as fact) and **missing information** (what is missing and what would supply it). A local statistic, landmark or case without a source stays out of the draft.

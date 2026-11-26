@@ -1,9 +1,9 @@
 {
  "generatedFrom": "code (scripts/build-registry.mjs)",
  "counts": {
-  "jobs": 60,
+  "jobs": 62,
   "agents": 38,
-  "skills": 7,
+  "skills": 8,
   "mcpTools": 6,
   "workflows": 12
  },
@@ -1136,6 +1136,71 @@
    "writes": [
     "content-guard.json",
     "content-guard.md"
+   ],
+   "permissions": "read-only",
+   "usesLLM": false,
+   "onError": "the workflow step logs the error; most steps use continue-on-error so one failing job does not stop the run; no automatic retry",
+   "verification": "unit/fixture tests only (external calls mocked)"
+  },
+  {
+   "name": "hreflang",
+   "purpose": "hreflang pairs: for each declared translation group, reciprocal hreflang links (and x-default if asked); warns, or blocks with hreflang.block",
+   "source": "src/jobs/hreflang.mjs",
+   "owner": "maintainers (product core)",
+   "mode": "scheduled (on by default)",
+   "triggers": [
+    {
+     "workflow": "seo-check.yml",
+     "cron": [],
+     "events": [
+      "workflow_dispatch",
+      "workflow_call",
+      "pull_request"
+     ],
+     "gatedBy": []
+    }
+   ],
+   "credentials": [
+    "GITHUB_ACTIONS",
+    "GITHUB_STEP_SUMMARY"
+   ],
+   "hosts": [
+    "github.com",
+    "s.test"
+   ],
+   "writes": [
+    "hreflang.json",
+    "hreflang.md"
+   ],
+   "permissions": "read-only",
+   "usesLLM": false,
+   "onError": "the workflow step logs the error; most steps use continue-on-error so one failing job does not stop the run; no automatic retry",
+   "verification": "unit/fixture tests only (external calls mocked)"
+  },
+  {
+   "name": "style",
+   "purpose": "Style guide: show the rules in force for a language (built-in Arabic MSA guide plus the site's own file) and check files against them",
+   "source": "src/jobs/style.mjs",
+   "owner": "maintainers (product core)",
+   "mode": "scheduled (on by default)",
+   "triggers": [
+    {
+     "workflow": "seo-check.yml",
+     "cron": [],
+     "events": [
+      "workflow_dispatch",
+      "workflow_call",
+      "pull_request"
+     ],
+     "gatedBy": []
+    }
+   ],
+   "credentials": [],
+   "hosts": [],
+   "writes": [
+    "style-${guide.language}.md",
+    "style-lint.json",
+    "style-lint.md"
    ],
    "permissions": "read-only",
    "usesLLM": false,
@@ -2928,7 +2993,8 @@
    "mayEdit": true,
    "mayRunShell": false,
    "reads": [
-    "answer-first-copy"
+    "answer-first-copy",
+    "language-style-guide"
    ],
    "mode": "workflow (seo-implement.yml)",
    "triggers": [
@@ -3011,7 +3077,8 @@
    "mayRunShell": false,
    "reads": [
     "refreshing-and-pruning-content.md",
-    "answer-first-copy"
+    "answer-first-copy",
+    "language-style-guide"
    ],
    "mode": "workflow (seo-implement.yml)",
    "triggers": [
@@ -3053,7 +3120,8 @@
    "mayRunShell": false,
    "reads": [
     "titles-descriptions-and-ctr.md",
-    "answer-first-copy"
+    "answer-first-copy",
+    "language-style-guide"
    ],
    "mode": "workflow (seo-implement.yml)",
    "triggers": [
@@ -3336,7 +3404,8 @@
    "mayEdit": true,
    "mayRunShell": false,
    "reads": [
-    "local-seo.md"
+    "local-seo.md",
+    "language-style-guide"
    ],
    "mode": "on request in Claude Code (plugin) or via the team/agent jobs",
    "triggers": [],
@@ -3431,7 +3500,8 @@
    "mayRunShell": false,
    "reads": [
     "editorial-review-checklist.md",
-    "answer-first-copy"
+    "answer-first-copy",
+    "language-style-guide"
    ],
    "mode": "workflow (seo-review.yml)",
    "triggers": [
@@ -3509,6 +3579,17 @@
     "seo-entity-reputation"
    ],
    "source": "departments/skills/digital-pr/SKILL.md"
+  },
+  {
+   "name": "language-style-guide",
+   "usedBy": [
+    "seo-drafter",
+    "seo-refresher",
+    "seo-snippet-optimizer",
+    "seo-local-content-writer",
+    "seo-editor"
+   ],
+   "source": "departments/skills/language-style-guide/SKILL.md"
   },
   {
    "name": "question-mining",
@@ -3662,12 +3743,16 @@
    "gatedBy": [],
    "jobGates": {
     "content-guard": [],
-    "facts": []
+    "facts": [],
+    "hreflang": [],
+    "style": []
    },
    "agentGate": [],
    "jobs": [
     "content-guard",
-    "facts"
+    "facts",
+    "hreflang",
+    "style"
    ],
    "agents": [],
    "continueOnError": 0

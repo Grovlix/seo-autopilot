@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+Languages, hreflang pairs and an Arabic style guide (D74).
+
+- **New:** `translations` (the same page per language), `searchConsole` (`country`, `languagePaths`), `hreflang` (`buildDir`, `xDefault`, `block`) and `styleGuide` (`files`, `builtin`) site settings; every language code must be one of `market.languages`.
+- **Changed:** Search Console queries of `daily`, `digest`, `research`, `rank` and `gsc` are filtered to the market's country (set `searchConsole.country` to `false` to turn it off) and, with `searchConsole.languagePaths`, to one language's pages (`--language`).
+- **New:** `hreflang` job and an `seo-check` step: reciprocal hreflang links for each declared translation group; warns, or blocks with `hreflang.block`.
+- **New:** `style` job, the built-in Modern Standard Arabic guide (`knowledge/arabic-msa-style-guide.md`), the shared skill `language-style-guide`, and style-guide instructions in the `seo-implement` and `seo-review` prompts and in the writer and editor agents. See `docs/arabic.md`.
+
 AI answer tracking (D73).
 
 - **New:** `aeo` job and `aeo` config (`prompts` with `lang`, `aliases`, `mode`, `schedule`, `maxCostPerRunUsd`): asks Google AI Mode (default), the AI Overview or ChatGPT with web search the buyer questions through DataForSEO and records mentions (Arabic aliases normalised) and citations. Every call goes through the cost guard; the report shows the measured cost. See docs/aeo.md. Not scheduled by a workflow template yet.

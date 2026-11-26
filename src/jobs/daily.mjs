@@ -41,7 +41,7 @@ export async function run({ site, flags }) {
   writeJson(stateFile, state);
 
   const end = Date.now() - 2 * 864e5, start = end - 27 * 864e5;
-  const q = searchAnalytics(site, token);
+  const q = searchAnalytics(site, token, { language: flags.language });
   const [tot, queries, pages] = await Promise.all([q(dayOf(start), dayOf(end), [], 1), q(dayOf(start), dayOf(end), ["query"], 100), q(dayOf(start), dayOf(end), ["page"], 100)]);
   const T = tot[0] || {};
 

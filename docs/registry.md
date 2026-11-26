@@ -1,7 +1,7 @@
 # Registry of jobs, agents, skills and MCP tools
 
 Generated from the code by `node scripts/build-registry.mjs`; do not edit by hand (`test/registry.test.mjs` fails when it is stale).
-Machine-readable: [registry.json](registry.json). Counts: 60 jobs, 38 agents, 7 skills, 6 MCP tools, 12 workflow templates.
+Machine-readable: [registry.json](registry.json). Counts: 62 jobs, 38 agents, 8 skills, 6 MCP tools, 12 workflow templates.
 
 How to read it:
 - **Permissions:** read-only (reads the site and APIs, writes reports in the state folder), github-write (opens issues, labels, pull requests), external (sends something to a third party).
@@ -44,6 +44,8 @@ How to read it:
 | `redirects` | Redirect map: check it (targets live, no chains or loops), generate server rules, smoke-test the live site | scheduled (on by default)<br>seo-weekly (10 6 * * 1) | none | `redirects-smoke.json` `redirects-smoke.md` `redirects-check.json` `redirects-check.md` | read-only | no | unit/fixture tests only (external calls mocked) |
 | `facts` | Facts guard: numbers, prices, awards and client claims must be in verified-facts.json or sourced | scheduled (on by default)<br>seo-check<br>seo-weekly (10 6 * * 1) | none | `facts.json` `facts.md` | read-only | no | unit/fixture tests only (external calls mocked) |
 | `content-guard` | Content-loss guard: fail a pull request whose changed pages lose words (>15%), headings, internal links, images, structured data or page settings | scheduled (on by default)<br>seo-check | `GITHUB_BASE_REF` `GITHUB_HEAD_REF` `GITHUB_STEP_SUMMARY` | `content-guard.json` `content-guard.md` | read-only | no | unit/fixture tests only (external calls mocked) |
+| `hreflang` | hreflang pairs: for each declared translation group, reciprocal hreflang links (and x-default if asked); warns, or blocks with hreflang.block | scheduled (on by default)<br>seo-check | `GITHUB_ACTIONS` `GITHUB_STEP_SUMMARY` | `hreflang.json` `hreflang.md` | read-only | no | unit/fixture tests only (external calls mocked) |
+| `style` | Style guide: show the rules in force for a language (built-in Arabic MSA guide plus the site's own file) and check files against them | scheduled (on by default)<br>seo-check | none | `style-${guide.language}.md` `style-lint.json` `style-lint.md` | read-only | no | unit/fixture tests only (external calls mocked) |
 | `conversions` | GA4 conversions: events received, which are key events, expected conversions missing or unmarked | scheduled (on by default)<br>seo-weekly (10 6 * * 1) | `GOOGLE_KEY_FILE` `GOOGLE_KEY_JSON` | `conversions.json` `conversions.md` | read-only | no | untested (no test names the job; its analysis module may be tested) |
 | `links` | Internal links to add for weakly linked pages: mentions, missing link-backs and same-section siblings | scheduled (on by default)<br>seo-weekly (10 6 * * 1) | none | `links.json` `links.md` | read-only | no | unit/fixture tests only (external calls mocked) |
 | `render` | Rendered vs delivered HTML (optional headless browser): prerendered text not on the page, JS-only content | scheduled (off until an opt-in variable is set)<br>seo-weekly (10 6 * * 1) if SEO_RENDER=true | none | `render.json` `render.md` | read-only | no | unit/fixture tests only (external calls mocked) |
@@ -123,6 +125,7 @@ Every agent: verification is definition tests only; no agent's output has been g
 | `answer-first-copy` | seo-drafter, seo-refresher, seo-snippet-optimizer, seo-ai-search-agent, seo-editor |
 | `broken-link-reclamation` | seo-link-builder, seo-backlink-auditor, seo-redirect-guardian |
 | `digital-pr` | seo-link-builder, seo-entity-reputation |
+| `language-style-guide` | seo-drafter, seo-refresher, seo-snippet-optimizer, seo-local-content-writer, seo-editor |
 | `question-mining` | seo-researcher, seo-ai-search-agent, seo-topic-mapper, seo-ai-visibility-tracker |
 | `search-intent-labelling` | seo-researcher, seo-topic-mapper, seo-serp-analyst |
 | `traffic-potential` | seo-topic-mapper, seo-serp-analyst, seo-strategist |
@@ -137,7 +140,7 @@ Every agent: verification is definition tests only; no agent's output has been g
 | `seo-automerge.yml` | workflow_call, workflow_run | - | SEO_AUTOMERGE | autopilot | - | 0 |
 | `seo-autopilot.yml` | schedule, workflow_dispatch | 23 7,15 * * * | SEO_AUTOPILOT | autopilot | - | 0 |
 | `seo-backlinks.yml` | schedule, workflow_dispatch | 30 9 * * 4 | SEO_AUTOPILOT_PAUSED | mark, backlinks | - | 0 |
-| `seo-check.yml` | workflow_dispatch, workflow_call, pull_request | - | - | content-guard, facts | - | 0 |
+| `seo-check.yml` | workflow_dispatch, workflow_call, pull_request | - | - | content-guard, facts, hreflang, style | - | 0 |
 | `seo-daily.yml` | schedule, workflow_dispatch | 17 5 * * * | - | daily, rank, propose, news, mentions, audit, analyze, priorities, linkgraph, indexnow, dashboard, portal | - | 8 |
 | `seo-implement.yml` | workflow_dispatch, workflow_call, issues | - | - | - | seo-drafter, seo-refresher, seo-snippet-optimizer, seo-internal-linker | 0 |
 | `seo-monthly.yml` | schedule, workflow_dispatch | 11 6 1 * * | SEO_AI_VISIBILITY | audit, priorities, forecast, ai-visibility, entity, monthly | - | 5 |

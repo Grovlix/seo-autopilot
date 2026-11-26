@@ -39,7 +39,7 @@ export async function run({ site, flags = {} }, deps = {}) {
   if (!tracked.queries.length) { console.log("rank: nothing to track yet. Add queries to tracked-queries.json, or run the daily job so Search Console rows exist."); return; }
 
   if (!flags.offline) {
-    const query = deps.query || searchAnalytics(site, (await getToken([SCOPES.searchConsole])).token);
+    const query = deps.query || searchAnalytics(site, (await getToken([SCOPES.searchConsole])).token, { language: flags.language });
     const first = !Object.keys(series).length;
     const rows = await fetchRows(query, addDays(day, first ? -92 : -12), addDays(day, -2));
     const byImp = new Map();

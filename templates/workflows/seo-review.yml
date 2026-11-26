@@ -104,6 +104,13 @@ jobs:
             4. Only content files changed (nothing under .github/, build config or secrets) and the page format matches the
                neighbouring pages. Any other changed file is BLOCKING.
             5. No keyword stuffing, no filler, no copied text from sources.
+            6. Style guide: for changed text in Arabic (or another language named under "styleGuide" in
+               seo-autopilot.config.json), read skills/language-style-guide/SKILL.md in the data folder, then the guides it
+               points to (knowledge/arabic-msa-style-guide.md for Arabic unless "styleGuide": { "builtin": false }, and the
+               file named under "styleGuide.files" for that language). Report every violation with the quoted text, the file
+               and the rule ID it broke (for example "MSA-3"); never a complaint without a rule ID. A violation of a rule marked
+               [blocking] is BLOCKING; any other is a non-blocking suggestion in your comment. A changed guide file is BLOCKING
+               (item 4). Say which rules you could not judge.
 
             Then: if there is NO blocking problem, run `gh label create seo-review-passed --color 0E8A16 --description "Reviewer agent found no blocking problem" || true`
             and `gh pr edit ${{ inputs.pr || github.event.pull_request.number }} --add-label seo-review-passed`, and post a short
