@@ -51,7 +51,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 4
+   "modules": 5
   },
   {
    "job": "audit",
@@ -72,7 +72,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 10
+   "modules": 11
   },
   {
    "job": "authority",
@@ -90,7 +90,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 15
+   "modules": 16
   },
   {
    "job": "autopilot",
@@ -161,7 +161,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 24
+   "modules": 25
   },
   {
    "job": "citations",
@@ -250,7 +250,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 6
+   "modules": 7
   },
   {
    "job": "deepdive",
@@ -285,7 +285,7 @@
     "network": true,
     "llm": true
    },
-   "modules": 8
+   "modules": 9
   },
   {
    "job": "entity",
@@ -303,7 +303,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 25
+   "modules": 26
   },
   {
    "job": "experiments",
@@ -321,7 +321,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 4
+   "modules": 5
   },
   {
    "job": "facts",
@@ -338,7 +338,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 5
+   "modules": 6
   },
   {
    "job": "forecast",
@@ -373,7 +373,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 19
+   "modules": 20
   },
   {
    "job": "geo",
@@ -482,7 +482,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 17
+   "modules": 18
   },
   {
    "job": "linkgraph",
@@ -516,7 +516,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 5
+   "modules": 6
   },
   {
    "job": "listings",
@@ -552,7 +552,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 26
+   "modules": 27
   },
   {
    "job": "logs",
@@ -640,7 +640,7 @@
     "network": true,
     "llm": true
    },
-   "modules": 6
+   "modules": 7
   },
   {
    "job": "optimize",
@@ -658,7 +658,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 22
+   "modules": 23
   },
   {
    "job": "pace",
@@ -675,7 +675,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 4
+   "modules": 5
   },
   {
    "job": "portal",
@@ -708,7 +708,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 7
+   "modules": 8
   },
   {
    "job": "profile",
@@ -741,7 +741,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 4
+   "modules": 5
   },
   {
    "job": "quality",
@@ -776,7 +776,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 19
+   "modules": 20
   },
   {
    "job": "redirects",
@@ -793,7 +793,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 4
+   "modules": 5
   },
   {
    "job": "refresh",
@@ -810,7 +810,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 4
+   "modules": 5
   },
   {
    "job": "release",
@@ -827,7 +827,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 3
+   "modules": 4
   },
   {
    "job": "render",
@@ -863,7 +863,7 @@
     "network": true,
     "llm": true
    },
-   "modules": 8
+   "modules": 9
   },
   {
    "job": "schedule",
@@ -880,7 +880,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 3
+   "modules": 4
   },
   {
    "job": "schema",
@@ -898,7 +898,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 24
+   "modules": 25
   },
   {
    "job": "shop",
@@ -916,7 +916,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 26
+   "modules": 27
   },
   {
    "job": "speed",
@@ -950,7 +950,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 10
+   "modules": 11
   },
   {
    "job": "vitals",
@@ -984,7 +984,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 6
+   "modules": 7
   },
   {
    "job": "work",
@@ -1018,7 +1018,7 @@
     "network": true,
     "llm": false
    },
-   "modules": 4
+   "modules": 5
   }
  ],
  "summary": {
