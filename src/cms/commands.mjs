@@ -89,6 +89,8 @@ function options(flags) {
     rss: pick("rss", "rss", null),
     revisionsProven: fromSettings ? st.revisionsProven === true : flags["revisions-proven"] === true || flags["revisions-proven"] === "true" || process.env.EMDASH_REVISIONS_PROVEN === "true",
     revisionsProvenFrom: fromSettings ? `settings file ${flags.settings}` : "flag or environment",
+    // "revisionsProven": false in the settings file turns every write off, whatever the schema says (see writesOff).
+    writesOff: fromSettings && st.revisionsProven !== true,
   };
 }
 
@@ -223,12 +225,22 @@ export function validateCmd(flags) {
 // A PUT with data on a collection without revisions overwrites the live post, so a write needs proof first: the
 // schema says so (schema:read scope), or the operator ran preview-check and set --revisions-proven.
 async function writeGuard(api, o, liveItem) {
+  if (o.writesOff) throw new Refused(writesOffMessage(o));
   if (!liveItem || liveItem.status !== "published") return "not live";
   const r = await revisionsSupported(api, o.collection);
   if (r === true) return "schema";
   if (r === false) throw new Refused(`collection "${o.collection}" does not keep revisions: a draft save would change the live post`);
   if (o.revisionsProven) return `proven by preview-check (${o.revisionsProvenFrom})`;
   throw new Refused(`revisions are not proven for this collection (${o.revisionsProvenFrom}); run "cms preview-check", and once it shows revisions: true set "revisionsProven": true in the settings file (or pass --revisions-proven when no settings file is used)`);
+}
+
+// The settings file is what a person commits after preview-check; until it says true, no draft or publish reaches
+// the CMS, not even an SEO-only edit (which needs no draft) or a collection whose schema shows revisions.
+const writesOffMessage = (o) => `writes are off: "revisionsProven" is false in the ${o.revisionsProvenFrom}; run "cms preview-check", and once it shows revisions: true commit "revisionsProven": true`;
+function refuseIfWritesOff(o, flags, report) {
+  if (!o.writesOff) return;
+  if (flags.dry) { report.writesOff = true; return; }
+  throw new Refused(writesOffMessage(o));
 }
 
 /** The file's own versions: this file, its previous version, and every version committed in git (newest first). */
@@ -346,6 +358,7 @@ export async function draftCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const v = checkFile(file, parsed, base, o);
   const api = client(flags, f);
   const report = { action: "draft", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
+  refuseIfWritesOff(o, flags, report);
   const { item } = await saveDraft(api, o, parsed, report, file);
   delete report.base;
   report.id = item.id;
@@ -369,6 +382,7 @@ export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const v = checkFile(file, parsed, base, o);
   const api = client(flags, f);
   const report = { action: "publish", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
+  refuseIfWritesOff(o, flags, report);
   const { item, head, changes, pendingIsHead } = await saveDraft(api, o, parsed, report, file);
   delete report.base;
   report.id = item.id;
