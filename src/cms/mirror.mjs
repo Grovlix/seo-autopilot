@@ -282,6 +282,15 @@ export function seoPayload(parsed) {
 }
 
 /**
+ * The text of the live-older-version refusal (also in docs/cms-mirror.md; keep them in step). The refusal cannot tell two
+ * causes apart, so it names both and the two ways out (review R10 round 3, R3-1).
+ */
+export function olderVersionReason(liveSha, newestSha) {
+  const a = liveSha.slice(0, 12), b = newestSha.slice(0, 12);
+  return `the live post equals the file at ${a}, an older version than the newest earlier version of it on this branch (${b}). Either someone went back to ${a} in the CMS admin (a rollback), or ${b} was merged but never published (the kill switch was on, its run was cancelled, or it stopped before any request). Before exporting, compare the live post with the file at both commits: if it is the second case, an export would revert the reviewed text. Ways out: (A) re-run with --base-ref ${a} (on the ops side, a dispatch with before=${a}), only when no other file is pending, because it also drops every other file changed up to ${a}; or (B) publish the text of ${b} (or of this file) in the CMS admin, then re-run. If it was a rollback made on purpose, export the post into the file instead.`;
+}
+
+/**
  * Is it safe to write this file to the CMS? Compares the live item with the file's previous version (base) and looks at
  * any pending CMS draft. Returns { ok, reason, changes } where changes lists what the write will change.
  * live: state of the live item (or null for a new post); base: state of the previous file (or null);
@@ -302,9 +311,10 @@ export function writePlan({ live, base, foreignDraft = false, head, between = []
   let matched = null;
   if (base && diffState(live, base, partsFor(live, base)).length) {
     const v = between.find((x) => sameState(live, x.state));
-    const last = between.find((x) => !sameState(x.state, head));
+    // diffState, not sameState: sameState skips SEO when one side has no SEO keys, so a newest commit that only adds them would be skipped (R10 round 3, X4).
+    const last = between.find((x) => diffState(x.state, head).length > 0);
     if (v && last && v.sha !== last.sha)
-      return { ok: false, refusal: "live-older-version", reason: `the live post equals the file at ${v.sha.slice(0, 12)}, an older version than the last one published from this branch (${last.sha.slice(0, 12)}): someone rolled it back in the CMS; export again before editing`, changes: [] };
+      return { ok: false, refusal: "live-older-version", reason: olderVersionReason(v.sha, last.sha), changes: [] };
     if (v) { matched = v.sha; base = v.state; }
   }
   const plan = planAgainst({ live, base, head });

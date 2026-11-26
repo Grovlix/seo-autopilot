@@ -2,6 +2,15 @@
 
 Dated session entries; history is preserved. Product release notes are in the root `CHANGELOG.md`.
 
+## 2026-11-26, round 4 (D77 amended: review R10 round 3 fixes to the drift window, on feat/cms-discard-slug-update; code change, nothing deployed)
+- **Code:**
+  - `src/cms/mirror.mjs`: the `live-older-version` refusal text is built by `olderVersionReason`; it names both causes (a rollback in the admin, or a newer merged version that was never published) and both ways out (`--base-ref` = the first commit named, only when no other file is pending; or publish the newest version's text in the admin), and says to compare the live post with both commits before exporting (R3-1). The refusal logic is unchanged.
+  - `writePlan`: `last` is the newest window version with `diffState(x.state, head).length > 0` (was `!sameState`, which skips SEO when one side has no SEO keys) (R3-2, R10's X4).
+- **Tests:** 2 "R10r3" tests in `test/cms-discard-idless.test.mjs`, both red before the change (X4 refused, X1 old wording). `npm test`: 791 tests, 788 pass, 0 fail, 3 skipped (the third is "python 3.10+ not installed" on this Mac, environment).
+- **Sims (scratchpad copies, not committed):** R10's `sim/r10-r3.mjs` as written: 7/9, the two misses are X1 and X4, whose "finding" assertions describe the old behaviour; with those two assertions flipped to the fix: 9/9. T16 round-3 window sim 12/12; T16 round-2 sim 20/20.
+- **Documentation:** `docs/cms-mirror.md` (same error text, causes, ways out, and the R3-3 known limit: a rollback to the `--base-ref` version itself is not detected while the point is stuck), root `CHANGELOG.md`, D77 amendment, STATUS.
+- **Deployment:** none. No EmDash, GitHub Actions or Telegram call.
+
 ## 2026-11-26, round 3 (D77 amended: review R10 round 2 fixes to the drift window, on feat/cms-discard-slug-update; code change, nothing deployed)
 - **Code (`d771fdd`):**
   - `src/cms/mirror.mjs` `writePlan`: a window match must be the newest window version that differs from this file; an older one is refused `live-older-version` (R1).

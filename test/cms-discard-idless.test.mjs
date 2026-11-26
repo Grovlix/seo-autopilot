@@ -752,3 +752,49 @@ test("R10r2 R6: a ref that looks like an option never reaches git as one", async
   let made2 = true; try { readFileSync(`${out}..HEAD`); } catch { made2 = false; }
   assert.equal(made || made2, false, "git wrote a file named by the ref");
 });
+
+// ------------------------------------------------------------------------------------------------ review R10 round 3
+
+test("R10r3 R3-2 (X4): a file with no SEO keys whose newest commit adds them still matches the newest published version", async () => {
+  const fake = site(); const r = await repo(fake);
+  const res = await fake.fetch(`${URL_}/_emdash/api/content/posts`, { method: "POST", headers: { authorization: "Bearer x" }, body: JSON.stringify({ slug: "gamma", status: "draft", data: { title: "Gamma", content: [para("Gamma v0.")] } }) });
+  const id = (await res.json()).data.item.id;
+  await fake.fetch(`${URL_}/_emdash/api/content/posts/${id}/publish`, { method: "POST", headers: { authorization: "Bearer x" }, body: "{}" });
+  writeFileSync(r.file("gamma"), stringifyMirror({ id, slug: "gamma", title: "Gamma" }, "Gamma v0.\n")); const P = r.commit("gamma file, no SEO keys");
+  setBody(r, "gamma", "Gamma v1."); r.commit("v1"); assert.equal((await r.cmd("publish", "gamma", "--base-ref", P)).code, 0);
+  setBody(r, "gamma", "Gamma v2."); const c2 = r.commit("v2"); assert.equal((await r.cmd("publish", "gamma", "--base-ref", P)).code, 0);
+  r.edit("gamma", (p) => { p.meta.seoTitle = "Gamma SEO title"; }); r.commit("v3: SEO keys only");
+  const p3 = await r.cmd("publish", "gamma", "--base-ref", P);
+  assert.equal(p3.code, 0, p3.raw);
+  assert.equal(p3.report.liveMatchedVersion, c2);
+  assert.equal(liveText(fake, "gamma"), "Gamma v2.");
+});
+
+test("R10r3 R3-1 (X1): live-older-version also fires for a version no run published; the message names both causes, both ways out, and what to check", async () => {
+  const fake = site(); const r = await repo(fake);
+  const P = r.head();
+  setBody(r, "beta", "Beta v2."); const c2 = r.commit("beta v2");
+  assert.equal((await r.cmd("publish", "beta", "--base-ref", P)).code, 0); // a red run on another file: P stays
+  setBody(r, "beta", "Beta v3."); const c3 = r.commit("beta v3"); // its run never reached the CMS
+  setBody(r, "beta", "Beta v4."); r.commit("beta v4");
+  const n = writes(fake).length;
+  const p4 = await r.cmd("publish", "beta", "--base-ref", P);
+  assert.equal(p4.code, 3, p4.raw);
+  assert.equal(p4.report.refusal, "live-older-version");
+  const e = p4.report.error;
+  assert.ok(e.includes(c2.slice(0, 12)) && e.includes(c3.slice(0, 12)), e);
+  assert.match(e, /rolled (it )?back|rollback/i, "cause 1: a rollback in the admin");
+  assert.match(e, /never published|not published|did not publish/i, "cause 2: a newer merged version that never published");
+  assert.match(e, /compare the live post with the file at both commits/i, "check which case before exporting");
+  assert.match(e, new RegExp(`--base-ref ${c2.slice(0, 12)}`), "way out A names the first commit");
+  assert.match(e, /no other file is pending/i);
+  assert.match(e, /publish .*in the CMS admin/i, "way out B");
+  assert.doesNotMatch(e, /someone rolled it back in the CMS; export again before editing/, "the old, false-in-X1 wording is gone");
+  assert.equal(writes(fake).length, n);
+  // way out A as written works for this file, way out B too.
+  assert.equal((await r.cmd("publish", "beta", "--base-ref", c2, "--dry")).code, 0);
+  await adminPublish(fake, "beta", "Beta v3.");
+  const viaAdmin = await r.cmd("publish", "beta", "--base-ref", P);
+  assert.equal(viaAdmin.code, 0, viaAdmin.raw);
+  assert.equal(liveText(fake, "beta"), "Beta v4.");
+});
