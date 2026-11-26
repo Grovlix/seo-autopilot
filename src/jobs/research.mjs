@@ -17,9 +17,9 @@ export const description = "Weekly keyword research from Search Console, a keywo
 
 const QUESTION = /^(how|what|why|can|does|do|is|are|should|which|when)\b/i;
 
-export async function run({ site }) {
+export async function run({ site, flags = {} }) {
   const { token } = await getToken([SCOPES.searchConsole]);
-  const q = searchAnalytics(site, token);
+  const q = searchAnalytics(site, token, { language: flags.language });
   const end = Date.now() - 2 * 864e5;
   const recent = await q(dayOf(end - 27 * 864e5), dayOf(end), ["query"], 1000);
   const earlier = await q(dayOf(end - 55 * 864e5), dayOf(end - 28 * 864e5), ["query"], 1000);

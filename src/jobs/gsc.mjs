@@ -5,6 +5,7 @@
 // Writes gsc.json and gsc.md. Edits nothing.
 import { writeJson, writeText, today as todayFn, addDays } from "../core/util.mjs";
 import { getToken, SCOPES } from "../lib/google-auth.mjs";
+import { withSiteFilter, siteFilterGroups } from "../lib/languages.mjs";
 import { TYPES, sitemapFindings, typeTotals, typeFindings, shares, deviceFindings, gscMarkdown } from "../analysis/gsc.mjs";
 
 export const description = "Search Console beyond web search: sitemaps, Discover/News/image/video clicks, search appearance, countries, devices, fresh days";
@@ -26,13 +27,14 @@ export function consoleApi(site, token, f = globalThis.fetch) {
 }
 
 /** `deps`: api ({ query, sitemaps }), today. For tests. */
-export async function run({ site }, deps = {}) {
+export async function run({ site, flags = {} }, deps = {}) {
   const day = deps.today || todayFn();
   const api = deps.api || consoleApi(site, (await getToken([SCOPES.searchConsole])).token);
   // Final data lags about 3 days; compare two full 28-day windows that end there.
   const to = addDays(day, -3), from = addDays(to, -27), pTo = addDays(from, -1), pFrom = addDays(pTo, -27);
   const warnings = [];
-  const q = (type, start, end, dimensions = [], extra = {}) => api.query({ startDate: start, endDate: end, type, dimensions, rowLimit: 250, ...extra }).catch((e) => { warnings.push(`${type}: ${e.message}`); return []; });
+  // Filtered to the site's country and language (src/lib/languages.mjs), except the country breakdown itself.
+  const q = (type, start, end, dimensions = [], extra = {}) => api.query(withSiteFilter(site, { startDate: start, endDate: end, type, dimensions, rowLimit: 250, ...extra }, { language: flags.language })).catch((e) => { warnings.push(`${type}: ${e.message}`); return []; });
   const sitemaps = await api.sitemaps().catch((e) => { warnings.push(e.message); return null; });
   const cur = {}, prev = {};
   for (const t of ["web", ...TYPES]) { cur[t] = await q(t, from, to); prev[t] = await q(t, pFrom, pTo); }
@@ -47,7 +49,7 @@ export async function run({ site }, deps = {}) {
     ...typeFindings(types),
     ...deviceFindings(devices),
   ];
-  const r = { generatedAt: new Date().toISOString(), period: { from, to }, sitemaps: sitemaps || [], types, appearance, devices, countries, fresh, findings, warnings };
+  const r = { generatedAt: new Date().toISOString(), period: { from, to }, filter: siteFilterGroups(site, { language: flags.language })?.[0].filters ?? [], sitemaps: sitemaps || [], types, appearance, devices, countries, fresh, findings, warnings };
   writeJson(`${site.paths.state}/gsc.json`, r);
   writeText(`${site.paths.state}/gsc.md`, gscMarkdown({ siteName: site.name, r }));
   const extra = types.filter((t) => t.type !== "web" && t.clicks).map((t) => `${t.label} ${t.clicks}`).join(", ");

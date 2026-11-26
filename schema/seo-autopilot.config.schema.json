@@ -262,6 +262,44 @@
             },
             "additionalProperties": false
           },
+          "translations": {
+            "type": "array",
+            "description": "The same page in each of the site's languages, one group per page, for example [{ \"ar\": \"/ar/store/\", \"en\": \"/en/store/\" }]. Every language code must be one of market.languages. The hreflang check in seo-check reads these groups. See docs/arabic.md.",
+            "items": {
+              "type": "object",
+              "minProperties": 2,
+              "propertyNames": { "pattern": "^[A-Za-z]{2}$" },
+              "additionalProperties": { "type": "string", "description": "A path that starts with / or a full URL of this site." }
+            }
+          },
+          "searchConsole": {
+            "type": "object",
+            "description": "How the site's Search Console queries are filtered so another country's or language's rows do not dilute the numbers. See docs/arabic.md.",
+            "properties": {
+              "country": { "description": "true (default): only the market's country. false: no country filter. A two-letter country code overrides the market's.", "oneOf": [ { "type": "boolean" }, { "type": "string", "pattern": "^[A-Za-z]{2}$" } ] },
+              "languagePaths": { "type": "object", "propertyNames": { "pattern": "^[A-Za-z]{2}$" }, "additionalProperties": { "type": "string", "pattern": "^/", "description": "Where the language lives, for example \"/ar/\". One language may be \"/\" (everything outside the others)." }, "description": "Where each language lives on the site. The primary language is the default for queries; --language picks another, --language all none." }
+            },
+            "additionalProperties": false
+          },
+          "hreflang": {
+            "type": "object",
+            "description": "The hreflang check on the declared translation groups, run by seo-check (docs/arabic.md). Read from the base branch's config, so a pull request cannot loosen its own check.",
+            "properties": {
+              "buildDir": { "type": "string", "description": "Folder the build writes the pages to (for example dist). Pages are read from there; without it pass --dir or --live." },
+              "xDefault": { "description": "true: every page must carry hreflang=\"x-default\" pointing at the primary language's page. A language code: point at that language's page. false (default): not required.", "oneOf": [ { "type": "boolean" }, { "type": "string", "pattern": "^[A-Za-z]{2}$" } ] },
+              "block": { "type": "boolean", "default": false, "description": "true: a missing or one-way link fails seo-check. Default false: it warns." }
+            },
+            "additionalProperties": false
+          },
+          "styleGuide": {
+            "type": "object",
+            "description": "Writing rules injected into every drafting and review of a language (docs/arabic.md). The built-in Modern Standard Arabic guide applies to sites that publish in Arabic.",
+            "properties": {
+              "files": { "type": "object", "propertyNames": { "pattern": "^[A-Za-z]{2}$" }, "additionalProperties": { "type": "string", "minLength": 1, "description": "Path of the site's own rules for that language, relative to the config file." }, "description": "A style-guide file per language, added on top of the built-in guide." },
+              "builtin": { "type": "boolean", "default": true, "description": "false: do not use the built-in guide, only the site's own files." }
+            },
+            "additionalProperties": false
+          },
           "dataforseo": {
             "type": "object",
             "description": "Cost guard for every paid DataForSEO call (see docs/configuration.md#dataforseo-cost-guard). Calls are refused, with no request sent, when this month's recorded spend plus an estimate would pass monthlyCapUsd, or when the live account balance would fall under minBalanceUsd.",

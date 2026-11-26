@@ -14,12 +14,12 @@ import { matchesAny } from "../analysis/scope.mjs";
 
 export const description = "Weekly digest: search changes, index status, pipeline, backlinks, GA4 and next actions";
 
-export async function run({ site }) {
+export async function run({ site, flags = {} }) {
   const dir = site.paths.state;
   const end = Date.now() - 2 * 864e5;
   const wk = { start: dayOf(end - 6 * 864e5), end: dayOf(end) }, prev = { start: dayOf(end - 13 * 864e5), end: dayOf(end - 7 * 864e5) };
   const { token } = await getToken([SCOPES.searchConsole, SCOPES.analytics]);
-  const sa = searchAnalytics(site, token);
+  const sa = searchAnalytics(site, token, { language: flags.language });
   const [tNow, tPrev, qNow, qPrev, pNow, pPrev] = await Promise.all([
     sa(wk.start, wk.end, [], 1), sa(prev.start, prev.end, [], 1), sa(wk.start, wk.end, ["query"], 500), sa(prev.start, prev.end, ["query"], 500), sa(wk.start, wk.end, ["page"], 200), sa(prev.start, prev.end, ["page"], 200)]);
   const a = tNow[0] || { clicks: 0, impressions: 0, position: 0 }, b = tPrev[0] || { clicks: 0, impressions: 0, position: 0 };

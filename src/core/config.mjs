@@ -5,6 +5,7 @@ import { dirname, join, resolve, isAbsolute } from "node:path";
 import { readJson, writeJson } from "./util.mjs";
 import { resolveMarket, MarketError } from "../lib/market.mjs";
 import { validateAeo } from "../lib/aeo-config.mjs";
+import { validateTranslations, validateSearchConsole } from "../lib/languages.mjs";
 import { DEFAULT_CAP_USD, DEFAULT_MIN_BALANCE_USD } from "../lib/budget-defaults.mjs";
 
 export const CONFIG_NAME = "seo-autopilot.config.json";
@@ -94,6 +95,8 @@ export function validate(raw) {
       }
     }
     if (s.aeo != null) errors.push(...validateAeo(s.aeo, `${w}.aeo`, s.market));
+    if (s.translations != null) errors.push(...validateTranslations(s.translations, w, s));
+    if (s.searchConsole != null) errors.push(...validateSearchConsole(s.searchConsole, w, s));
     if (s.business != null && (typeof s.business !== "object" || Array.isArray(s.business) || Object.keys(s.business).some((k) => !["name", "phone", "address"].includes(k)))) errors.push(`${w}.business may only have name, phone and address (the details you confirm are correct)`);
     if (s.verticals != null && (!Array.isArray(s.verticals) || s.verticals.some((v) => !["local", "ecommerce"].includes(v)))) errors.push(`${w}.verticals must be a list of packs: "local", "ecommerce" ([] turns packs off)`);
     if (s.conversions != null && (typeof s.conversions !== "object" || (s.conversions.events != null && (!Array.isArray(s.conversions.events) || s.conversions.events.some((e) => typeof e !== "string"))))) errors.push(`${w}.conversions.events must be a list of GA4 event names`);
