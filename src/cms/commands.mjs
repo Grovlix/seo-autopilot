@@ -105,9 +105,13 @@ function client(flags, fetchImpl) {
 const out = (report) => { console.log(JSON.stringify(report, null, 2)); return report; };
 const pageUrl = (base, pattern, slug) => base + pattern.replace("{slug}", encodeURIComponent(slug));
 
+/** A ref git will not read as an option (review R10 round 2, R6). Refs come from flags and callers' plans. */
+const safeRef = (ref) => typeof ref === "string" && ref !== "" && !ref.startsWith("-") && !/[\0\n]/.test(ref);
+
 /** The previous version of a file from git (a ref such as origin/main or a merge commit's first parent), or null. */
 export function gitVersion(file, ref) {
-  try { return execFileSync("git", ["show", `${ref}:./${basename(file)}`], { cwd: dirname(resolve(file)), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
+  if (!safeRef(ref)) return null;
+  try { return execFileSync("git", ["show", "--end-of-options", `${ref}:./${basename(file)}`], { cwd: dirname(resolve(file)), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
   catch { return null; }
 }
 
@@ -262,15 +266,21 @@ export function gitVersionsOf(file) {
 
 /**
  * The file's versions committed after baseRef on the first-parent history of HEAD (the branch being published), newest
- * first: [{ sha, parsed }]. Side branches merged in do not count, only what each merge put on the branch. Empty without
- * git or when git cannot resolve baseRef. Used only by the drift check of a file that already
- * owns its post (review R8 round 2, item 1), never to claim a post (review R10 F6/F7).
+ * first: [{ sha, parsed }]. With merge commits, a merged branch's own commits do not count, only what each merge put on
+ * the branch; with rebase or fast-forward merges every commit of the pull request is on that line and counts. Empty
+ * without git, when git cannot resolve baseRef, or when baseRef is not an ancestor of HEAD (rewritten history; review
+ * R10 round 2, R2). Used only by `publish`, never by `draft` (a preview's range is its own unreviewed commits; R3), and
+ * only by the drift check of a file that already owns its post (review R8 round 2, item 1), never to claim a post
+ * (review R10 F6/F7).
  */
 export function rangeVersionsOf(file, baseRef) {
   const out = [];
-  if (!baseRef) return out;
+  if (!safeRef(baseRef)) return out;
+  const cwd = dirname(resolve(file));
+  try { execFileSync("git", ["merge-base", "--is-ancestor", "--end-of-options", baseRef, "HEAD"], { cwd, stdio: "ignore" }); }
+  catch { return out; }
   try {
-    const shas = execFileSync("git", ["log", "--first-parent", "--format=%H", "-n", "200", `${baseRef}..HEAD`, "--", basename(file)], { cwd: dirname(resolve(file)), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean);
+    const shas = execFileSync("git", ["log", "--first-parent", "--format=%H", "-n", "200", "--end-of-options", `${baseRef}..HEAD`, "--", basename(file)], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean);
     for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push({ sha, parsed: parseMirror(t) }); }
   } catch { /* not a git checkout, or baseRef unknown */ }
   return out;
@@ -387,8 +397,11 @@ async function saveDraft(api, o, parsed, report, file, { dir, added = [], baseRe
   const between = owned && base ? rangeVersionsOf(file, baseRef).map((v) => ({ sha: v.sha, state: stateOfFile(v.parsed) })) : [];
   const plan = writePlan({ live, base, foreignDraft: foreign, head, between });
   report.plan = { ok: plan.ok, reason: plan.reason, changes: plan.changes };
-  if (plan.matched) report.liveMatchedVersion = plan.matched;
-  if (!plan.ok) throw new Refused(plan.reason, foreign ? "foreign-draft" : "live-changed");
+  if (plan.matched) {
+    report.liveMatchedVersion = plan.matched;
+    report.highRisk = [...(report.highRisk || []), `the live post equals the file at ${plan.matched.slice(0, 12)}, not at --base-ref ${String(baseRef).slice(0, 12)}: a publish run that went red left the published point behind; this publish treats ${plan.matched.slice(0, 12)} as the previous version`];
+  }
+  if (!plan.ok) throw new Refused(plan.reason, plan.refusal || (foreign ? "foreign-draft" : "live-changed"));
   // Only the current file may go live. A pending draft equal to an older version of the file (a publish that failed
   // before a revert, say) may be overwritten, never published: it is replaced by the current file first, also when
   // only the SEO fields changed.
@@ -454,7 +467,8 @@ export async function draftCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const api = client(flags, f);
   const report = { action: "draft", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
   refuseIfWritesOff(o, flags, report);
-  const { item } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly, baseRef: flags.base ? null : flags["base-ref"] && String(flags["base-ref"]) });
+  // No drift window for a preview: its range is the pull request's own, unreviewed commits (review R10 round 2, R3).
+  const { item } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly });
   delete report.base;
   report.id = item.id;
   report.liveUrl = item.status === "published" ? pageUrl(api.base, o.urlPattern, item.slug) : null;

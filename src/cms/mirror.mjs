@@ -287,9 +287,11 @@ export function seoPayload(parsed) {
  * live: state of the live item (or null for a new post); base: state of the previous file (or null);
  * pendingDraft: state of an unpublished CMS draft (or null); head: state of this file.
  * between: [{ sha, state }] the file's versions after base on the published branch (first-parent commits in
- * base..head), for a file that already owns its post. When live is not base but equals one of them, that version is the
- * previous version: a run that went red on another file still published this one, and the caller's base stayed behind
- * (review R8 round 2, item 1). The result then has `matched: sha`.
+ * base..head, newest first), for a file that already owns its post. When live is not base but equals the newest of them
+ * that differs from this file, that version is the previous version: a run that went red on another file still published
+ * this one, and the caller's base stayed behind (review R8 round 2, item 1). The result then has `matched: sha`. Live
+ * equal to an OLDER version in the window is a person's rollback in the admin, not the mirror's last publish: refused
+ * with `refusal: "live-older-version"` (review R10 round 2, R1).
  */
 export function writePlan({ live, base, foreignDraft = false, head, between = [] }) {
   if (!live) return { ok: true, reason: "new post", changes: diffState(null, head) };
@@ -299,7 +301,10 @@ export function writePlan({ live, base, foreignDraft = false, head, between = []
   if (foreignDraft) return { ok: false, reason: "the CMS has an unpublished draft that this mirror did not make; publish or discard it in the CMS first", changes: [] };
   let matched = null;
   if (base && diffState(live, base, partsFor(live, base)).length) {
-    const v = between.find((x) => !diffState(live, x.state, partsFor(live, x.state)).length);
+    const v = between.find((x) => sameState(live, x.state));
+    const last = between.find((x) => !sameState(x.state, head));
+    if (v && last && v.sha !== last.sha)
+      return { ok: false, refusal: "live-older-version", reason: `the live post equals the file at ${v.sha.slice(0, 12)}, an older version than the last one published from this branch (${last.sha.slice(0, 12)}): someone rolled it back in the CMS; export again before editing`, changes: [] };
     if (v) { matched = v.sha; base = v.state; }
   }
   const plan = planAgainst({ live, base, head });

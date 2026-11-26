@@ -665,3 +665,90 @@ test("R8r2 stuck point: an id-less claim cannot use the wider window (only --bas
   assert.equal(writes(fake).length, n);
   assert.match(bodyText(fake.find("claim-window")), /Version two/);
 });
+
+// ------------------------------------------------------------------------------------------------ review R10 round 2 (the drift window)
+
+const setBody = (r, slug, text) => r.edit(slug, (p) => { p.body = `${text}\n`; });
+const liveText = (fake, slug) => bodyText(fake.find(slug));
+async function adminPublish(fake, slug, text) {
+  fake.adminDraft(slug, { data: { content: [para(text)] } });
+  await fake.fetch(`${URL_}/_emdash/api/content/posts/${fake.find(slug).id}/publish`, { method: "POST", headers: { authorization: "Bearer x" }, body: "{}" });
+}
+/** A stuck point P: v2 and v3 of beta are published with --base-ref P (the runs went red on other files). */
+async function stuckPoint(r) {
+  const P = r.head();
+  setBody(r, "beta", "Beta v2."); const c2 = r.commit("beta v2");
+  assert.equal((await r.cmd("publish", "beta", "--base-ref", P)).code, 0);
+  setBody(r, "beta", "Beta v3."); const c3 = r.commit("beta v3");
+  const p3 = await r.cmd("publish", "beta", "--base-ref", P);
+  assert.equal(p3.code, 0, p3.raw);
+  return { P, c2, c3, p3 };
+}
+
+test("R10r2 R1: the window accepts only the newest version before this one, and says so in highRisk", async () => {
+  const fake = site(); const r = await repo(fake);
+  const { c2, p3 } = await stuckPoint(r);
+  assert.equal(p3.report.liveMatchedVersion, c2);
+  assert.ok((p3.report.highRisk || []).some((h) => h.includes(c2.slice(0, 12)) && /--base-ref/.test(h)), JSON.stringify(p3.report.highRisk));
+  assert.equal(liveText(fake, "beta"), "Beta v3.");
+});
+
+test("R10r2 R1: an admin rollback to an older version in the window is refused (live-older-version), not overwritten", async () => {
+  const fake = site(); const r = await repo(fake);
+  const { P, c2, c3 } = await stuckPoint(r);
+  await adminPublish(fake, "beta", "Beta v2."); // a person rolls v3 back to v2 in the admin
+  setBody(r, "beta", "Beta v3, plus v4."); r.commit("beta v4 on v3");
+  const n = writes(fake).length;
+  const p4 = await r.cmd("publish", "beta", "--base-ref", P);
+  assert.equal(p4.code, 3, p4.raw);
+  assert.equal(p4.report.refusal, "live-older-version");
+  assert.match(p4.report.error, new RegExp(`${c2.slice(0, 12)}.*${c3.slice(0, 12)}|${c3.slice(0, 12)}.*${c2.slice(0, 12)}`));
+  assert.equal(writes(fake).length, n);
+  assert.equal(liveText(fake, "beta"), "Beta v2.");
+});
+
+test("R10r2 R2: no window when --base-ref is not an ancestor of HEAD (rewritten history)", async () => {
+  const fake = site(); const r = await repo(fake);
+  const A = r.head();
+  setBody(r, "beta", "Beta v2."); r.commit("v2"); assert.equal((await r.cmd("publish", "beta", "--base-ref", A)).code, 0);
+  setBody(r, "beta", "Beta v3."); const C = r.commit("v3");
+  assert.equal((await r.cmd("publish", "beta", "--base-ref", r.git("rev-parse", "HEAD~1"))).code, 0);
+  r.git("reset", "-q", "--hard", A); // main force-pushed back; C is orphaned
+  setBody(r, "beta", "Beta v2."); r.commit("v2 again (rewritten)");
+  await adminPublish(fake, "beta", "Beta v2.");
+  setBody(r, "beta", "Beta v2, new edit."); r.commit("new edit");
+  const n = writes(fake).length;
+  const p = await r.cmd("publish", "beta", "--base-ref", C);
+  assert.equal(p.code, 3, p.raw);
+  assert.equal(p.report.refusal, "live-changed");
+  assert.equal(p.report.liveMatchedVersion, undefined);
+  assert.equal(writes(fake).length, n);
+});
+
+test("R10r2 R3: cms draft (a preview) never uses the window: the pull request's own commits do not count", async () => {
+  const fake = site(); const r = await repo(fake);
+  const P = r.head();
+  await adminPublish(fake, "beta", "Beta, admin edit.");
+  r.git("checkout", "-qb", "pr-preview");
+  setBody(r, "beta", "Beta, admin edit."); r.commit("copy the admin edit");
+  setBody(r, "beta", "Something else entirely."); r.commit("rewrite");
+  const n = writes(fake).length;
+  const d = await r.cmd("draft", "beta", "--base-ref", P);
+  assert.equal(d.code, 3, d.raw);
+  assert.equal(d.report.refusal, "live-changed");
+  assert.equal(writes(fake).length, n);
+  const row = fake.find("beta");
+  assert.ok(!row.draftRevisionId || row.draftRevisionId === row.liveRevisionId, "no draft saved");
+});
+
+test("R10r2 R6: a ref that looks like an option never reaches git as one", async () => {
+  const { gitVersion, rangeVersionsOf } = await import("../src/cms/commands.mjs");
+  const fake = site(); const r = await repo(fake);
+  const out = join(r.dir, "pwned");
+  assert.equal(gitVersion(r.file("beta"), `--output=${out}`), null);
+  assert.deepEqual(rangeVersionsOf(r.file("beta"), `--output=${out}`), []);
+  assert.deepEqual(rangeVersionsOf(r.file("beta"), `--output=${out}..`), []);
+  let made = true; try { readFileSync(out); } catch { made = false; }
+  let made2 = true; try { readFileSync(`${out}..HEAD`); } catch { made2 = false; }
+  assert.equal(made || made2, false, "git wrote a file named by the ref");
+});
