@@ -21,6 +21,7 @@ import { execFileSync } from "node:child_process";
 import { createClient, revisionsSupported, EmDashError } from "./emdash.mjs";
 import { parseMirror, stringifyMirror, itemToMirror, stateOfItem, stateOfFile, diffState, partsFor, sameState, readOnlyOf, CONTENT_PARTS, validateFile, validateSet, draftData, draftMatches, seoPayload, writePlan, DEFAULT_FIELDS, LATIN_SLUG } from "./mirror.mjs";
 import { fromMarkdown, countWords } from "./portable-text.mjs";
+import { mediaOptions, prepareMedia, rewriteVersion, mediaRefsOf, mediaIndex, mediaUrlsIn, readLocal, MediaError, DEFAULT_PREFIX } from "./media.mjs";
 import { mainScope, visibleText } from "../audit/extract.mjs";
 
 /** A refusal for safety (exit 3). code: a short machine-readable reason ("foreign-draft", "live-changed", ...). */
@@ -95,6 +96,8 @@ function options(flags) {
     revisionsProvenFrom: fromSettings ? `settings file ${flags.settings}` : "flag or environment",
     // "revisionsProven": false in the settings file turns every write off, whatever the schema says (see writesOff).
     writesOff: fromSettings && st.revisionsProven !== true,
+    // Local images (src/cms/media.mjs): null unless the settings file sets "mediaDir" (or --media-dir is given).
+    media: mediaOptions(flags, st, flags.settings),
   };
 }
 
@@ -182,6 +185,20 @@ export async function exportCmd(flags, { fetch: f = globalThis.fetch } = {}) {
 
 // ------------------------------------------------------------------------------------------------ validate
 
+/** The media rules of src/cms/media.mjs checked offline (validate): every local image readable and allowed, no stray reference. */
+function mediaProblems(parsed, media) {
+  if (!media) return [];
+  const bad = [];
+  const folder = mirrorFolderProblem(media.dir);
+  if (folder) return [folder.replace(/^mirror folder/, "media folder")];
+  const refs = mediaRefsOf(parsed.body, media.prefix);
+  if (refs.stray.length) bad.push(`the body points into the media folder (${media.prefix}) outside a whole-line image: ${refs.stray.slice(0, 3).map((x) => JSON.stringify(x)).join(", ")}`);
+  const urls = [...new Set(refs.images)];
+  if (urls.length > media.maxImages) bad.push(`${urls.length} different local images; the limit is ${media.maxImages}`);
+  for (const u of urls) { try { readLocal(u, media); } catch (e) { if (e instanceof MediaError) bad.push(e.message); else throw e; } }
+  return bad;
+}
+
 export function validateCmd(flags) {
   const dir = flags.dir ? String(flags.dir) : null;
   let files = flags.files ? String(flags.files).split(",").map((s) => s.trim()).filter(Boolean) : [];
@@ -219,6 +236,7 @@ export function validateCmd(flags) {
     const errors = [...r.errors];
     const id = e.parsed.meta.id;
     if (withBase && !e.base && id != null && id !== "") errors.push(`id "${id}" on a new file (it has no previous version): a new post gets its id from the CMS, and this one would point at another post`);
+    errors.push(...mediaProblems(e.parsed, o.media));
     return { ...r, errors, before: e.base ? { words: validateFile(e.base).facts.words } : null };
   });
   results.push(...blocked);
@@ -255,11 +273,11 @@ function refuseIfWritesOff(o, flags, report) {
  * Every version of the file committed in git at this path, newest first (at most 50): [{ sha, parsed }]. Only this
  * path counts (no --follow): a version under another name had another slug, and so belonged to another post.
  */
-export function gitVersionsOf(file) {
+export function gitVersionsOf(file, rw = null) {
   const out = [];
   try {
     const shas = execFileSync("git", ["log", "--format=%H", "-n", "50", "--", basename(file)], { cwd: dirname(resolve(file)), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean);
-    for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push({ sha, parsed: parseMirror(t) }); }
+    for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push({ sha, parsed: rw ? rw(parseMirror(t), sha) : parseMirror(t) }); }
   } catch { /* not a git checkout */ }
   return out;
 }
@@ -273,7 +291,7 @@ export function gitVersionsOf(file) {
  * only by the drift check of a file that already owns its post (review R8 round 2, item 1), never to claim a post
  * (review R10 F6/F7).
  */
-export function rangeVersionsOf(file, baseRef) {
+export function rangeVersionsOf(file, baseRef, rw = null) {
   const out = [];
   if (!safeRef(baseRef)) return out;
   const cwd = dirname(resolve(file));
@@ -281,14 +299,14 @@ export function rangeVersionsOf(file, baseRef) {
   catch { return out; }
   try {
     const shas = execFileSync("git", ["log", "--first-parent", "--format=%H", "-n", "200", "--end-of-options", `${baseRef}..HEAD`, "--", basename(file)], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean);
-    for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push({ sha, parsed: parseMirror(t) }); }
+    for (const sha of shas) { const t = gitVersion(file, sha); if (t != null) out.push({ sha, parsed: rw ? rw(parseMirror(t), sha) : parseMirror(t) }); }
   } catch { /* not a git checkout, or baseRef unknown */ }
   return out;
 }
 
 /** The file's own versions: this file, its previous version, and every version committed in git (newest first). */
-export function versionsOf(file, parsed, base) {
-  return [parsed, ...(base ? [base] : []), ...gitVersionsOf(file).map((v) => v.parsed)];
+export function versionsOf(file, parsed, base, rw = null) {
+  return [parsed, ...(base ? [base] : []), ...gitVersionsOf(file, rw).map((v) => v.parsed)];
 }
 
 /**
@@ -374,12 +392,14 @@ async function confirmDraft(api, o, id, parsed) {
   }
 }
 
-async function saveDraft(api, o, parsed, report, file, { dir, added = [], baseRef = null } = {}) {
+async function saveDraft(api, o, parsed, report, file, { dir, added = [], baseRef = null, rw = null } = {}) {
   const head = stateOfFile(parsed);
-  const versions = versionsOf(file, parsed, report.base);
+  const versions = versionsOf(file, parsed, report.base, rw);
   let got = await loadTarget(api, o, parsed, report, versions, file, dir);
   await checkAdded(api, o, got?.item, parsed, added);
   if (!got) {
+    // --dry writes nothing, a new post included (before, a dry run still created its draft).
+    if (report.dry) { report.draftSaved = false; report.wouldCreate = true; return { item: { id: null, slug: parsed.meta.slug, status: null }, head, changes: diffState(null, head), pendingIsHead: false }; }
     const created = await api.createDraft(o.collection, { slug: parsed.meta.slug, data: draftData(parsed, o.fields) });
     report.created = created.item.id;
     report.draftSaved = true;
@@ -394,7 +414,7 @@ async function saveDraft(api, o, parsed, report, file, { dir, added = [], baseRe
   // A file that owns its post (an id, or a claim the previous version or this version proved) may find the live post at a
   // later version of itself on this branch: a red run published it but the caller's base did not move.
   const owned = (parsed.meta.id != null && parsed.meta.id !== "") || !!report.claimedBySlug;
-  const between = owned && base ? rangeVersionsOf(file, baseRef).map((v) => ({ sha: v.sha, state: stateOfFile(v.parsed) })) : [];
+  const between = owned && base ? rangeVersionsOf(file, baseRef, rw).map((v) => ({ sha: v.sha, state: stateOfFile(v.parsed) })) : [];
   const plan = writePlan({ live, base, foreignDraft: foreign, head, between });
   report.plan = { ok: plan.ok, reason: plan.reason, changes: plan.changes };
   if (plan.matched) {
@@ -459,6 +479,37 @@ function checkFile(file, parsed, base, o) {
   return v;
 }
 
+/**
+ * Local images (src/cms/media.mjs), after the writes-off check and before any post request: every image under the media
+ * prefix is checked, uploaded or found by its content hash, and read back; the body is rewritten to the CMS URLs. The
+ * previous version (report.base) and the git versions get the same rewrite without uploads, so the comparisons with the
+ * live post see CMS URLs on both sides. Returns { parsed, rw } (unchanged and null when the settings set no media folder).
+ */
+async function withMedia(api, o, parsed, report, flags, file) {
+  if (!o.media) return { parsed, rw: null };
+  checkFolder(o.media.dir);
+  const prev = report.base;
+  const prevHasImages = !!prev && mediaRefsOf(prev.body, o.media.prefix).images.length > 0;
+  // L1 (R17): the URLs the live post already uses win over another item with the same bytes (best effort: a post that
+  // is not there yet, or cannot be read here, simply has none; loadTarget reads it again with all its rules).
+  let preferSet = null;
+  const prefer = async () => {
+    try { const got = await api.get(o.collection, String(parsed.meta.id != null && parsed.meta.id !== "" ? parsed.meta.id : parsed.meta.slug)); if (got?.item && !got.item.deletedAt) preferSet = mediaUrlsIn(got.item.data); } catch { /* none */ }
+    return preferSet;
+  };
+  const m = await prepareMedia({ api, parsed, media: o.media, dry: !!flags.dry, prefer });
+  if (m.images.length) {
+    report.media = m.images.map(({ url, file: rel, bytes, type, hash, reused, uploaded, deduplicated, wouldUpload, mediaId, cmsUrl, verified }) => ({ url, file: rel, bytes, type, hash, reused, uploaded, ...(deduplicated ? { deduplicated } : {}), ...(wouldUpload ? { wouldUpload } : {}), mediaId: mediaId ?? null, cmsUrl: cmsUrl ?? null, ...(verified ? { verified } : {}) }));
+    report.mediaUploaded = m.images.filter((x) => x.uploaded).length;
+    report.mediaReused = m.images.filter((x) => x.reused || x.deduplicated).length;
+  }
+  const index = m.index || (prevHasImages ? await mediaIndex(api, { prefer: await prefer() }) : null);
+  if (!index) return { parsed: m.parsed, rw: null };
+  const ref = flags.base ? null : flags["base-ref"] ? String(flags["base-ref"]) : null;
+  if (prev) report.base = rewriteVersion(prev, { media: o.media, index, ref });
+  return { parsed: m.parsed, rw: (p, sha) => rewriteVersion(p, { media: o.media, index, ref: sha }) };
+}
+
 export async function draftCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const o = options(flags);
   const { file, dir, parsed } = readFile(flags);
@@ -467,8 +518,9 @@ export async function draftCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const api = client(flags, f);
   const report = { action: "draft", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
   refuseIfWritesOff(o, flags, report);
+  const m = await withMedia(api, o, parsed, report, flags, file);
   // No drift window for a preview: its range is the pull request's own, unreviewed commits (review R10 round 2, R3).
-  const { item } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly });
+  const { item } = await saveDraft(api, o, m.parsed, report, file, { dir, added: v.addedReadOnly, rw: m.rw });
   delete report.base;
   report.id = item.id;
   report.liveUrl = item.status === "published" ? pageUrl(api.base, o.urlPattern, item.slug) : null;
@@ -492,7 +544,10 @@ export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   const api = client(flags, f);
   const report = { action: "publish", file, slug: parsed.meta.slug, dry: !!flags.dry, base, highRisk: v.highRisk, warnings: v.warnings };
   refuseIfWritesOff(o, flags, report);
-  const { item, head, changes, pendingIsHead } = await saveDraft(api, o, parsed, report, file, { dir, added: v.addedReadOnly, baseRef: flags.base ? null : flags["base-ref"] && String(flags["base-ref"]) });
+  // The file as written stays the source for --write-back; the CMS gets the body with the CMS media URLs.
+  const m = await withMedia(api, o, parsed, report, flags, file);
+  const sent = m.parsed;
+  const { item, head, changes, pendingIsHead } = await saveDraft(api, o, sent, report, file, { dir, added: v.addedReadOnly, baseRef: flags.base ? null : flags["base-ref"] && String(flags["base-ref"]), rw: m.rw });
   delete report.base;
   report.id = item.id;
   report.changes = changes;
@@ -500,7 +555,7 @@ export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   if (!changes.length && item.status === "published") { report.published = false; report.reason = "the CMS already matches the file"; }
   else {
     const needsPublish = item.status !== "published" || report.draftSaved || pendingIsHead;
-    if (needsPublish) { await confirmDraft(api, o, item.id, parsed); await api.publish(o.collection, item.id); report.published = true; }
+    if (needsPublish) { await confirmDraft(api, o, item.id, sent); await api.publish(o.collection, item.id); report.published = true; }
     if (head.seo && "seo" in item) {
       const now = await api.get(o.collection, item.id);
       if (JSON.stringify(stateOfItem(now.item, o.fields).seo) !== JSON.stringify(head.seo)) {
@@ -698,13 +753,28 @@ export async function schemaCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   return 0;
 }
 
+/**
+ * `cms media-refs --file <f> [--settings <s>]`: the local image references of one file exactly as draft and publish read
+ * them (mediaRefsOf: whole-line images under the media prefix, plus "stray" uses of the prefix that would be refused).
+ * No network, no token, nothing written: a caller that checks images with its own rules can compare its list with this
+ * one and refuse when they differ (one parser for both sides).
+ */
+export async function mediaRefsCmd(flags) {
+  const o = options(flags);
+  const { file, parsed } = readFile(flags);
+  const prefix = o.media?.prefix || DEFAULT_PREFIX;
+  const refs = mediaRefsOf(parsed.body, prefix);
+  out({ action: "media-refs", file, slug: parsed.meta.slug ?? null, prefix, images: [...new Set(refs.images)], stray: refs.stray });
+  return 0;
+}
+
 export async function cms({ flags = {}, positional = [] } = {}, deps = {}) {
   const sub = positional[0];
-  const run = { export: exportCmd, validate: validateCmd, draft: draftCmd, publish: publishCmd, discard: discardCmd, "preview-check": previewCheckCmd, schema: schemaCmd }[sub];
-  if (!run) throw new Error("usage: cms export|validate|draft|publish|discard|preview-check|schema (see docs/cms-mirror.md)");
+  const run = { export: exportCmd, validate: validateCmd, draft: draftCmd, publish: publishCmd, discard: discardCmd, "preview-check": previewCheckCmd, schema: schemaCmd, "media-refs": mediaRefsCmd }[sub];
+  if (!run) throw new Error("usage: cms export|validate|draft|publish|discard|preview-check|schema|media-refs (see docs/cms-mirror.md)");
   try { return await run(flags, deps); }
   catch (e) {
-    if (e instanceof Refused || e.exit) { out({ action: sub, refused: e instanceof Refused, ...(e.refusal ? { refusal: e.refusal } : {}), error: e.message }); return e.exit || 3; }
+    if (e instanceof Refused || e.exit) { out({ action: sub, refused: e instanceof Refused || (e instanceof MediaError && e.exit === 3), ...(e.refusal ? { refusal: e.refusal } : {}), error: e.message }); return e.exit || 3; }
     if (e.report) { out({ action: sub, error: e.message, ...e.report }); return 1; }
     if (e instanceof EmDashError) { out({ action: sub, error: e.message, status: e.status, code: e.code }); return 1; }
     throw e;
