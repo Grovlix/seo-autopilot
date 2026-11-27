@@ -3,7 +3,13 @@
 // is sent) and leave the live row alone; publish copies the draft into the row and applies _slug; SEO writes go live at
 // once; get and list skip trashed rows (deletedAt); _rev = base64(version:updatedAt). Synthetic content only.
 
-export function fakeEmDash({ revisions = true, seo = true, schemaReadable = false, previewSecret = false, posts = [] } = {}) {
+// Media (0.1.0 src/astro/routes/api/media.ts, media/file/[key].ts): GET /_emdash/api/media lists ready items (limit,
+// cursor), POST takes multipart "file" and answers an upload of known bytes (same sha1 content hash) with the existing item
+// and deduplicated: true; GET /_emdash/api/media/file/<key> serves the bytes. mediaFail(filename) -> HTTP status makes an
+// upload fail (test helper); mediaScope: false answers every media route 403 INSUFFICIENT_SCOPE (a content-only token).
+import { createHash } from "node:crypto";
+
+export function fakeEmDash({ revisions = true, seo = true, schemaReadable = false, previewSecret = false, posts = [], media: mediaSeed = [], mediaScope = true, mediaPage = 50 } = {}) {
   let clock = Date.parse("2026-01-01T00:00:00Z");
   let n = 0;
   const now = () => new Date((clock += 1000)).toISOString();
@@ -12,6 +18,19 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
   const revs = new Map();
   const seoRows = new Map();
   const log = [];
+  const media = [];
+  const files = new Map();
+  const mediaFail = { fn: null };
+  const hashOf = (buf) => `sha1:${createHash("sha1").update(buf).digest("hex")}`;
+  const addMedia = (filename, type, buf) => {
+    const mid = id();
+    const ext = (filename.match(/\.[^.]+$/) || [""])[0];
+    const item = { id: mid, filename, mimeType: type, size: buf.length, width: null, height: null, alt: null, caption: null, storageKey: `${mid}${ext}`, status: "ready", contentHash: hashOf(buf), blurhash: null, dominantColor: null, createdAt: now(), authorId: "u1" };
+    media.push(item); files.set(item.storageKey, { type, buf: Buffer.from(buf) });
+    return item;
+  };
+  for (const m of mediaSeed) addMedia(m.filename, m.type, m.bytes);
+  const withUrl = (it) => ({ ...it, url: `/_emdash/api/media/file/${it.storageKey}` });
   for (const p of posts) {
     const rid = id();
     const row = { id: rid, type: "posts", slug: p.slug, status: p.status || "published", data: structuredClone(p.data), authorId: "u1", primaryBylineId: null, createdAt: now(), updatedAt: now(), publishedAt: p.publishedAt === undefined ? now() : p.publishedAt, scheduledAt: p.scheduledAt ?? null, deletedAt: p.deletedAt ?? null, liveRevisionId: null, draftRevisionId: null, version: 1, locale: p.locale || "en", translationGroup: rid, terms: p.terms || {} };
@@ -44,10 +63,35 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
   async function fetch(url, init = {}) {
     const u = new URL(url);
     const method = init.method || "GET";
-    const body = init.body ? JSON.parse(init.body) : undefined;
+    const form = init.body instanceof FormData ? init.body : null;
+    const body = init.body && !form ? JSON.parse(init.body) : undefined;
     log.push({ method, path: u.pathname + u.search, auth: !!init.headers?.authorization });
     const p = u.pathname;
+    if (p.startsWith("/_emdash/api/media/file/")) {
+      const f = files.get(decodeURIComponent(p.slice("/_emdash/api/media/file/".length)));
+      if (init.headers?.authorization && !mediaScope) return err(403, "INSUFFICIENT_SCOPE");
+      return f ? new Response(f.buf, { status: 200, headers: { "content-type": f.type } }) : err(404, "NOT_FOUND", "File not found");
+    }
     if (p.startsWith("/_emdash/api/") && !init.headers?.authorization) return err(401, "NOT_AUTHENTICATED");
+    if (p === "/_emdash/api/media" && !mediaScope) return err(403, "INSUFFICIENT_SCOPE", "Token lacks required scope");
+    if (p === "/_emdash/api/media" && method === "GET") {
+      const limit = Math.min(Number(u.searchParams.get("limit") || mediaPage), mediaPage, 100);
+      const start = Number(u.searchParams.get("cursor") || 0);
+      const ready = media.filter((x) => x.status === "ready");
+      const page = ready.slice(start, start + limit).map(withUrl);
+      return ok({ items: page, ...(start + limit < ready.length ? { nextCursor: String(start + limit) } : {}) });
+    }
+    if (p === "/_emdash/api/media" && method === "POST") {
+      const file = form?.get("file");
+      if (!file || typeof file === "string") return err(400, "NO_FILE", "No file provided");
+      if (!/^(image|video|audio)\//.test(file.type) && file.type !== "application/pdf") return err(400, "INVALID_TYPE", "File type not allowed");
+      const fail = mediaFail.fn?.(file.name);
+      if (fail) return err(fail, "UPLOAD_ERROR", "Upload failed");
+      const buf = Buffer.from(await file.arrayBuffer());
+      const existing = media.find((x) => x.status === "ready" && x.contentHash === hashOf(buf));
+      if (existing) return ok({ item: withUrl(existing), deduplicated: true });
+      return ok({ item: withUrl(addMedia(file.name, file.type, buf)) }, 201);
+    }
     if (p === "/_emdash/api/schema/collections/posts") return schemaReadable ? ok({ item: { slug: "posts", supports: revisions ? ["drafts", "revisions", "seo"] : ["drafts"] } }) : err(403, "INSUFFICIENT_SCOPE");
     let m;
     if (p === "/_emdash/api/content/posts" && method === "GET") {
@@ -122,5 +166,5 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
     if (p === "/rss.xml") return new Response(`<rss>${[...rows.values()].filter((r) => r.status === "published" && r.publishedAt).map((r) => `<link>${u.origin}/posts/${r.slug}</link>`).join("")}</rss>`);
     return err(404, "NOT_FOUND");
   }
-  return { fetch, rows, revs, seoRows, log, find, findAny, adminDraft, adminAutosave };
+  return { fetch, rows, revs, seoRows, log, find, findAny, adminDraft, adminAutosave, media, files, mediaFail };
 }

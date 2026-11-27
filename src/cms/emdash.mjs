@@ -15,6 +15,12 @@
 //   version, the revision stays in the history, and the cache is purged. With no pending draft it changes nothing. It
 //   takes no _rev. (0.1.0 source: src/astro/routes/api/content/[collection]/[id]/discard-draft.ts,
 //   src/api/handlers/content.ts handleContentDiscardDraft, src/database/repositories/content.ts discardDraft.)
+// - Media (0.1.0 src/astro/routes/api/media.ts): GET /_emdash/api/media lists "ready" items ({ items, nextCursor }, limit
+//   1-100), each with contentHash ("sha1:<hex>" of the bytes) and url (/_emdash/api/media/file/<storageKey>, relative).
+//   POST /_emdash/api/media takes multipart form data (field "file"; optional "width", "height"), allows image/, video/,
+//   audio/ and application/pdf up to 50 MB, and returns { item } (201), or { item, deduplicated: true } when a ready item
+//   with the same content hash exists: the same bytes never make a second item. A token needs media:read for GET (and
+//   for the file route when it sends a token) and media:write for POST (src/astro/middleware/auth.ts SCOPE_RULES).
 
 export class EmDashError extends Error {
   constructor(status, code, message, path) {
@@ -40,8 +46,9 @@ export function createClient({ url, token, fetch: f = globalThis.fetch, userAgen
   async function call(method, path, body) {
     const headers = { accept: "application/json", "user-agent": userAgent };
     if (token) headers.authorization = `Bearer ${token}`;
-    if (body !== undefined) headers["content-type"] = "application/json";
-    const res = await f(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const form = typeof FormData !== "undefined" && body instanceof FormData;
+    if (body !== undefined && !form) headers["content-type"] = "application/json";
+    const res = await f(base + path, { method, headers, body: body === undefined ? undefined : form ? body : JSON.stringify(body) });
     calls.push({ method, path, status: res.status });
     const text = await res.text();
     let json = null;
@@ -108,6 +115,43 @@ export function createClient({ url, token, fetch: f = globalThis.fetch, userAgen
     /** A signed preview link for the draft; fails with NOT_CONFIGURED when the site has no EMDASH_PREVIEW_SECRET. */
     previewUrl: (collection, id, { expiresIn = "1d", pathPattern } = {}) =>
       call("POST", `${c(collection)}/${enc(id)}/preview-url`, pathPattern ? { expiresIn, pathPattern } : { expiresIn }),
+    /** Every ready media item (all pages): [{ id, filename, mimeType, contentHash, storageKey, url, ... }]. Needs media:read. */
+    async listMedia({ limit = 100, maxPages = 200 } = {}) {
+      const items = [];
+      let cursor, pages = 0;
+      do {
+        const q = new URLSearchParams({ limit: String(limit) });
+        if (cursor) q.set("cursor", cursor);
+        const page = await call("GET", `/_emdash/api/media?${q}`);
+        items.push(...(page?.items || []));
+        cursor = page?.nextCursor;
+        if (++pages >= maxPages && cursor) throw new Error(`the media library has more than ${maxPages} pages; refusing to guess whether an image is already there`);
+      } while (cursor);
+      return items;
+    },
+    /** Upload one file: { item, deduplicated? }. bytes: Buffer or Uint8Array. Needs media:write. */
+    uploadMedia({ filename, type, bytes, width, height }) {
+      const form = new FormData();
+      form.set("file", new Blob([bytes], { type }), filename);
+      if (width) form.set("width", String(width));
+      if (height) form.set("height", String(height));
+      return call("POST", "/_emdash/api/media", form);
+    },
+    /**
+     * The bytes behind a media URL (read back after an upload). Only a URL on the CMS's own origin is fetched, so the
+     * token never goes anywhere else. Returns { status, type, bytes }.
+     */
+    async mediaFile(url) {
+      let target;
+      try { target = new URL(url, base + "/"); } catch { throw new Error(`media URL ${String(url).slice(0, 80)} is not a URL`); }
+      if (target.origin !== u.origin) throw new Error(`media URL ${target.origin} is not on the CMS origin ${u.origin}`);
+      const headers = { "user-agent": userAgent };
+      if (token) headers.authorization = `Bearer ${token}`;
+      const res = await f(target.toString(), { method: "GET", headers });
+      calls.push({ method: "GET", path: target.pathname, status: res.status });
+      const bytes = Buffer.from(await res.arrayBuffer());
+      return { status: res.status, type: res.headers.get("content-type") || "", bytes };
+    },
   };
 }
 
