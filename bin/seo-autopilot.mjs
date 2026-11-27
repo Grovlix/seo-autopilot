@@ -27,7 +27,7 @@ Usage
   seo-autopilot projects add|list|remove [path]     choose which website folders the app shows
   seo-autopilot state restore|save                  load/save memory on the "seo-data" branch (used by the workflows)
   seo-autopilot redirects [check|generate|smoke]    the redirect map: check it, write server rules, test the live site
-  seo-autopilot cms export|validate|draft|publish|discard|preview-check|schema   keep CMS posts (EmDash) as Markdown files in git
+  seo-autopilot cms export|validate|draft|publish|discard|preview-check|schema|media-refs   keep CMS posts (EmDash) as Markdown files in git
   seo-autopilot version
 
 Jobs`);

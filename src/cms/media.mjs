@@ -173,14 +173,37 @@ function itemUrl(item) {
   return url;
 }
 
-/** Map(contentHash -> item) of the library's ready items. */
-export async function mediaIndex(api) {
+/**
+ * Map(contentHash -> item) of the library's ready items. Several ready items can share a hash (an upload path that does
+ * not deduplicate, an admin upload): the pick must be stable, so a later run builds the same body. prefer: CMS URLs the
+ * live post already points at; an item with one of those URLs wins. Otherwise the OLDEST item (createdAt; EmDash lists
+ * newest first, so the last one listed when there are no dates).
+ */
+export async function mediaIndex(api, { prefer = null } = {}) {
   let items;
   try { items = await api.listMedia(); }
   catch (e) { throw new MediaError(`the media library could not be read (${e.message}); the token needs the media:read and media:write scopes. Nothing was written.`, "media-list-failed", 1); }
+  const groups = new Map();
+  items.forEach((it, i) => {
+    if (!it?.contentHash || it.status === "failed") return;
+    if (!groups.has(it.contentHash)) groups.set(it.contentHash, []);
+    groups.get(it.contentHash).push({ it, i });
+  });
   const index = new Map();
-  for (const it of items) if (it?.contentHash && it.status !== "failed" && !index.has(it.contentHash)) index.set(it.contentHash, it);
+  const time = (x) => { const t = Date.parse(x.it.createdAt || ""); return Number.isFinite(t) ? t : null; };
+  for (const [hash, list] of groups) {
+    const liked = prefer ? list.find((x) => prefer.has(itemUrl(x.it))) : null;
+    const oldest = [...list].sort((a, b) => { const ta = time(a), tb = time(b); if (ta != null && tb != null && ta !== tb) return ta - tb; return b.i - a.i; })[0];
+    index.set(hash, (liked || oldest).it);
+  }
   return index;
+}
+
+/** The CMS media URLs a stored post (its data, any shape) points at: the URLs a stable pick prefers. */
+export function mediaUrlsIn(data) {
+  const out = new Set();
+  for (const m of JSON.stringify(data ?? null).matchAll(/\/_emdash\/api\/media\/file\/[^"\s()<>\\]+/g)) out.add(m[0]);
+  return out;
 }
 
 /**
@@ -188,7 +211,7 @@ export async function mediaIndex(api) {
  * { parsed (body rewritten; the same object when there is nothing to do), images: [report rows], index }.
  * dry: nothing is uploaded; images not in the library are reported as "would upload" and keep their local URL.
  */
-export async function prepareMedia({ api, parsed, media, dry = false }) {
+export async function prepareMedia({ api, parsed, media, dry = false, prefer = null }) {
   if (!media) return { parsed, images: [], index: null };
   const refs = mediaRefsOf(parsed.body, media.prefix);
   if (refs.stray.length) throw new MediaError(`the body points into the media folder (${media.prefix}) outside a whole-line image: ${refs.stray.slice(0, 3).map((s) => JSON.stringify(s)).join(", ")}. Only a line of its own "![alt](${media.prefix}...)" is uploaded; anything else would publish a dead path. Nothing was written.`, "media-ref-form");
@@ -197,7 +220,8 @@ export async function prepareMedia({ api, parsed, media, dry = false }) {
   if (urls.length > media.maxImages) throw new MediaError(`${urls.length} different local images; the limit is ${media.maxImages}. Nothing was written.`, "media-too-many");
   // Every file is read and checked before the first request: a bad file stops the post before anything is uploaded.
   const locals = urls.map((u) => readLocal(u, media));
-  const index = await mediaIndex(api);
+  // prefer: an async function giving the CMS URLs the live post uses; called only after every local file passed.
+  const index = await mediaIndex(api, { prefer: typeof prefer === "function" ? await prefer() : prefer });
   const rows = [];
   for (const l of locals) {
     let item = index.get(l.hash);

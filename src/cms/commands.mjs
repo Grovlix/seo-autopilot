@@ -21,7 +21,7 @@ import { execFileSync } from "node:child_process";
 import { createClient, revisionsSupported, EmDashError } from "./emdash.mjs";
 import { parseMirror, stringifyMirror, itemToMirror, stateOfItem, stateOfFile, diffState, partsFor, sameState, readOnlyOf, CONTENT_PARTS, validateFile, validateSet, draftData, draftMatches, seoPayload, writePlan, DEFAULT_FIELDS, LATIN_SLUG } from "./mirror.mjs";
 import { fromMarkdown, countWords } from "./portable-text.mjs";
-import { mediaOptions, prepareMedia, rewriteVersion, mediaRefsOf, mediaIndex, readLocal, MediaError } from "./media.mjs";
+import { mediaOptions, prepareMedia, rewriteVersion, mediaRefsOf, mediaIndex, mediaUrlsIn, readLocal, MediaError, DEFAULT_PREFIX } from "./media.mjs";
 import { mainScope, visibleText } from "../audit/extract.mjs";
 
 /** A refusal for safety (exit 3). code: a short machine-readable reason ("foreign-draft", "live-changed", ...). */
@@ -490,13 +490,20 @@ async function withMedia(api, o, parsed, report, flags, file) {
   checkFolder(o.media.dir);
   const prev = report.base;
   const prevHasImages = !!prev && mediaRefsOf(prev.body, o.media.prefix).images.length > 0;
-  const m = await prepareMedia({ api, parsed, media: o.media, dry: !!flags.dry });
+  // L1 (R17): the URLs the live post already uses win over another item with the same bytes (best effort: a post that
+  // is not there yet, or cannot be read here, simply has none; loadTarget reads it again with all its rules).
+  let preferSet = null;
+  const prefer = async () => {
+    try { const got = await api.get(o.collection, String(parsed.meta.id != null && parsed.meta.id !== "" ? parsed.meta.id : parsed.meta.slug)); if (got?.item && !got.item.deletedAt) preferSet = mediaUrlsIn(got.item.data); } catch { /* none */ }
+    return preferSet;
+  };
+  const m = await prepareMedia({ api, parsed, media: o.media, dry: !!flags.dry, prefer });
   if (m.images.length) {
     report.media = m.images.map(({ url, file: rel, bytes, type, hash, reused, uploaded, deduplicated, wouldUpload, mediaId, cmsUrl, verified }) => ({ url, file: rel, bytes, type, hash, reused, uploaded, ...(deduplicated ? { deduplicated } : {}), ...(wouldUpload ? { wouldUpload } : {}), mediaId: mediaId ?? null, cmsUrl: cmsUrl ?? null, ...(verified ? { verified } : {}) }));
     report.mediaUploaded = m.images.filter((x) => x.uploaded).length;
     report.mediaReused = m.images.filter((x) => x.reused || x.deduplicated).length;
   }
-  const index = m.index || (prevHasImages ? await mediaIndex(api) : null);
+  const index = m.index || (prevHasImages ? await mediaIndex(api, { prefer: await prefer() }) : null);
   if (!index) return { parsed: m.parsed, rw: null };
   const ref = flags.base ? null : flags["base-ref"] ? String(flags["base-ref"]) : null;
   if (prev) report.base = rewriteVersion(prev, { media: o.media, index, ref });
@@ -746,10 +753,25 @@ export async function schemaCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   return 0;
 }
 
+/**
+ * `cms media-refs --file <f> [--settings <s>]`: the local image references of one file exactly as draft and publish read
+ * them (mediaRefsOf: whole-line images under the media prefix, plus "stray" uses of the prefix that would be refused).
+ * No network, no token, nothing written: a caller that checks images with its own rules can compare its list with this
+ * one and refuse when they differ (one parser for both sides).
+ */
+export async function mediaRefsCmd(flags) {
+  const o = options(flags);
+  const { file, parsed } = readFile(flags);
+  const prefix = o.media?.prefix || DEFAULT_PREFIX;
+  const refs = mediaRefsOf(parsed.body, prefix);
+  out({ action: "media-refs", file, slug: parsed.meta.slug ?? null, prefix, images: [...new Set(refs.images)], stray: refs.stray });
+  return 0;
+}
+
 export async function cms({ flags = {}, positional = [] } = {}, deps = {}) {
   const sub = positional[0];
-  const run = { export: exportCmd, validate: validateCmd, draft: draftCmd, publish: publishCmd, discard: discardCmd, "preview-check": previewCheckCmd, schema: schemaCmd }[sub];
-  if (!run) throw new Error("usage: cms export|validate|draft|publish|discard|preview-check|schema (see docs/cms-mirror.md)");
+  const run = { export: exportCmd, validate: validateCmd, draft: draftCmd, publish: publishCmd, discard: discardCmd, "preview-check": previewCheckCmd, schema: schemaCmd, "media-refs": mediaRefsCmd }[sub];
+  if (!run) throw new Error("usage: cms export|validate|draft|publish|discard|preview-check|schema|media-refs (see docs/cms-mirror.md)");
   try { return await run(flags, deps); }
   catch (e) {
     if (e instanceof Refused || e.exit) { out({ action: sub, refused: e instanceof Refused || (e instanceof MediaError && e.exit === 3), ...(e.refusal ? { refusal: e.refusal } : {}), error: e.message }); return e.exit || 3; }
