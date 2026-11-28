@@ -1,0 +1,455 @@
+{
+  "version": "0.1.20261117",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "cost": 0.02436,
+  "tasks_count": 1,
+  "tasks_error": 0,
+  "tasks": [
+    {
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "cost": 0.02436,
+      "result_count": 1,
+      "path": [
+        "v3",
+        "backlinks",
+        "referring_domains",
+        "live"
+      ],
+      "data": {
+        "api": "backlinks",
+        "function": "referring_domains",
+        "target": "wikipedia.org",
+        "limit": 10
+      },
+      "result": [
+        {
+          "target": "wikipedia.org",
+          "total_count": 5423520,
+          "items_count": 10,
+          "items": [
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "aprs.fi",
+              "rank": 651,
+              "backlinks": 28443344,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 0,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 40,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 6,
+              "referring_subnets": 6,
+              "referring_pages": 28443344,
+              "referring_pages_nofollow": 3,
+              "referring_links_tld": {
+                "fi": 28443344
+              },
+              "referring_links_types": {
+                "anchor": 28443344
+              },
+              "referring_links_attributes": {
+                "nofollow": 48
+              },
+              "referring_links_platform_types": {
+                "unknown": 28443264,
+                "blogs": 80
+              },
+              "referring_links_semantic_locations": {
+                "": 28443344
+              },
+              "referring_links_countries": {
+                "FI": 28443344
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "ontheissues.org",
+              "rank": 640,
+              "backlinks": 8094336,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 5,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 3,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 1,
+              "referring_subnets": 1,
+              "referring_pages": 4136384,
+              "referring_pages_nofollow": 0,
+              "referring_links_tld": {
+                "org": 4136384
+              },
+              "referring_links_types": {
+                "anchor": 4136352,
+                "image": 32
+              },
+              "referring_links_attributes": null,
+              "referring_links_platform_types": {
+                "unknown": 4136384
+              },
+              "referring_links_semantic_locations": {
+                "": 4136384
+              },
+              "referring_links_countries": {
+                "WW": 2585808,
+                "US": 1550576
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "wikirank.net",
+              "rank": 638,
+              "backlinks": 133529056,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 0,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 17,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 4,
+              "referring_subnets": 4,
+              "referring_pages": 130219904,
+              "referring_pages_nofollow": 0,
+              "referring_links_tld": {
+                "net": 130219904
+              },
+              "referring_links_types": {
+                "anchor": 130219904
+              },
+              "referring_links_attributes": {
+                "noopener": 320,
+                "noreferrer": 320
+              },
+              "referring_links_platform_types": {
+                "unknown": 130219904
+              },
+              "referring_links_semantic_locations": {
+                "": 130219904
+              },
+              "referring_links_countries": {
+                "WW": 19156768,
+                "RU": 15192448,
+                "": 14259152,
+                "ES": 13485632,
+                "FR": 13342416,
+                "PT": 12670608,
+                "IT": 11987664,
+                "DE": 10927184,
+                "UA": 10811648,
+                "PL": 8374288
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "yoda.wiki",
+              "rank": 633,
+              "backlinks": 40431136,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 15,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 3,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 3,
+              "referring_subnets": 3,
+              "referring_pages": 34992784,
+              "referring_pages_nofollow": 265,
+              "referring_links_tld": {
+                "wiki": 34992784
+              },
+              "referring_links_types": {
+                "anchor": 34940784,
+                "redirect": 49120,
+                "image": 2880
+              },
+              "referring_links_attributes": {
+                "nofollow": 4240
+              },
+              "referring_links_platform_types": {
+                "unknown": 34940528,
+                "news": 3136
+              },
+              "referring_links_semantic_locations": {
+                "": 34987904,
+                "figcaption": 3904,
+                "figure": 592,
+                "section": 384
+              },
+              "referring_links_countries": {
+                "KR": 26846368,
+                "": 8146416
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "gematrix.org",
+              "rank": 633,
+              "backlinks": 44823584,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 53,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 1,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 19,
+              "referring_subnets": 19,
+              "referring_pages": 44823584,
+              "referring_pages_nofollow": 0,
+              "referring_links_tld": {
+                "org": 44823584
+              },
+              "referring_links_types": {
+                "anchor": 44823584
+              },
+              "referring_links_attributes": null,
+              "referring_links_platform_types": {
+                "unknown": 44790560,
+                "news": 33024
+              },
+              "referring_links_semantic_locations": {
+                "header": 44823552,
+                "section": 32
+              },
+              "referring_links_countries": {
+                "US": 34478720,
+                "WW": 10344864
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "open2ch.net",
+              "rank": 632,
+              "backlinks": 1830144,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 3,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 17,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 1,
+              "referring_subnets": 1,
+              "referring_pages": 1829008,
+              "referring_pages_nofollow": 896,
+              "referring_links_tld": {
+                "net": 1829008
+              },
+              "referring_links_types": {
+                "anchor": 1829008
+              },
+              "referring_links_attributes": {
+                "nofollow": 14336,
+                "noopener": 14336,
+                "noreferrer": 16
+              },
+              "referring_links_platform_types": {
+                "unknown": 1741936,
+                "news": 87072
+              },
+              "referring_links_semantic_locations": {
+                "footer": 1814640,
+                "": 14368
+              },
+              "referring_links_countries": {
+                "JP": 1073312,
+                "": 755696
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "frwiki.wiki",
+              "rank": 631,
+              "backlinks": 101390224,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 5,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 24,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 1,
+              "referring_subnets": 1,
+              "referring_pages": 51493792,
+              "referring_pages_nofollow": 7,
+              "referring_links_tld": {
+                "wiki": 51493792
+              },
+              "referring_links_types": {
+                "image": 25935024,
+                "anchor": 25350416,
+                "redirect": 208352
+              },
+              "referring_links_attributes": {
+                "license": 4149200,
+                "nofollow": 112
+              },
+              "referring_links_platform_types": {
+                "unknown": 51284720,
+                "news": 720
+              },
+              "referring_links_semantic_locations": {
+                "main": 38833872,
+                "": 12659920
+              },
+              "referring_links_countries": {
+                "FR": 6330704,
+                "FI": 4110256,
+                "TR": 3743312,
+                "ES": 3648096,
+                "PT": 3635152,
+                "PL": 3619568,
+                "RU": 3603200,
+                "HU": 3576528,
+                "SV": 3395712,
+                "DE": 3371856
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "freepeoplesearch.com",
+              "rank": 629,
+              "backlinks": 1568720,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 14,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 1,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 3,
+              "referring_subnets": 3,
+              "referring_pages": 1568720,
+              "referring_pages_nofollow": 0,
+              "referring_links_tld": {
+                "com": 1568720
+              },
+              "referring_links_types": {
+                "anchor": 1568720
+              },
+              "referring_links_attributes": null,
+              "referring_links_platform_types": {
+                "organization": 1568720,
+                "blogs": 160,
+                "cms": 160
+              },
+              "referring_links_semantic_locations": {
+                "footer": 1568720
+              },
+              "referring_links_countries": {
+                "US": 1568672,
+                "": 48
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "daum.net",
+              "rank": 628,
+              "backlinks": 2432,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 19,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 8,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 8,
+              "referring_subnets": 8,
+              "referring_pages": 2336,
+              "referring_pages_nofollow": 0,
+              "referring_links_tld": {
+                "net": 2336
+              },
+              "referring_links_types": {
+                "anchor": 1520,
+                "redirect": 816
+              },
+              "referring_links_attributes": null,
+              "referring_links_platform_types": {
+                "unknown": 1520
+              },
+              "referring_links_semantic_locations": {
+                "article": 1392,
+                "": 832,
+                "section": 96,
+                "main": 16
+              },
+              "referring_links_countries": {
+                "": 880,
+                "JP": 848,
+                "WW": 464,
+                "US": 144
+              }
+            },
+            {
+              "type": "backlinks_referring_domain",
+              "domain": "bestref.net",
+              "rank": 624,
+              "backlinks": 7971152,
+              "first_seen": "<redacted-timestamp>",
+              "lost_date": null,
+              "backlinks_spam_score": 0,
+              "broken_backlinks": 0,
+              "broken_pages": 0,
+              "referring_domains": 1,
+              "referring_domains_nofollow": 0,
+              "referring_main_domains": 1,
+              "referring_main_domains_nofollow": 0,
+              "referring_ips": 4,
+              "referring_subnets": 4,
+              "referring_pages": 3498128,
+              "referring_pages_nofollow": 4,
+              "referring_links_tld": {
+                "net": 3498128
+              },
+              "referring_links_types": {
+                "anchor": 1869536,
+                "image": 1628592
+              },
+              "referring_links_attributes": {
+                "nofollow": 64
+              },
+              "referring_links_platform_types": {
+                "unknown": 3497808,
+                "news": 320
+              },
+              "referring_links_semantic_locations": {
+                "": 1870848,
+                "footer": 1627136,
+                "figure": 16
+              },
+              "referring_links_countries": {
+                "US": 3498128
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

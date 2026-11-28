@@ -1,0 +1,428 @@
+{
+  "version": "0.1.20261117",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "cost": 0.002,
+  "tasks_count": 1,
+  "tasks_error": 0,
+  "tasks": [
+    {
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "cost": 0.002,
+      "result_count": 1,
+      "path": [
+        "v3",
+        "serp",
+        "google",
+        "organic",
+        "live",
+        "advanced"
+      ],
+      "data": {
+        "api": "serp",
+        "function": "live",
+        "se": "google",
+        "se_type": "organic",
+        "keyword": "أحذية رياضية",
+        "location_code": 2682,
+        "language_code": "ar",
+        "depth": 10,
+        "device": "desktop",
+        "os": "windows"
+      },
+      "result": [
+        {
+          "keyword": "أحذية رياضية",
+          "type": "organic",
+          "se_domain": "google.com",
+          "location_code": 2682,
+          "language_code": "ar",
+          "check_url": "https://www.google.com/search?q=%D8%A3%D8%AD%D8%B0%D9%8A%D8%A9%20%D8%B1%D9%8A%D8%A7%D8%B6%D9%8A%D8%A9&hl=ar&gl=SA&ie=UTF-8&uule=w+CAIQIFISCUEqlec_s-cVEZu2GsJLUGBZ",
+          "spell": null,
+          "refinement_chips": null,
+          "item_types": [
+            "organic",
+            "images",
+            "local_pack",
+            "people_also_ask"
+          ],
+          "se_results_count": 7,
+          "pages_count": 1,
+          "items_count": 12,
+          "items": [
+            {
+              "type": "organic",
+              "rank_group": 1,
+              "rank_absolute": 1,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]",
+              "domain": "google.com",
+              "title": "https://www.eliteeg.net/products/حذاء-رياضي-رجالي-...",
+              "url": "https://google.com/goto?url=REDACTED&gsessionid=YlbHMtqLbChoVFr33umenHAhApOQ52KM_g15nL_zJQ3N9swLVu2hNg",
+              "cache_url": null,
+              "related_search_url": null,
+              "breadcrumb": "https://www.eliteeg.net › حذاء-رياضي-رجالي-متعدد-الألوان",
+              "website_name": "eliteeg.net",
+              "is_image": false,
+              "is_video": false,
+              "is_featured_snippet": false,
+              "is_malicious": false,
+              "is_web_story": false,
+              "checks": null,
+              "description": null,
+              "pre_snippet": null,
+              "extended_snippet": null,
+              "images": null,
+              "amp_version": false,
+              "rating": null,
+              "price": null,
+              "highlighted": null,
+              "links": [
+                {
+                  "type": "link_element",
+                  "title": "التعرف على السبب",
+                  "description": null,
+                  "url": "https://support.google.com/webmasters/answer/7489871?hl=ar",
+                  "domain": "support.google.com"
+                }
+              ],
+              "faq": null,
+              "extended_people_also_search": null,
+              "about_this_result": null,
+              "related_result": null,
+              "rectangle": null
+            },
+            {
+              "type": "images",
+              "rank_group": 1,
+              "rank_absolute": 2,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[4]/div[1]",
+              "title": "صور",
+              "url": null,
+              "items": [
+                {
+                  "type": "images_element",
+                  "alt": "حذاء رياضي أسود اون رانينج كلاود روك لوتوب للجنسين",
+                  "url": "https://eseven-store.com/ar/aeYYmvK",
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:0"
+                },
+                {
+                  "type": "images_element",
+                  "alt": "الرجال احذية رياضية احذية غير رسمية في الهواء الطلق الاحذية ...",
+                  "url": "https://www.amazon.sa/%D8%A7%D9%84%D8%B1%D8%AC%D8%A7%D9%84-%D8%B1%D9%8A%D8%A7%D8%B6%D9%8A%D8%A9-%D8%A7%D9%84%D9%87%D9%88%D8%A7%D8%A1-%D8%A7%D9%84%D8%A7%D8%AD%D8%B0%D9%8A%D8%A9-Zapatos/dp/B0BYPGV1ZT",
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:1"
+                },
+                {
+                  "type": "images_element",
+                  "alt": "حذاء رياضي 18122قماش من Slic – خفيف ومتين وتهوية مثالي",
+                  "url": "https://slicstore.com/products/18122",
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:2"
+                },
+                {
+                  "type": "images_element",
+                  "alt": "أحذية رياضية رجالية مريحة وسهلة الارتداء",
+                  "url": "https://alharamstores.com/62509917-comfortable-and-easy-to-wear-men-s-sports-shoes-ar.html",
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:3"
+                },
+                {
+                  "type": "images_element",
+                  "alt": "أحذية رياضية خفيفة ومريحة - Talon'O",
+                  "url": "https://talon-o.com/ar/%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AC/%D8%A7%D8%AD%D8%B0%D9%8A%D8%A9-%D8%B1%D9%8A%D8%A7%D8%B6%D9%8A%D8%A9-%D8%AE%D9%81%D9%8A%D9%81%D8%A9/",
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:4"
+                },
+                {
+                  "type": "images_element",
+                  "alt": "أحذية رياضية للرجال جيدة السعر جيدة التهوية",
+                  "url": "https://sa.made-in-china.com/co_biyate/product_New-Breathable-in-Good-Price-Men-Sports-Shoes_ysigsunoyg.html",
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:5"
+                }
+              ],
+              "related_image_searches": null,
+              "rectangle": null
+            },
+            {
+              "type": "organic",
+              "rank_group": 2,
+              "rank_absolute": 3,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[6]/div[1]/div[1]",
+              "domain": "google.com",
+              "title": "تعذر تحميل المنتجات",
+              "url": "https://google.com/goto?url=REDACTED&gsessionid=YlbHMtqLbChoVFr33umenHAhApOQ52KM_g15nL_zJQ3N9swLVu2hNg",
+              "cache_url": null,
+              "related_search_url": null,
+              "breadcrumb": "https://mazeed.sa › products",
+              "website_name": "Mazeed | مزيد",
+              "is_image": false,
+              "is_video": false,
+              "is_featured_snippet": false,
+              "is_malicious": false,
+              "is_web_story": false,
+              "checks": null,
+              "description": "تعذر تحميل المنتجات.",
+              "pre_snippet": null,
+              "extended_snippet": null,
+              "images": null,
+              "amp_version": false,
+              "rating": null,
+              "price": null,
+              "highlighted": null,
+              "links": null,
+              "faq": null,
+              "extended_people_also_search": null,
+              "about_this_result": null,
+              "related_result": null,
+              "rectangle": null
+            },
+            {
+              "type": "organic",
+              "rank_group": 3,
+              "rank_absolute": 4,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[8]/div[1]/div[1]",
+              "domain": "google.com",
+              "title": "حدث خطأ من جهتنا",
+              "url": "https://google.com/goto?url=REDACTED&gsessionid=YlbHMtqLbChoVFr33umenHAhApOQ52KM_g15nL_zJQ3N9swLVu2hNg",
+              "cache_url": null,
+              "related_search_url": null,
+              "breadcrumb": "https://mazeed.sa › products",
+              "website_name": "مزيد",
+              "is_image": false,
+              "is_video": false,
+              "is_featured_snippet": false,
+              "is_malicious": false,
+              "is_web_story": false,
+              "checks": null,
+              "description": "المشكلة مو منك، المشكلة عندنا. جرّب مرة ثانية بعد لحظات.",
+              "pre_snippet": null,
+              "extended_snippet": null,
+              "images": null,
+              "amp_version": false,
+              "rating": null,
+              "price": null,
+              "highlighted": null,
+              "links": null,
+              "faq": null,
+              "extended_people_also_search": null,
+              "about_this_result": null,
+              "related_result": null,
+              "rectangle": null
+            },
+            {
+              "type": "local_pack",
+              "rank_group": 1,
+              "rank_absolute": 5,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[10]/div[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]",
+              "title": "قوة القارات للرياضه والاسبورات",
+              "description": "الرياض · \nمغلق · يفتح عند الساعة ٨ ص \nاطّلع المتسوّقون على: حذاء كرة القدم \n",
+              "domain": null,
+              "phone": "050 219 7178",
+              "booking_url": null,
+              "url": null,
+              "is_paid": false,
+              "rating": {
+                "rating_type": "Max5",
+                "value": 4.3,
+                "votes_count": 433,
+                "rating_max": 5
+              },
+              "cid": "5232053953498887133",
+              "rectangle": null
+            },
+            {
+              "type": "local_pack",
+              "rank_group": 2,
+              "rank_absolute": 6,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[10]/div[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[3]/div[1]/div[1]",
+              "title": "قمه المحترف للرياضة لبن",
+              "description": "ظهرة لبن، · \nمغلق · يفتح عند الساعة ٩ ص \nاطّلع المتسوّقون على: حذاء كرة القدم \n",
+              "domain": null,
+              "phone": "054 723 7866",
+              "booking_url": null,
+              "url": null,
+              "is_paid": false,
+              "rating": {
+                "rating_type": "Max5",
+                "value": 4.1,
+                "votes_count": 408,
+                "rating_max": 5
+              },
+              "cid": "13472870896990977756",
+              "rectangle": null
+            },
+            {
+              "type": "local_pack",
+              "rank_group": 3,
+              "rank_absolute": 7,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[10]/div[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[5]/div[1]/div[1]",
+              "title": "مختبر القدم",
+              "description": "الرياض · \nمغلق · يفتح عند الساعة ٤ م \nاطّلع المتسوّقون على: حذاء كرة القدم \n",
+              "domain": "www.footlab.com.sa",
+              "phone": "055 777 6075",
+              "booking_url": null,
+              "url": "http://www.footlab.com.sa/",
+              "is_paid": false,
+              "rating": {
+                "rating_type": "Max5",
+                "value": 4,
+                "votes_count": 1000,
+                "rating_max": 5
+              },
+              "cid": "6907736076055044689",
+              "rectangle": null
+            },
+            {
+              "type": "organic",
+              "rank_group": 4,
+              "rank_absolute": 8,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[12]/div[1]/div[1]",
+              "domain": "google.com",
+              "title": "Failed to load products",
+              "url": "https://google.com/goto?url=REDACTED&gsessionid=YlbHMtqLbChoVFr33umenHAhApOQ52KM_g15nL_zJQ3N9swLVu2hNg",
+              "cache_url": null,
+              "related_search_url": null,
+              "breadcrumb": "https://mazeed.sa › products",
+              "website_name": "مزيد",
+              "is_image": false,
+              "is_video": false,
+              "is_featured_snippet": false,
+              "is_malicious": false,
+              "is_web_story": false,
+              "checks": null,
+              "description": "Failed to load products.",
+              "pre_snippet": null,
+              "extended_snippet": null,
+              "images": null,
+              "amp_version": false,
+              "rating": null,
+              "price": null,
+              "highlighted": null,
+              "links": null,
+              "faq": null,
+              "extended_people_also_search": null,
+              "about_this_result": null,
+              "related_result": null,
+              "rectangle": null
+            },
+            {
+              "type": "organic",
+              "rank_group": 5,
+              "rank_absolute": 9,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[14]/div[1]/div[1]",
+              "domain": "google.com",
+              "title": "تعذر تحميل المنتجات",
+              "url": "https://google.com/goto?url=REDACTED&gsessionid=YlbHMtqLbChoVFr33umenHAhApOQ52KM_g15nL_zJQ3N9swLVu2hNg",
+              "cache_url": null,
+              "related_search_url": null,
+              "breadcrumb": "https://mazeed.sa › products",
+              "website_name": "مزيد",
+              "is_image": false,
+              "is_video": false,
+              "is_featured_snippet": false,
+              "is_malicious": false,
+              "is_web_story": false,
+              "checks": null,
+              "description": "تعذر تحميل المنتجات.",
+              "pre_snippet": null,
+              "extended_snippet": null,
+              "images": null,
+              "amp_version": false,
+              "rating": null,
+              "price": null,
+              "highlighted": null,
+              "links": null,
+              "faq": null,
+              "extended_people_also_search": null,
+              "about_this_result": null,
+              "related_result": null,
+              "rectangle": null
+            },
+            {
+              "type": "people_also_ask",
+              "rank_group": 1,
+              "rank_absolute": 10,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[16]/div[1]/div[1]/div[1]",
+              "items": [
+                {
+                  "type": "people_also_ask_element",
+                  "title": "ما هي أفضل ماركات الأحذية؟",
+                  "seed_question": null,
+                  "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[16]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]",
+                  "expanded_element": [
+                    {
+                      "type": "people_also_ask_ai_overview_expanded_element",
+                      "items": null,
+                      "references": null,
+                      "asynchronous_ai_overview": true
+                    }
+                  ]
+                },
+                {
+                  "type": "people_also_ask_element",
+                  "title": "ما هي أكثر الأحذية الرياضية مريحة؟",
+                  "seed_question": null,
+                  "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[16]/div[1]/div[1]/div[1]/div[1]/div[2]/div[2]",
+                  "expanded_element": [
+                    {
+                      "type": "people_also_ask_ai_overview_expanded_element",
+                      "items": null,
+                      "references": null,
+                      "asynchronous_ai_overview": true
+                    }
+                  ]
+                },
+                {
+                  "type": "people_also_ask_element",
+                  "title": "كيف أعرف الحذاء المناسب للجري؟",
+                  "seed_question": null,
+                  "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[16]/div[1]/div[1]/div[1]/div[1]/div[2]/div[3]",
+                  "expanded_element": [
+                    {
+                      "type": "people_also_ask_ai_overview_expanded_element",
+                      "items": null,
+                      "references": null,
+                      "asynchronous_ai_overview": true
+                    }
+                  ]
+                },
+                {
+                  "type": "people_also_ask_element",
+                  "title": "ماذا يسمى الحذاء الرياضي؟",
+                  "seed_question": null,
+                  "xpath": "/html[1]/body[1]/div[3]/div[1]/div[13]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[16]/div[1]/div[1]/div[1]/div[1]/div[2]/div[4]",
+                  "expanded_element": [
+                    {
+                      "type": "people_also_ask_ai_overview_expanded_element",
+                      "items": null,
+                      "references": null,
+                      "asynchronous_ai_overview": true
+                    }
+                  ]
+                }
+              ],
+              "rectangle": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

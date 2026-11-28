@@ -1,0 +1,1461 @@
+{
+  "version": "0.1.20261117",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "cost": 0.002,
+  "tasks_count": 1,
+  "tasks_error": 0,
+  "tasks": [
+    {
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "cost": 0.002,
+      "result_count": 1,
+      "path": [
+        "v3",
+        "serp",
+        "google",
+        "organic",
+        "live",
+        "advanced"
+      ],
+      "data": {
+        "api": "serp",
+        "function": "live",
+        "se": "google",
+        "se_type": "organic",
+        "keyword": "running shoes",
+        "location_code": 2840,
+        "language_code": "en",
+        "depth": 10,
+        "device": "desktop",
+        "os": "windows"
+      },
+      "result": [
+        {
+          "keyword": "running shoes",
+          "type": "organic",
+          "se_domain": "google.com",
+          "location_code": 2840,
+          "language_code": "en",
+          "check_url": "https://www.google.com/search?q=running%20shoes&hl=en&gl=US&ie=UTF-8&uule=w+CAIQIFISCQs2MuSEtepUEUK33kOSuTsc",
+          "spell": null,
+          "refinement_chips": null,
+          "item_types": [
+            "ai_overview",
+            "popular_products",
+            "local_pack",
+            "organic",
+            "images",
+            "product_considerations",
+            "related_searches"
+          ],
+          "se_results_count": 98,
+          "pages_count": 1,
+          "items_count": 18,
+          "items": [
+            {
+              "type": "ai_overview",
+              "rank_group": 1,
+              "rank_absolute": 1,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]",
+              "asynchronous_ai_overview": false,
+              "markdown": "![Anatomy of a Running Shoe: Sockliner, Heel Counter and More ...](https://api.dataforseo.com/cdn/i/<redacted-id>:10)\nRunning shoes are ` [Highlight start] categorized by terrain, support, and intended pace [Highlight end] ` , with popular road and trail models generally priced around **$46 to $189** and lasting about **300 to 500 miles**.[[1]](https://google.com/goto?url=REDACTED)[[2]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:5221427576781278536,catalogid:16033449681557150082,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop)\n\n### Top Running Shoe Picks\n\n### Everyday & Neutral Road Trainers\n\n\n\n---\n\n[![Nike Men&#39;s Pegasus 42](https://api.dataforseo.com/cdn/i/<redacted-id>:11)\nNike Men&#39;s Pegasus 42 | nike.com&amp; more | 4.8(894)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462881233777118,imageDocid:17476832850642931685,gpcid:9072831014733564315,headlineOfferDocid:8204862068843419958,catalogid:393394567760082213,productDocid:7195826218847817569,rds:PC_9072831014733564315%7CPROD_PC_9072831014733564315&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHEBA) \n\nA versatile daily trainer with a curved, full-length Air Zoom unit and ReactX foam midsole, rated 4.8/5 by users for comfort and responsiveness; listed around $108.97 at Nike (discounted from $145).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:7195826218847817569,catalogid:393394567760082213,gpcid:9072831014733564315,mid:576462881233777118&ibp=oshop)\n\n---\n\n[![Brooks Men&#39;s Ghost 18](https://api.dataforseo.com/cdn/i/<redacted-id>:12)\nBrooks Men&#39;s Ghost 18 | Brooks Running&amp; more | 4.6(1K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462549196774912,imageDocid:14906978310450525530,gpcid:7326703641027475137,headlineOfferDocid:2960581313932831116,catalogid:8529173386405420812,productDocid:16602690315143339002,rds:PC_7326703641027475137%7CPROD_PC_7326703641027475137&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHEBw) \n\nAn all-around neutral road shoe featuring nitrogen-infused DNA LOFT v3 foam and a RoadTack rubber outsole; listed around $150 at [Brooks Running](https://google.com/goto?url=REDACTED).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:16602690315143339002,catalogid:8529173386405420812,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop)\n\n---\n\n[![Nike Men&#39;s Revolution 8](https://api.dataforseo.com/cdn/i/<redacted-id>:13)\nNike Men&#39;s Revolution 8 | Nike&amp; more | 4.5(4.7K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462828736666115,imageDocid:11544153169164261073,gpcid:5477693794596520766,headlineOfferDocid:3981442304699308245,catalogid:18441839422095801488,productDocid:10730376414794220811,rds:PC_5477693794596520766%7CPROD_PC_5477693794596520766&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHECk) \n\nA budget-friendly, lightweight daily option with a foam midsole and rocker geometry, rated 4.5/5 by users; listed around $62.97 at Nike (discounted from $75).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:10730376414794220811,catalogid:18441839422095801488,gpcid:5477693794596520766,mid:576462828736666115&ibp=oshop)\n\n### Stability & Tempo Options\n\n\n---\n\n[![Nike Men&#39;s Structure Plus](https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRDq-a40OcdxXGtB4SfPYqqkiUSR2H3ni6U1LldVTaUk5EfWqWGcme8QplNZhrmwaHb6BiZOdFO&amp;usqp=CAE)\nNike Men&#39;s Structure Plus | Nike&amp; more | 4.6(250)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462882430191046,imageDocid:17746353663083867451,gpcid:12120392991837532450,headlineOfferDocid:15638546390915593837,catalogid:11822199681041295945,productDocid:10245612928105532426,rds:PC_12120392991837532450%7CPROD_PC_12120392991837532450&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEAQ) \n\nA stability shoe combining ZoomX and ReactX foams with a midfoot support system for guided transitions on daily and long runs, rated 4.6/5 by users; listed around $84.73 at Nike with promo code BFRIDAY (was $180).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:10245612928105532426,catalogid:11822199681041295945,gpcid:12120392991837532450,mid:576462882430191046&ibp=oshop)\n\n---\n\n[![New Balance Men&#39;s FuelCell Rebel v5](https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQPEYpGnX64tBvf4gdw7yXVvckPcLlPH228eb1_0C0YMkWeXVorvLnorRovjEYUGGrkaMTiZcCI&amp;usqp=CAE)\nNew Balance Men&#39;s FuelCell Rebel v5 | New Balance&amp; more | 4.7(2.8K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462898574726965,imageDocid:1517314676272655781,gpcid:11640405316842550253,headlineOfferDocid:2727782224984016683,catalogid:17904821304536813524,productDocid:7087899615540960130,rds:PC_4032142892331092062%7CPROD_PC_4032142892331092062&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEBA) \n\nA lightweight neutral shoe (about 7.9 oz for a 9.5M) using a PEBA and EVA foam blend for quicker efforts and everyday miles, rated 4.7/5 by users; listed around $110.19 at New Balance (discounted from $144.99).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:7087899615540960130,catalogid:17904821304536813524,gpcid:11640405316842550253,mid:576462898574726965&ibp=oshop)\n\n---\n\n[![Nike Men&#39;s Zoom Fly 6](https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRxhzmBFObb99iBfanBFKfz300VO0MCPCTG0iVxVs-sV7PKuFPqVSKfCCrxirvyG2oyk4kgY88&amp;usqp=CAE)\nNike Men&#39;s Zoom Fly 6 | nike.com&amp; more | 4.6(1.9K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462576003993551,imageDocid:5568235874746882378,gpcid:471773172067651162,headlineOfferDocid:4876994923142971194,catalogid:9512698683933773482,productDocid:1552720872044426737,rds:PC_471773172067651162%7CPROD_PC_471773172067651162&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEBw) \n\nA speed-focused road shoe with a full-length carbon plate and ZoomX foam for faster workouts and races; listed around $180 at [Nike](https://google.com/goto?url=REDACTED).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:1552720872044426737,catalogid:9512698683933773482,gpcid:471773172067651162,mid:576462576003993551&ibp=oshop)\n\n### Trail Shoes\n\n\n---\n\n[![Salomon Men&#39;s Speedcross 6](https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQ4WfaT_4Le-MPtTGJrz-lgud_4rbIpq5MYof5P1xNV1TjLSfumBI4WhZSBAeo&amp;usqp=CAE)\nSalomon Men&#39;s Speedcross 6 | Salomon.com&amp; more | 4.6(3K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462575785430501,imageDocid:14262047019578356594,gpcid:15566446623960197492,headlineOfferDocid:14294507887355072839,catalogid:4963235765911137734,productDocid:6054662676242934870,rds:PC_15566446623960197492%7CPROD_PC_15566446623960197492&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEC0) \n\nBuilt for soft, muddy, and rugged trails with 5 mm Mud Contagrip lugs, EnergyCell+ cushioning, and a quickLACE system; listed around $150 at Salomon.[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:6054662676242934870,catalogid:4963235765911137734,gpcid:15566446623960197492,mid:576462575785430501&ibp=oshop)\n\n### Key Buying & Care Tips\n\n- **Match gait and terrain** : According to [Road Runner Sports](https://google.com/goto?url=REDACTED) , neutral shoes fit a natural stride, while stability shoes help counter overpronation. Choose road shoes for pavement and lugged trail shoes for dirt or mud.[[1]](https://google.com/goto?url=REDACTED)[[2]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:6054662676242934870,catalogid:4963235765911137734,gpcid:15566446623960197492,mid:576462575785430501&ibp=oshop)\n- **Check sizing**: [Fleet Feet](https://google.com/goto?url=REDACTED) recommends keeping about a thumb's width of space between your longest toe and the front of the shoe with a secure heel and midfoot fit.[[1]](https://google.com/goto?url=REDACTED)\n- **Track mileage and care** : Replace most running shoes around **300 to 500 miles** as cushioning compresses, and let wet shoes air-dry away from direct high heat.[[1]](https://google.com/goto?url=REDACTED)[[2]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:5221427576781278536,catalogid:16033449681557150082,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop)\n\nTo narrow down the best options, share:\n\n- **How you plan to use them** (daily easy runs, speedwork, long distances, trails, or walking)\n- **Your support and fit needs** (neutral vs. stability, wide sizing, or men's vs. women's)\n- **Your target budget**",
+              "items": [
+                {
+                  "type": "ai_overview_element",
+                  "position": "left",
+                  "title": null,
+                  "text": "Running shoes are  [Highlight start] categorized by terrain, support, and intended pace [Highlight end] , with popular road and trail models generally priced around $46 to $189 and lasting about 300 to 500 miles.",
+                  "markdown": "![Anatomy of a Running Shoe: Sockliner, Heel Counter and More ...](https://api.dataforseo.com/cdn/i/<redacted-id>:5)\nRunning shoes are ` [Highlight start] categorized by terrain, support, and intended pace [Highlight end] ` , with popular road and trail models generally priced around **$46 to $189** and lasting about **300 to 500 miles**.[[1]](https://google.com/goto?url=REDACTED)[[2]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:5221427576781278536,catalogid:16033449681557150082,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop)",
+                  "links": null,
+                  "images": [
+                    {
+                      "type": "images_element",
+                      "alt": "Anatomy of a Running Shoe: Sockliner, Heel Counter and More ...",
+                      "url": null,
+                      "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:6"
+                    }
+                  ],
+                  "references": [
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Fleet Feet",
+                      "domain": "www.fleetfeet.com",
+                      "url": "https://www.fleetfeet.com/how-to-start-running/choosing-running-shoes",
+                      "title": "How to Choose Running Shoes | Fleet Feet",
+                      "text": "These are our top five tips to choosing the best running shoes: * Learn How You Move: The natural alignment of your joints and the..."
+                    },
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:5221427576781278536,catalogid:16033449681557150082,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop",
+                      "title": "Brooks Men's Ghost 18",
+                      "text": "The Ghost 18 is an all-rounder designed by Brooks for your daily run. With the Ghost 18, you have a perfect blend of comfort, supp..."
+                    }
+                  ]
+                },
+                {
+                  "type": "ai_overview_element",
+                  "position": "left",
+                  "title": "Top Running Shoe Picks",
+                  "text": null,
+                  "markdown": "### Top Running Shoe Picks",
+                  "links": null,
+                  "images": null,
+                  "references": null
+                },
+                {
+                  "type": "ai_overview_element",
+                  "position": "left",
+                  "title": "Everyday & Neutral Road Trainers",
+                  "text": "Nike Men's Pegasus 42 $108.97 $145 nike.com & more 4.8 (894) A versatile daily trainer with a curved, full-length Air Zoom unit and ReactX foam midsole, rated 4.8/5 by users for comfort and responsiveness; listed around $108.97 at Nike (discounted from $145). Brooks Men's Ghost 18 $150.00 Brooks Running & more 4.6 (1K) An all-around neutral road shoe featuring nitrogen-infused DNA LOFT v3 foam and a RoadTack rubber outsole; listed around $150 at Brooks Running. Nike Men's Revolution 8 $47.23 $75 Nike & more 4.5 (4.7K) A budget-friendly, lightweight daily option with a foam midsole and rocker geometry, rated 4.5/5 by users; listed around $62.97 at Nike (discounted from $75).",
+                  "markdown": "---\n\n[![Nike Men&#39;s Pegasus 42](https://api.dataforseo.com/cdn/i/<redacted-id>:7)\nNike Men&#39;s Pegasus 42 | nike.com&amp; more | 4.8(894)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462881233777118,imageDocid:17476832850642931685,gpcid:9072831014733564315,headlineOfferDocid:8204862068843419958,catalogid:393394567760082213,productDocid:7195826218847817569,rds:PC_9072831014733564315%7CPROD_PC_9072831014733564315&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHEBA) \n\nA versatile daily trainer with a curved, full-length Air Zoom unit and ReactX foam midsole, rated 4.8/5 by users for comfort and responsiveness; listed around $108.97 at Nike (discounted from $145).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:7195826218847817569,catalogid:393394567760082213,gpcid:9072831014733564315,mid:576462881233777118&ibp=oshop)\n\n---\n\n[![Brooks Men&#39;s Ghost 18](https://api.dataforseo.com/cdn/i/<redacted-id>:8)\nBrooks Men&#39;s Ghost 18 | Brooks Running&amp; more | 4.6(1K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462549196774912,imageDocid:14906978310450525530,gpcid:7326703641027475137,headlineOfferDocid:2960581313932831116,catalogid:8529173386405420812,productDocid:16602690315143339002,rds:PC_7326703641027475137%7CPROD_PC_7326703641027475137&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHEBw) \n\nAn all-around neutral road shoe featuring nitrogen-infused DNA LOFT v3 foam and a RoadTack rubber outsole; listed around $150 at [Brooks Running](https://google.com/goto?url=REDACTED).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:16602690315143339002,catalogid:8529173386405420812,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop)\n\n---\n\n[![Nike Men&#39;s Revolution 8](https://api.dataforseo.com/cdn/i/<redacted-id>:9)\nNike Men&#39;s Revolution 8 | Nike&amp; more | 4.5(4.7K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462828736666115,imageDocid:11544153169164261073,gpcid:5477693794596520766,headlineOfferDocid:3981442304699308245,catalogid:18441839422095801488,productDocid:10730376414794220811,rds:PC_5477693794596520766%7CPROD_PC_5477693794596520766&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHECk) \n\nA budget-friendly, lightweight daily option with a foam midsole and rocker geometry, rated 4.5/5 by users; listed around $62.97 at Nike (discounted from $75).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:10730376414794220811,catalogid:18441839422095801488,gpcid:5477693794596520766,mid:576462828736666115&ibp=oshop)",
+                  "links": [
+                    {
+                      "type": "link_element",
+                      "title": "Nike Men's Pegasus 42$108.97$145nike.com& more4.8(894)Go to product viewer dialog for this item.",
+                      "description": null,
+                      "url": "https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462881233777118,imageDocid:17476832850642931685,gpcid:9072831014733564315,headlineOfferDocid:8204862068843419958,catalogid:393394567760082213,productDocid:7195826218847817569,rds:PC_9072831014733564315%7CPROD_PC_9072831014733564315&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHEBA",
+                      "domain": "www.google.com"
+                    },
+                    {
+                      "type": "link_element",
+                      "title": "Brooks Men's Ghost 18$150.00Brooks Running& more4.6(1K)Go to product viewer dialog for this item.",
+                      "description": null,
+                      "url": "https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462549196774912,imageDocid:14906978310450525530,gpcid:7326703641027475137,headlineOfferDocid:2960581313932831116,catalogid:8529173386405420812,productDocid:16602690315143339002,rds:PC_7326703641027475137%7CPROD_PC_7326703641027475137&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHEBw",
+                      "domain": "www.google.com"
+                    },
+                    {
+                      "type": "link_element",
+                      "title": "Brooks Running",
+                      "description": null,
+                      "url": "https://google.com/goto?url=REDACTED",
+                      "domain": "google.com"
+                    },
+                    {
+                      "type": "link_element",
+                      "title": "Nike Men's Revolution 8$47.23$75Nike& more4.5(4.7K)Go to product viewer dialog for this item.",
+                      "description": null,
+                      "url": "https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462828736666115,imageDocid:11544153169164261073,gpcid:5477693794596520766,headlineOfferDocid:3981442304699308245,catalogid:18441839422095801488,productDocid:10730376414794220811,rds:PC_5477693794596520766%7CPROD_PC_5477693794596520766&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggHECk",
+                      "domain": "www.google.com"
+                    }
+                  ],
+                  "images": null,
+                  "references": [
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:7195826218847817569,catalogid:393394567760082213,gpcid:9072831014733564315,mid:576462881233777118&ibp=oshop",
+                      "title": "Nike Men's Pegasus 42",
+                      "text": "The Nike Pegasus 42 continues the legacy of delivering a responsive and comfortable ride for runners of all levels. This latest it..."
+                    },
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:16602690315143339002,catalogid:8529173386405420812,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop",
+                      "title": "Brooks Men's Ghost 18",
+                      "text": "Whether you are training for a marathon or simply enjoying a relaxed run, the Brooks Ghost 18 is the ideal all-round running shoe."
+                    },
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:10730376414794220811,catalogid:18441839422095801488,gpcid:5477693794596520766,mid:576462828736666115&ibp=oshop",
+                      "title": "Nike Men's Revolution 8 Running Shoes",
+                      "text": "The Men's Revolution 8 Road Running Shoes by Nike take your go-To runners to the next level. With upgraded breathability, responsi..."
+                    }
+                  ]
+                },
+                {
+                  "type": "ai_overview_element",
+                  "position": "left",
+                  "title": "Stability & Tempo Options",
+                  "text": "Nike Men's Structure Plus $84.73 $180 Nike & more 4.6 (250) A stability shoe combining ZoomX and ReactX foams with a midfoot support system for guided transitions on daily and long runs, rated 4.6/5 by users; listed around $84.73 at Nike with promo code BFRIDAY (was $180). New Balance Men's FuelCell Rebel v5 $110.19 $145 New Balance & more 4.7 (2.8K) A lightweight neutral shoe (about 7.9 oz for a 9.5M) using a PEBA and EVA foam blend for quicker efforts and everyday miles, rated 4.7/5 by users; listed around $110.19 at New Balance (discounted from $144.99). Nike Men's Zoom Fly 6 $180.00 nike.com & more 4.6 (1.9K) A speed-focused road shoe with a full-length carbon plate and ZoomX foam for faster workouts and races; listed around $180 at Nike.",
+                  "markdown": "---\n\n[![Nike Men&#39;s Structure Plus](https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRDq-a40OcdxXGtB4SfPYqqkiUSR2H3ni6U1LldVTaUk5EfWqWGcme8QplNZhrmwaHb6BiZOdFO&amp;usqp=CAE)\nNike Men&#39;s Structure Plus | Nike&amp; more | 4.6(250)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462882430191046,imageDocid:17746353663083867451,gpcid:12120392991837532450,headlineOfferDocid:15638546390915593837,catalogid:11822199681041295945,productDocid:10245612928105532426,rds:PC_12120392991837532450%7CPROD_PC_12120392991837532450&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEAQ) \n\nA stability shoe combining ZoomX and ReactX foams with a midfoot support system for guided transitions on daily and long runs, rated 4.6/5 by users; listed around $84.73 at Nike with promo code BFRIDAY (was $180).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:10245612928105532426,catalogid:11822199681041295945,gpcid:12120392991837532450,mid:576462882430191046&ibp=oshop)\n\n---\n\n[![New Balance Men&#39;s FuelCell Rebel v5](https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQPEYpGnX64tBvf4gdw7yXVvckPcLlPH228eb1_0C0YMkWeXVorvLnorRovjEYUGGrkaMTiZcCI&amp;usqp=CAE)\nNew Balance Men&#39;s FuelCell Rebel v5 | New Balance&amp; more | 4.7(2.8K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462898574726965,imageDocid:1517314676272655781,gpcid:11640405316842550253,headlineOfferDocid:2727782224984016683,catalogid:17904821304536813524,productDocid:7087899615540960130,rds:PC_4032142892331092062%7CPROD_PC_4032142892331092062&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEBA) \n\nA lightweight neutral shoe (about 7.9 oz for a 9.5M) using a PEBA and EVA foam blend for quicker efforts and everyday miles, rated 4.7/5 by users; listed around $110.19 at New Balance (discounted from $144.99).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:7087899615540960130,catalogid:17904821304536813524,gpcid:11640405316842550253,mid:576462898574726965&ibp=oshop)\n\n---\n\n[![Nike Men&#39;s Zoom Fly 6](https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRxhzmBFObb99iBfanBFKfz300VO0MCPCTG0iVxVs-sV7PKuFPqVSKfCCrxirvyG2oyk4kgY88&amp;usqp=CAE)\nNike Men&#39;s Zoom Fly 6 | nike.com&amp; more | 4.6(1.9K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462576003993551,imageDocid:5568235874746882378,gpcid:471773172067651162,headlineOfferDocid:4876994923142971194,catalogid:9512698683933773482,productDocid:1552720872044426737,rds:PC_471773172067651162%7CPROD_PC_471773172067651162&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEBw) \n\nA speed-focused road shoe with a full-length carbon plate and ZoomX foam for faster workouts and races; listed around $180 at [Nike](https://google.com/goto?url=REDACTED).[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:1552720872044426737,catalogid:9512698683933773482,gpcid:471773172067651162,mid:576462576003993551&ibp=oshop)",
+                  "links": [
+                    {
+                      "type": "link_element",
+                      "title": "Nike Men's Structure Plus$84.73$180Nike& more4.6(250)Go to product viewer dialog for this item.",
+                      "description": null,
+                      "url": "https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462882430191046,imageDocid:17746353663083867451,gpcid:12120392991837532450,headlineOfferDocid:15638546390915593837,catalogid:11822199681041295945,productDocid:10245612928105532426,rds:PC_12120392991837532450%7CPROD_PC_12120392991837532450&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEAQ",
+                      "domain": "www.google.com"
+                    },
+                    {
+                      "type": "link_element",
+                      "title": "New Balance Men's FuelCell Rebel v5$110.19$145New Balance& more4.7(2.8K)Go to product viewer dialog for this item.",
+                      "description": null,
+                      "url": "https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462898574726965,imageDocid:1517314676272655781,gpcid:11640405316842550253,headlineOfferDocid:2727782224984016683,catalogid:17904821304536813524,productDocid:7087899615540960130,rds:PC_4032142892331092062%7CPROD_PC_4032142892331092062&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEBA",
+                      "domain": "www.google.com"
+                    },
+                    {
+                      "type": "link_element",
+                      "title": "Nike Men's Zoom Fly 6$180.00nike.com& more4.6(1.9K)Go to product viewer dialog for this item.",
+                      "description": null,
+                      "url": "https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462576003993551,imageDocid:5568235874746882378,gpcid:471773172067651162,headlineOfferDocid:4876994923142971194,catalogid:9512698683933773482,productDocid:1552720872044426737,rds:PC_471773172067651162%7CPROD_PC_471773172067651162&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEBw",
+                      "domain": "www.google.com"
+                    },
+                    {
+                      "type": "link_element",
+                      "title": "Nike",
+                      "description": null,
+                      "url": "https://google.com/goto?url=REDACTED",
+                      "domain": "google.com"
+                    }
+                  ],
+                  "images": null,
+                  "references": [
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:10245612928105532426,catalogid:11822199681041295945,gpcid:12120392991837532450,mid:576462882430191046&ibp=oshop",
+                      "title": "Nike Men's Structure Plus",
+                      "text": "The Men's Nike Structure Plus Running Shoes take supportive cushioning to the next level by combining Nike’s most advanced foams i..."
+                    },
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:7087899615540960130,catalogid:17904821304536813524,gpcid:11640405316842550253,mid:576462898574726965&ibp=oshop",
+                      "title": "New Balance Men's FuelCell Rebel v5",
+                      "text": "The New Balance FuelCell Rebel v5 is an ultra-lightweight neutral trainer built for everyday runs, quick efforts, and the kind of ..."
+                    },
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:1552720872044426737,catalogid:9512698683933773482,gpcid:471773172067651162,mid:576462576003993551&ibp=oshop",
+                      "title": "Nike Men's Zoom Fly 6",
+                      "text": "The Zoom Fly Series from American Nike has Always Sought to be a Balanced Combination of speed and Stability. Zoom Fly 6 is no Exc..."
+                    }
+                  ]
+                },
+                {
+                  "type": "ai_overview_element",
+                  "position": "left",
+                  "title": "Trail Shoes",
+                  "text": "Salomon Men's Speedcross 6 $150.00 Salomon.com & more 4.6 (3K) Built for soft, muddy, and rugged trails with 5 mm Mud Contagrip lugs, EnergyCell+ cushioning, and a quickLACE system; listed around $150 at Salomon.",
+                  "markdown": "---\n\n[![Salomon Men&#39;s Speedcross 6](https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQ4WfaT_4Le-MPtTGJrz-lgud_4rbIpq5MYof5P1xNV1TjLSfumBI4WhZSBAeo&amp;usqp=CAE)\nSalomon Men&#39;s Speedcross 6 | Salomon.com&amp; more | 4.6(3K)](https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462575785430501,imageDocid:14262047019578356594,gpcid:15566446623960197492,headlineOfferDocid:14294507887355072839,catalogid:4963235765911137734,productDocid:6054662676242934870,rds:PC_15566446623960197492%7CPROD_PC_15566446623960197492&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEC0) \n\nBuilt for soft, muddy, and rugged trails with 5 mm Mud Contagrip lugs, EnergyCell+ cushioning, and a quickLACE system; listed around $150 at Salomon.[[1]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:6054662676242934870,catalogid:4963235765911137734,gpcid:15566446623960197492,mid:576462575785430501&ibp=oshop)",
+                  "links": [
+                    {
+                      "type": "link_element",
+                      "title": "Salomon Men's Speedcross 6$150.00Salomon.com& more4.6(3K)Go to product viewer dialog for this item.",
+                      "description": null,
+                      "url": "https://www.google.com/search?ibp=oshop&prds=pvt:a,pvo:29,mid:576462575785430501,imageDocid:14262047019578356594,gpcid:15566446623960197492,headlineOfferDocid:14294507887355072839,catalogid:4963235765911137734,productDocid:6054662676242934870,rds:PC_15566446623960197492%7CPROD_PC_15566446623960197492&q=product&sa=X&ved=2ahUKEwjYvu3EtamYAxVzFRAIHdE0CpAQgLcPegYIAggkEC0",
+                      "domain": "www.google.com"
+                    }
+                  ],
+                  "images": null,
+                  "references": [
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:6054662676242934870,catalogid:4963235765911137734,gpcid:15566446623960197492,mid:576462575785430501&ibp=oshop",
+                      "title": "Salomon Men's Speedcross 6",
+                      "text": "Salomon Speedcross 6 are trail running shoes designed for muddy terrain, lighter than previous versions and developed to provide m..."
+                    }
+                  ]
+                },
+                {
+                  "type": "ai_overview_element",
+                  "position": "left",
+                  "title": "Key Buying & Care Tips",
+                  "text": "Match gait and terrain : According to Road Runner Sports, neutral shoes fit a natural stride, while stability shoes help counter overpronation. Choose road shoes for pavement and lugged trail shoes for dirt or mud. Check sizing : Fleet Feet recommends keeping about a thumb's width of space between your longest toe and the front of the shoe with a secure heel and midfoot fit. Track mileage and care : Replace most running shoes around 300 to 500 miles as cushioning compresses, and let wet shoes air-dry away from direct high heat.",
+                  "markdown": "- **Match gait and terrain** : According to [Road Runner Sports](https://google.com/goto?url=REDACTED) , neutral shoes fit a natural stride, while stability shoes help counter overpronation. Choose road shoes for pavement and lugged trail shoes for dirt or mud.[[1]](https://google.com/goto?url=REDACTED)[[2]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:6054662676242934870,catalogid:4963235765911137734,gpcid:15566446623960197492,mid:576462575785430501&ibp=oshop)\n- **Check sizing**: [Fleet Feet](https://google.com/goto?url=REDACTED) recommends keeping about a thumb's width of space between your longest toe and the front of the shoe with a secure heel and midfoot fit.[[1]](https://google.com/goto?url=REDACTED)\n- **Track mileage and care** : Replace most running shoes around **300 to 500 miles** as cushioning compresses, and let wet shoes air-dry away from direct high heat.[[1]](https://google.com/goto?url=REDACTED)[[2]](https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:5221427576781278536,catalogid:16033449681557150082,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop)",
+                  "links": [
+                    {
+                      "type": "link_element",
+                      "title": "Road Runner Sports",
+                      "description": null,
+                      "url": "https://google.com/goto?url=REDACTED",
+                      "domain": "google.com"
+                    },
+                    {
+                      "type": "link_element",
+                      "title": "Fleet Feet",
+                      "description": null,
+                      "url": "https://google.com/goto?url=REDACTED",
+                      "domain": "google.com"
+                    }
+                  ],
+                  "images": null,
+                  "references": [
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Road Runner Sports",
+                      "domain": "www.roadrunnersports.com",
+                      "url": "https://www.roadrunnersports.com/category/mens/shoes/running",
+                      "title": "Shop Men's Running Shoes | Road Runner Sports",
+                      "text": "# What to Look for in Men's Running Neutral running shoes for men are a good choice if you have a natural gait, meaning your feet ..."
+                    },
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:6054662676242934870,catalogid:4963235765911137734,gpcid:15566446623960197492,mid:576462575785430501&ibp=oshop",
+                      "title": "Salomon Men's Speedcross 6",
+                      "text": "Salomon Speedcross 6 are trail running shoes designed for muddy terrain, lighter than previous versions and developed to provide m..."
+                    },
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Fleet Feet",
+                      "domain": "www.fleetfeet.com",
+                      "url": "https://www.fleetfeet.com/how-to-start-running/choosing-running-shoes",
+                      "title": "How to Choose Running Shoes | Fleet Feet",
+                      "text": "These are our top five tips to choosing the best running shoes: * Learn How You Move: The natural alignment of your joints and the degree to which you pronate can ..."
+                    },
+                    {
+                      "type": "ai_overview_reference",
+                      "position": "left",
+                      "source": "Google",
+                      "domain": "www.google.com",
+                      "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:5221427576781278536,catalogid:16033449681557150082,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop",
+                      "title": "Brooks Men's Ghost 18",
+                      "text": "The Ghost 18 is an all-rounder designed by Brooks for your daily run. With the Ghost 18, you have a perfect blend of comfort, support, and durability. Experience the ultimate performance of the Ghost 18, day after day. Midsole The Ghost 18 features Brooks' DNA LOFT v3 foam in the midsole. This foam is incredibly soft and has an innovative character compared to the previous version. Nitrogen has been incorporated into the cushioning material to optimize responsiveness and shock absorption. The foam features Brooks' DNA technology, whereby the foam adapts to your running style. As a result, the shoe features cushioning foam that ensures a smooth transition from heel to toe. Upperwork The Triple Jacquard Air Mesh upper consists of three layers of woven mesh that combine durability, support, and ventilation. Thanks to the open structure, the shoe remains lightweight and breathable, while the material molds snugly to the foot, contributing to a comfortable and supportive fit, even during intense runs. This shoe also features an OrthoLite X-60 insole. This insole offers soft step-in comfort and provides long-lasting cushioning. OrthoLite X-60 features open-cell foam that ensures the shoe is breathable on the inside and keeps your feet cool. Outsole The shoe features a RoadTack outsole, made from a mix of rubber and recycled silica. Additionally, this Brooks outsole technology is durable and resilient against compression, ensuring they last extra long. Order and discover the versatility of the Brooks Ghost 18 within days."
+                    }
+                  ]
+                },
+                {
+                  "type": "ai_overview_element",
+                  "position": "left",
+                  "title": null,
+                  "text": "To narrow down the best options, share:How you plan to use them (daily easy runs, speedwork, long distances, trails, or walking)\nYour support and fit needs (neutral vs. stability, wide sizing, or men's vs. women's)\nYour target budget",
+                  "markdown": "To narrow down the best options, share:\n\n- **How you plan to use them** (daily easy runs, speedwork, long distances, trails, or walking)\n- **Your support and fit needs** (neutral vs. stability, wide sizing, or men's vs. women's)\n- **Your target budget**",
+                  "links": null,
+                  "images": null,
+                  "references": null
+                }
+              ],
+              "references": [
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Road Runner Sports",
+                  "domain": "www.roadrunnersports.com",
+                  "url": "https://www.roadrunnersports.com/category/mens/shoes/running",
+                  "title": "Shop Men's Running Shoes | Road Runner Sports",
+                  "text": "# What to Look for in Men's Running Neutral running shoes for men are a good choice if you have a natural gait, meaning your feet don't roll excessively inward (ov..."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Fleet Feet",
+                  "domain": "www.fleetfeet.com",
+                  "url": "https://www.fleetfeet.com/how-to-start-running/choosing-running-shoes",
+                  "title": "How to Choose Running Shoes | Fleet Feet",
+                  "text": "These are our top five tips to choosing the best running shoes: * Learn How You Move: The natural alignment of your joints and the degree to which you pronate can ..."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Google",
+                  "domain": "www.google.com",
+                  "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:5221427576781278536,catalogid:16033449681557150082,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop",
+                  "title": "Brooks Men's Ghost 18",
+                  "text": "The Ghost 18 is an all-rounder designed by Brooks for your daily run. With the Ghost 18, you have a perfect blend of comfort, support, and durability. Experience the ultimate performance of the Ghost 18, day after day. Midsole The Ghost 18 features Brooks' DNA LOFT v3 foam in the midsole. This foam is incredibly soft and has an innovative character compared to the previous version. Nitrogen has been incorporated into the cushioning material to optimize responsiveness and shock absorption. The foam features Brooks' DNA technology, whereby the foam adapts to your running style. As a result, the shoe features cushioning foam that ensures a smooth transition from heel to toe. Upperwork The Triple Jacquard Air Mesh upper consists of three layers of woven mesh that combine durability, support, and ventilation. Thanks to the open structure, the shoe remains lightweight and breathable, while the material molds snugly to the foot, contributing to a comfortable and supportive fit, even during intense runs. This shoe also features an OrthoLite X-60 insole. This insole offers soft step-in comfort and provides long-lasting cushioning. OrthoLite X-60 features open-cell foam that ensures the shoe is breathable on the inside and keeps your feet cool. Outsole The shoe features a RoadTack outsole, made from a mix of rubber and recycled silica. Additionally, this Brooks outsole technology is durable and resilient against compression, ensuring they last extra long. Order and discover the versatility of the Brooks Ghost 18 within days."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Google",
+                  "domain": "www.google.com",
+                  "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:7195826218847817569,catalogid:393394567760082213,gpcid:9072831014733564315,mid:576462881233777118&ibp=oshop",
+                  "title": "Nike Men's Pegasus 42",
+                  "text": "The Nike Pegasus 42 continues the legacy of delivering a responsive and comfortable ride for runners of all levels. This latest it..."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Google",
+                  "domain": "www.google.com",
+                  "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:16602690315143339002,catalogid:8529173386405420812,gpcid:7326703641027475137,mid:576462549196774912&ibp=oshop",
+                  "title": "Brooks Men's Ghost 18",
+                  "text": "Whether you are training for a marathon or simply enjoying a relaxed run, the Brooks Ghost 18 is the ideal all-round running shoe."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Google",
+                  "domain": "www.google.com",
+                  "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:10730376414794220811,catalogid:18441839422095801488,gpcid:5477693794596520766,mid:576462828736666115&ibp=oshop",
+                  "title": "Nike Men's Revolution 8 Running Shoes",
+                  "text": "The Men's Revolution 8 Road Running Shoes by Nike take your go-To runners to the next level. With upgraded breathability, responsi..."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Google",
+                  "domain": "www.google.com",
+                  "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:10245612928105532426,catalogid:11822199681041295945,gpcid:12120392991837532450,mid:576462882430191046&ibp=oshop",
+                  "title": "Nike Men's Structure Plus",
+                  "text": "The Men's Nike Structure Plus Running Shoes take supportive cushioning to the next level by combining Nike’s most advanced foams i..."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Google",
+                  "domain": "www.google.com",
+                  "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:7087899615540960130,catalogid:17904821304536813524,gpcid:11640405316842550253,mid:576462898574726965&ibp=oshop",
+                  "title": "New Balance Men's FuelCell Rebel v5",
+                  "text": "The New Balance FuelCell Rebel v5 is an ultra-lightweight neutral trainer built for everyday runs, quick efforts, and the kind of ..."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Google",
+                  "domain": "www.google.com",
+                  "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:1552720872044426737,catalogid:9512698683933773482,gpcid:471773172067651162,mid:576462576003993551&ibp=oshop",
+                  "title": "Nike Men's Zoom Fly 6",
+                  "text": "The Zoom Fly Series from American Nike has Always Sought to be a Balanced Combination of speed and Stability. Zoom Fly 6 is no Exc..."
+                },
+                {
+                  "type": "ai_overview_reference",
+                  "position": "right",
+                  "source": "Google",
+                  "domain": "www.google.com",
+                  "url": "https://www.google.com/search?q=product&prds=pvt:hg,pvo:29,productid:6054662676242934870,catalogid:4963235765911137734,gpcid:15566446623960197492,mid:576462575785430501&ibp=oshop",
+                  "title": "Salomon Men's Speedcross 6",
+                  "text": "Salomon Speedcross 6 are trail running shoes designed for muddy terrain, lighter than previous versions and developed to provide m..."
+                }
+              ],
+              "rectangle": null
+            },
+            {
+              "type": "popular_products",
+              "rank_group": 1,
+              "rank_absolute": 2,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[2]",
+              "title": "More products",
+              "items": [
+                {
+                  "type": "popular_products_element",
+                  "title": "Nike Men's Run Defy Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:14214941320514953732,rds:PC_14214941320514953732%7CPROD_PC_14214941320514953732,headlineOfferDocid:5594443584262909058,catalogid:6512174050658596009,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "DICK'S Sporting Goods & more",
+                  "more_sellers": true,
+                  "seller": "DICK'S Sporting Goods",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:14",
+                  "price": {
+                    "current": 64.99,
+                    "regular": null,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$64.99"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 2300,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "6512174050658596009",
+                    "data_docid": "1273948974301769670",
+                    "gid": "14214941320514953732"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's Fresh Foam 680 v9 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:6055125545383138064,rds:PC_6055125545383138064%7CPROD_PC_6055125545383138064,headlineOfferDocid:5898350182493447062,catalogid:9385459950693213234,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance",
+                  "more_sellers": false,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:15",
+                  "price": {
+                    "current": 59.49,
+                    "regular": 85,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$59.49 $85"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.5,
+                    "votes_count": 754,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "9385459950693213234",
+                    "data_docid": "1406076657688723762",
+                    "gid": "6055125545383138064"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Under Armour Men's Surge 5 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:4131677912634211336,rds:PC_4131677912634211336%7CPROD_PC_4131677912634211336,headlineOfferDocid:13750034828128979443,catalogid:6256869548937329091,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Under Armour & more\nFree delivery on $75+",
+                  "more_sellers": true,
+                  "seller": "Under Armour",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:16",
+                  "price": {
+                    "current": 45.5,
+                    "regular": 65,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$45.50 $65"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.5,
+                    "votes_count": 22,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "6256869548937329091",
+                    "data_docid": "12846754148129974727",
+                    "gid": "4131677912634211336"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Brooks Men's Anthem 8 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:7191356183537086038,rds:PC_7191356183537086038%7CPROD_PC_7191356183537086038,headlineOfferDocid:13117117368069412168,catalogid:14551040153120854500,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Brooks Running",
+                  "more_sellers": false,
+                  "seller": "Brooks Running",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:17",
+                  "price": {
+                    "current": 90,
+                    "regular": null,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$90.00"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 91,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "14551040153120854500",
+                    "data_docid": "8859644396992758969",
+                    "gid": "7191356183537086038"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "adidas Men's Runfalcon 5 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:3598777904218758056,rds:PC_3598777904218758056%7CPROD_PC_3598777904218758056,headlineOfferDocid:10347840944515813417,catalogid:12818723011398327401,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Nordstrom Rack & more\nFree delivery on $89+",
+                  "more_sellers": true,
+                  "seller": "Nordstrom Rack",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:18",
+                  "price": {
+                    "current": 51.97,
+                    "regular": null,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$51.97"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 25000,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "12818723011398327401",
+                    "data_docid": "6265058322361393299",
+                    "gid": "3598777904218758056"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's Kaiha Road V2 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:10126196336485357737,rds:PC_10126196336485357737%7CPROD_PC_10126196336485357737,headlineOfferDocid:15894051677932365498,catalogid:15035913711551853871,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:19",
+                  "price": {
+                    "current": 62.99,
+                    "regular": 105,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$62.99 $105"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.2,
+                    "votes_count": 104,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "15035913711551853871",
+                    "data_docid": "109622471875036298",
+                    "gid": "10126196336485357737"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Flux Footwear Flux Shoes Flux Adapt Runner",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:17134763532080608519,rds:PC_17134763532080608519%7CPROD_PC_17134763532080608519,headlineOfferDocid:16624344295284311676,catalogid:6848287058920031764,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Flux Footwear & more\nFree delivery",
+                  "more_sellers": true,
+                  "seller": "Flux Footwear",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:20",
+                  "price": {
+                    "current": 99,
+                    "regular": 145,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$99.00 $145"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.5,
+                    "votes_count": 358,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "6848287058920031764",
+                    "data_docid": "15694353199702003089",
+                    "gid": "17134763532080608519"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Under Armour Men's Charged Assert 10 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:14431125504310147153,rds:PC_14431125504310147153%7CPROD_PC_14431125504310147153,headlineOfferDocid:13513617655471352275,catalogid:1936444646626023361,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Hibbett & more\nFree delivery on $75+",
+                  "more_sellers": true,
+                  "seller": "Hibbett",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:21",
+                  "price": {
+                    "current": 75,
+                    "regular": null,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$75.00"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 4200,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "1936444646626023361",
+                    "data_docid": "11131845542527081316",
+                    "gid": "14431125504310147153"
+                  }
+                }
+              ],
+              "rectangle": null
+            },
+            {
+              "type": "popular_products",
+              "rank_group": 2,
+              "rank_absolute": 3,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[4]",
+              "title": "More products",
+              "items": [
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's 1080v15",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:10507341935428748955,rds:PC_10507341935428748955%7CPROD_PC_10507341935428748955,headlineOfferDocid:11922390870547845318,catalogid:12603902396827338553,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:22",
+                  "price": {
+                    "current": 169.99,
+                    "regular": null,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$169.99"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.4,
+                    "votes_count": 1000,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "12603902396827338553",
+                    "data_docid": "11845996802670938584",
+                    "gid": "10507341935428748955"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Asics Magic Speed 5",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:9566630614312910523,rds:PC_9566630614312910523%7CPROD_PC_9566630614312910523,headlineOfferDocid:7927506579722088639,catalogid:9768856830546612650,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "ASICS",
+                  "more_sellers": false,
+                  "seller": "ASICS",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:23",
+                  "price": {
+                    "current": 180,
+                    "regular": null,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$180.00"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.8,
+                    "votes_count": 1300,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "9768856830546612650",
+                    "data_docid": "12956825255303823801",
+                    "gid": "9566630614312910523"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Brooks Men's Ghost 18",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:7326703641027475137,rds:PC_7326703641027475137%7CPROD_PC_7326703641027475137,headlineOfferDocid:2960581313932831116,catalogid:8529173386405420812,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Brooks Running",
+                  "more_sellers": false,
+                  "seller": "Brooks Running",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:24",
+                  "price": {
+                    "current": 150,
+                    "regular": null,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$150.00"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 1000,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "8529173386405420812",
+                    "data_docid": "16602690315143339002",
+                    "gid": "7326703641027475137"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's FuelCell Rebel v5",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:11640405316842550253,rds:PC_11640405316842550253%7CPROD_PC_11640405316842550253,headlineOfferDocid:3362001913518977914,catalogid:4409980751052087372,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:25",
+                  "price": {
+                    "current": 110.19,
+                    "regular": 145,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$110.19 $145"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.7,
+                    "votes_count": 646,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "4409980751052087372",
+                    "data_docid": "3153476616478385019",
+                    "gid": "11640405316842550253"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Nike Men's V5 RNR",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:5587654921535220031,rds:PC_5587654921535220031%7CPROD_PC_5587654921535220031,headlineOfferDocid:17154741174442955096,catalogid:9301679114570154305,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Zappos.com\nFree delivery by Mon",
+                  "more_sellers": false,
+                  "seller": "Zappos.com",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:26",
+                  "price": {
+                    "current": 71.25,
+                    "regular": 95,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$71.25 $95"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.5,
+                    "votes_count": 1900,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "9301679114570154305",
+                    "data_docid": "14859043680749297741",
+                    "gid": "5587654921535220031"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Saucony Men's Ride 17",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:1351232783538017562,rds:PC_1351232783538017562%7CPROD_PC_1351232783538017562,headlineOfferDocid:17152492705505192852,catalogid:18393219979247879828,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Shoe Carnival\nFree delivery",
+                  "more_sellers": false,
+                  "seller": "Shoe Carnival",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:27",
+                  "price": {
+                    "current": 104.99,
+                    "regular": 140,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$104.99 $140"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.7,
+                    "votes_count": 395,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "18393219979247879828",
+                    "data_docid": "11963974963485267368",
+                    "gid": "1351232783538017562"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's AC Runner Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:6577637751279836311,rds:PC_6577637751279836311%7CPROD_PC_6577637751279836311,headlineOfferDocid:1288656097846223093,catalogid:14238350502695818119,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:28",
+                  "price": {
+                    "current": 115.49,
+                    "regular": 150,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$115.49 $150"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 148,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "14238350502695818119",
+                    "data_docid": "5549392401556841645",
+                    "gid": "6577637751279836311"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's Ellipse v1 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:15973616669151602270,rds:PC_15973616669151602270%7CPROD_PC_15973616669151602270,headlineOfferDocid:4151258856696547737,catalogid:18252989976116813077,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://api.dataforseo.com/cdn/i/<redacted-id>:29",
+                  "price": {
+                    "current": 110.19,
+                    "regular": 145,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$110.19 $145"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 508,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "18252989976116813077",
+                    "data_docid": "11326990278286999262",
+                    "gid": "15973616669151602270"
+                  }
+                }
+              ],
+              "rectangle": null
+            },
+            {
+              "type": "local_pack",
+              "rank_group": 1,
+              "rank_absolute": 4,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[6]/div[1]/div[1]/div[1]/div[1]/div[4]/div[1]/div[1]/div[1]/div[1]",
+              "title": "The Colorado Running Company",
+              "description": "Colorado Springs, CO · (719) 635-3833 \nCloses soon · 6 PM \nSeen by shoppers: sport shoes \n",
+              "domain": "corunco.com",
+              "phone": "(719) 635-3833",
+              "booking_url": null,
+              "url": "http://corunco.com/",
+              "is_paid": false,
+              "rating": {
+                "rating_type": "Max5",
+                "value": 4.6,
+                "votes_count": 398,
+                "rating_max": 5
+              },
+              "cid": "6206251292775663815",
+              "rectangle": null
+            },
+            {
+              "type": "local_pack",
+              "rank_group": 2,
+              "rank_absolute": 5,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[6]/div[1]/div[1]/div[1]/div[1]/div[4]/div[1]/div[3]/div[1]/div[1]",
+              "title": "Runners Roost",
+              "description": "Colorado Springs, CO · (719) 632-2633 \nCloses soon · 6 PM \nSeen by shoppers: sport shoes \n",
+              "domain": "runnersroostcs.com",
+              "phone": "(719) 632-2633",
+              "booking_url": null,
+              "url": "https://runnersroostcs.com/",
+              "is_paid": false,
+              "rating": {
+                "rating_type": "Max5",
+                "value": 4.8,
+                "votes_count": 339,
+                "rating_max": 5
+              },
+              "cid": "12560449186046582260",
+              "rectangle": null
+            },
+            {
+              "type": "local_pack",
+              "rank_group": 3,
+              "rank_absolute": 6,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[6]/div[1]/div[1]/div[1]/div[1]/div[4]/div[1]/div[5]/div[1]/div[1]",
+              "title": "Peak Running Breckenridge",
+              "description": "Breckenridge, CO · (970) 771-2986 \nClosed · Opens 11 AM Sat \nSeen by shoppers: sport shoes \n",
+              "domain": "www.peakrunningco.com",
+              "phone": "(970) 771-2986",
+              "booking_url": null,
+              "url": "http://www.peakrunningco.com/",
+              "is_paid": false,
+              "rating": {
+                "rating_type": "Max5",
+                "value": 4.9,
+                "votes_count": 82,
+                "rating_max": 5
+              },
+              "cid": "15399446248910537826",
+              "rectangle": null
+            },
+            {
+              "type": "popular_products",
+              "rank_group": 3,
+              "rank_absolute": 7,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[8]",
+              "title": "Deals on Running Shoes",
+              "items": [
+                {
+                  "type": "popular_products_element",
+                  "title": "adidas Men's Runfalcon 5 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:3598777904218758056,rds:PC_3598777904218758056%7CPROD_PC_3598777904218758056,headlineOfferDocid:8218128576769719562,catalogid:14188455690419904551,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "adidas & more",
+                  "more_sellers": true,
+                  "seller": "adidas",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTZhJsErHdbnSGfQmVLB8jbbihj3ZirwUa0q3VQWWS9vFnvj-RZTEESqcaaTbAAL2LOjkarF9ifixcC_FNfgk0k5-LD4kFGkrj1oyVNDT9uP5QfgmldRKHICA",
+                  "price": {
+                    "current": 30,
+                    "regular": 60,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$30.00 $60"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 25000,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "14188455690419904551",
+                    "data_docid": "13311341449221461928",
+                    "gid": "3598777904218758056"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's Kaiha Road V2 Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:10126196336485357737,rds:PC_10126196336485357737%7CPROD_PC_10126196336485357737,headlineOfferDocid:4643808226467725123,catalogid:8626863152853338895,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQupz-uoO1ROA6OxsSy9GKM2TGoS2RAHY-gbQ8ejtAnrIYrwvz13vp4RQKPjtC9ND3nLxT9y-qFf5bzHiTfpqEI_htNyITbpjyJAbzbm-NlmlHb8VbFVMHS",
+                  "price": {
+                    "current": 62.99,
+                    "regular": 105,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$62.99 $105"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.2,
+                    "votes_count": 104,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "8626863152853338895",
+                    "data_docid": "7669092471380817812",
+                    "gid": "10126196336485357737"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Flux Footwear Flux Shoes Flux Adapt Runner",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:17134763532080608519,rds:PC_17134763532080608519%7CPROD_PC_17134763532080608519,headlineOfferDocid:8170994748520420966,catalogid:10223062496985088855,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Flux Footwear & more\nFree delivery",
+                  "more_sellers": true,
+                  "seller": "Flux Footwear",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQeL8SnsICzfSttz9QnT4buzojRoxWfzhMugTME_p4zDNyXHqnVE4XPNROV884hlaKZGzD7P617pDLUuil-TmmfZYYx55dec2coUcVLmiYYw0uXUwx5R_PA",
+                  "price": {
+                    "current": 99,
+                    "regular": 145,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$99.00 $145"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.5,
+                    "votes_count": 358,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "10223062496985088855",
+                    "data_docid": "8215323401890039942",
+                    "gid": "17134763532080608519"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's FuelCell Rebel v5",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:11640405316842550253,rds:PC_11640405316842550253%7CPROD_PC_11640405316842550253,headlineOfferDocid:9508748778793014883,catalogid:16892055969297697088,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTtfDgSkwxGOn7WoHmKb_EZ2B1JfYdHw19-AO57SgonmaGAXO3yNFhECHhbeUuwtSWXnP86CM-dvZZyYNS4iRLseQuhVgagoR0-J9N662KHa-FgTcgb1lJNXg",
+                  "price": {
+                    "current": 110.19,
+                    "regular": 145,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$110.19 $145"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.7,
+                    "votes_count": 646,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "16892055969297697088",
+                    "data_docid": "1207698046137402388",
+                    "gid": "11640405316842550253"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Nike Men's V5 RNR",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:5587654921535220031,rds:PC_5587654921535220031%7CPROD_PC_5587654921535220031,headlineOfferDocid:17154741174442955096,catalogid:9301679114570154305,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "Zappos.com\nFree delivery by Mon",
+                  "more_sellers": false,
+                  "seller": "Zappos.com",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSxJoO-P312ZswyttoUwtQPq8YWzWcpRVfiKzo7fi6VuzbbzctpqNTDyoNOpWQd512Gm4UpSkP-LKfov8M_050Q8TygkRMz5w",
+                  "price": {
+                    "current": 71.25,
+                    "regular": 95,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$71.25 $95"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.5,
+                    "votes_count": 1900,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "9301679114570154305",
+                    "data_docid": "14859043680749297741",
+                    "gid": "5587654921535220031"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's AC Runner Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:6577637751279836311,rds:PC_6577637751279836311%7CPROD_PC_6577637751279836311,headlineOfferDocid:1288656097846223093,catalogid:14238350502695818119,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQzXegUwtCUSBQ1rhMbu3tLvq-91c0xjNQLU0ceeOxAIEADhx-dlma_9EUuOFUYjk63O4q3JmbFfvwOurvk6_X8OhWdCxS6XLmMRc1MPmA1xYVUxR3ac-JYiA",
+                  "price": {
+                    "current": 115.49,
+                    "regular": 150,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$115.49 $150"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 148,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "14238350502695818119",
+                    "data_docid": "5549392401556841645",
+                    "gid": "6577637751279836311"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "New Balance Men's Ac Runner Running Shoes",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:16723172149420317301,rds:PC_16723172149420317301%7CPROD_PC_16723172149420317301,headlineOfferDocid:1542232882449935961,catalogid:7169543408576228161,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "New Balance & more",
+                  "more_sellers": true,
+                  "seller": "New Balance",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRbCDEA0_UNuRmXysNFrhbcjGKGvNuwtFl-AygRDQjz2V71q4AxsA1rIaUqk6RkxujvgbS67pHzc7GbVJMJHqSDo2YIXmgceszbXIQNio1Gbra5zEc8gTXfyQ",
+                  "price": {
+                    "current": 115.49,
+                    "regular": 150,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$115.49 $150"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.6,
+                    "votes_count": 148,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "7169543408576228161",
+                    "data_docid": "17806001145082701560",
+                    "gid": "16723172149420317301"
+                  }
+                },
+                {
+                  "type": "popular_products_element",
+                  "title": "Nike Men's Pegasus 42",
+                  "url": "https://www.google.com/search?ibp=oshop&q=running+shoes&prds=gpcid:9072831014733564315,rds:PC_9072831014733564315%7CPROD_PC_9072831014733564315,headlineOfferDocid:8204862068843419958,catalogid:393394567760082213,pvo:3,pvt:hg&hl=en&gl=US",
+                  "domain": "www.google.com",
+                  "description": "nike.com\nFree delivery",
+                  "more_sellers": false,
+                  "seller": "nike.com",
+                  "group_title": null,
+                  "group_source": null,
+                  "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTQUoy6WwBliPZajZ1-JrpJcSAhiot5oQTPKfdJ94rrXyfj8nbYm4aCu4jSqJwFdr4EgADqMXRFiu9cPjDBnpt59Vli8WLBpfEdITDXgg_5-5ZxzgHQAvHl",
+                  "price": {
+                    "current": 108.97,
+                    "regular": 145,
+                    "max_value": null,
+                    "currency": "USD",
+                    "is_price_range": false,
+                    "displayed_price": "$108.97 $145"
+                  },
+                  "rating": {
+                    "rating_type": "Max5",
+                    "value": 4.8,
+                    "votes_count": 894,
+                    "rating_max": 5
+                  },
+                  "product_identifiers": {
+                    "product_id": "393394567760082213",
+                    "data_docid": "7195826218847817569",
+                    "gid": "9072831014733564315"
+                  }
+                }
+              ],
+              "rectangle": null
+            },
+            {
+              "type": "organic",
+              "rank_group": 1,
+              "rank_absolute": 8,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[10]/div[1]/div[1]",
+              "domain": "google.com",
+              "title": "Here's How to Choose the Best Running Shoes — Plus 8 ...",
+              "url": "https://google.com/goto?url=REDACTED&gsessionid=e02O1y6lGlsUS2lTekQBVdxf-RhaFCpjd7-J2b4uHadQ241sPG6pFg",
+              "cache_url": null,
+              "related_search_url": null,
+              "breadcrumb": "https://www.yahoo.com › lifestyle › choose-best-runnin...",
+              "website_name": "Yahoo",
+              "is_image": true,
+              "is_video": false,
+              "is_featured_snippet": false,
+              "is_malicious": false,
+              "is_web_story": false,
+              "checks": [
+                "is_image"
+              ],
+              "description": "Dec 31, 2024 — Support is the core feature of all the best running shoes, but there are really three things you'll want to look at: drop height, cushioning, ...",
+              "pre_snippet": "12/31/2024 <redacted-ip>",
+              "extended_snippet": null,
+              "images": [
+                {
+                  "type": "images_element",
+                  "alt": "running shoes from www.yahoo.com",
+                  "url": "https://google.com/goto?url=REDACTED&gsessionid=e02O1y6lGlsUS2lTekQBVdxf-RhaFCpjd7-J2b4uHadQ241sPG6pFg",
+                  "image_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlPBevr69RBpzm3c1E7YKKzdE3dXtxNxxFcWO0G5YdHHD9zhn4UcL6&usqp=CAE&s"
+                }
+              ],
+              "amp_version": false,
+              "rating": null,
+              "price": null,
+              "highlighted": [
+                "Support is the core feature of all the best running shoes"
+              ],
+              "links": null,
+              "faq": null,
+              "extended_people_also_search": null,
+              "about_this_result": null,
+              "related_result": null,
+              "rectangle": null
+            },
+            {
+              "type": "organic",
+              "rank_group": 2,
+              "rank_absolute": 9,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[12]/div[1]/div[1]",
+              "domain": "google.com",
+              "title": "New Running Shoes",
+              "url": "https://google.com/goto?url=REDACTED&gsessionid=e02O1y6lGlsUS2lTekQBVdxf-RhaFCpjd7-J2b4uHadQ241sPG6pFg",
+              "cache_url": null,
+              "related_search_url": null,
+              "breadcrumb": "https://performancerunning.com › new-arrivals-1",
+              "website_name": "Performance Running Outfitters",
+              "is_image": true,
+              "is_video": false,
+              "is_featured_snippet": false,
+              "is_malicious": false,
+              "is_web_story": false,
+              "checks": [
+                "is_image"
+              ],
+              "description": "Shop the latest running shoes to hit the market. New Nike, Hoka, New Balance, On, Brooks and more. 25% Off ON RUNNING MEN'S CLOUDRUNNER",
+              "pre_snippet": null,
+              "extended_snippet": null,
+              "images": [
+                {
+                  "type": "images_element",
+                  "alt": "running shoes from performancerunning.com",
+                  "url": "https://google.com/goto?url=REDACTED&gsessionid=e02O1y6lGlsUS2lTekQBVdxf-RhaFCpjd7-J2b4uHadQ241sPG6pFg",
+                  "image_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ_487nrXObtQOwVhyZ0sl1z-NyXSnjVn2kQRGMnfpB9Jj-uyJDOqmp&usqp=CAE&s=10"
+                }
+              ],
+              "amp_version": false,
+              "rating": null,
+              "price": {
+                "current": 85,
+                "regular": null,
+                "max_value": 220,
+                "currency": "USD",
+                "is_price_range": true,
+                "displayed_price": "$85 to $220"
+              },
+              "highlighted": [
+                "Nike, Hoka, New Balance, On, Brooks and more"
+              ],
+              "links": null,
+              "faq": null,
+              "extended_people_also_search": null,
+              "about_this_result": null,
+              "related_result": null,
+              "rectangle": null
+            },
+            {
+              "type": "organic",
+              "rank_group": 3,
+              "rank_absolute": 10,
+              "page": 1,
+              "position": "left",
+              "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[14]/div[1]/div[1]",
+              "domain": "google.com",
+              "title": "The 9 Best Running Shoes On the Market (2026 Update)",
+              "url": "https://google.com/goto?url=REDACTED&gsessionid=e02O1y6lGlsUS2lTekQBVdxf-RhaFCpjd7-J2b4uHadQ241sPG6pFg",
+              "cache_url": null,
+              "related_search_url": null,
+              "breadcrumb": "https://barbend.com › Apparel",
+              "website_name": "BarBend",
+              "is_image": true,
+              "is_video": false,
+              "is_featured_snippet": false,
+              "is_malicious": false,
+              "is_web_story": false,
+              "checks": [
+                "is_image"
+              ],
+              "description": "Best Running Shoes for Cross Training: Reebok Speed TR ; Best Running Shoes for Long Runs: Brooks Glycerin 19; Best Running Shoes for the Money ...",
+              "pre_snippet": "03/18/2025 <redacted-ip>",
+              "extended_snippet": null,
+              "images": [
+                {
+                  "type": "images_element",
+                  "alt": null,
+                  "url": null,
+                  "image_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTuSPjVXnJn3-uX1X8ytivrb4et7Pl4yE8851cpDG6PHEtGenPYhNtxdrc&s"
+                },
+                {
+                  "type": "images_element",
+                  "alt": null,
+                  "url": null,
+                  "image_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQDHe7J9GS1ugTrSuKBTKU_wnHVtClUqpLtwcGtXdGpfIg9-mLceBo4TAo&s"
+                },
+                {
+                  "type": "images_element",
+                  "alt": null,
+                  "url": null,
+                  "image_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlycaa8t2yD54BWvVR-qZ7IexU9IP-WjgZ9Hl9xoScoELLv3CsaCZMn9Cn6w&s"
+                }
+              ],
+              "amp_version": false,
+              "rating": null,
+              "price": null,
+              "highlighted": [
+                "Best Running Shoes for Cross Training: Reebok Speed TR"
+              ],
+              "links": [
+                {
+                  "type": "link_element",
+                  "title": "Read more",
+                  "description": null,
+                  "url": "https://google.com/goto?url=REDACTED&gsessionid=e02O1y6lGlsUS2lTekQBVdxf-RhaFCpjd7-J2b4uHadQ241sPG6pFg",
+                  "domain": "google.com"
+                }
+              ],
+              "faq": null,
+              "extended_people_also_search": null,
+              "about_this_result": null,
+              "related_result": null,
+              "rectangle": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

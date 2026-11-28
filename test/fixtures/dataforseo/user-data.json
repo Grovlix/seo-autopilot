@@ -1,0 +1,67 @@
+{
+  "version": "0.1.20261117",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "cost": 0,
+  "tasks_count": 1,
+  "tasks_error": 0,
+  "tasks": [
+    {
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "cost": 0,
+      "result_count": 1,
+      "path": [
+        "v3",
+        "appendix",
+        "user_data"
+      ],
+      "data": {
+        "api": "appendix",
+        "function": "user_data"
+      },
+      "result": [
+        {
+          "timezone": "<redacted>",
+          "rates": {
+            "limits": {
+              "day": {},
+              "minute": {}
+            },
+            "statistics": {
+              "day": {},
+              "minute": {}
+            }
+          },
+          "money": {
+            "total": 0,
+            "limits": {
+              "day": {},
+              "minute": {}
+            },
+            "statistics": {
+              "day": {},
+              "minute": {}
+            }
+          },
+          "price": {
+            "keywords_data": {},
+            "merchant": {},
+            "ai_optimization": {},
+            "serp": {},
+            "appendix": {},
+            "app_data": {},
+            "backlinks": {},
+            "business_data": {},
+            "content_analysis": {},
+            "dataforseo_labs": {},
+            "domain_analytics": {},
+            "on_page": {}
+          },
+          "backlinks_subscription_expiry_date": "<redacted>",
+          "llm_mentions_subscription_expiry_date": "<redacted>"
+        }
+      ]
+    }
+  ]
+}
