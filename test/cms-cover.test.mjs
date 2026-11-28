@@ -10,7 +10,7 @@ import { execFileSync } from "node:child_process";
 import { fakeEmDash } from "./fixtures/fake-emdash.mjs";
 import { cms } from "../src/cms/commands.mjs";
 import { coverRefOf, coverValue, imageSize, mediaOptions } from "../src/cms/media.mjs";
-import { draftData, imageState, parseMirror, partsFor, stateOfFile, stateOfItem, validateFile, diffState } from "../src/cms/mirror.mjs";
+import { draftData, draftMatches, imageState, parseMirror, partsFor, stateOfFile, stateOfItem, validateFile, diffState } from "../src/cms/mirror.mjs";
 
 const URL_ = "https://cms.example.test";
 /** A tiny JPEG-looking file with a real frame header (SOF0) of the given size, so the image size can be read; the rest is filler. */
@@ -58,6 +58,16 @@ const writes = (fake) => fake.log.filter((l) => l.method !== "GET");
 const ALT = "رسم تجريدي بلا نصوص";
 
 // ------------------------------------------------------------------------------------------------ pure
+test("draftMatches: a draft whose image EmDash normalized (src dropped, fields added) still equals the cover that was sent", () => {
+  const sent = coverValue({ item: { id: "01M", filename: "c.jpg", mimeType: "image/jpeg", storageKey: "01M.jpg", width: null, height: null }, cmsUrl: "/_emdash/api/media/file/01M.jpg", bytes: jpegSized(1600, 1000, 1), type: "image/jpeg", alt: ALT });
+  const stored = { ...sent }; delete stored.src; stored.meta = { storageKey: "01M.jpg" };
+  const version = { meta: { slug: "a", title: "T", image: "/covers/a.jpg", imageAlt: ALT }, body: "Words.", cover: sent };
+  const draft = { ...draftData(version), featured_image: stored };
+  assert.equal(draftMatches(draft, { version, slug: "a" }), true);
+  assert.equal(draftMatches({ ...draft, featured_image: { ...stored, alt: "other" } }, { version, slug: "a" }), false, "another alt is another draft");
+  assert.equal(draftMatches({ ...draft, featured_image: { ...stored, id: "01X", meta: { storageKey: "01X.jpg" } } }, { version, slug: "a" }), false, "another picture is another draft");
+});
+
 
 test("coverRefOf and mediaOptions: the cover prefix comes from the settings; overlapping prefixes are refused; no cover folder = no cover", () => {
   const st = { mediaDir: "media", coverDir: "covers" };
@@ -144,8 +154,11 @@ test("publish: a new post with a local cover uploads it once, sets the featured 
   assert.equal(fi.alt, ALT);
   assert.equal(fi.width, 1600);
   assert.equal(fi.height, 1000);
-  assert.match(fi.src, /^\/_emdash\/api\/media\/file\/01FAKE\d+\.jpg$/);
-  assert.equal(fi.meta.storageKey, fi.src.split("/").pop());
+  // EmDash 0.1.0 stores a local value without `src` (it derives the URL from meta.storageKey); the stand-in normalizes like it does (fixtures/fake-emdash.mjs).
+  assert.equal(fi.src, undefined, "a local value is stored without src");
+  assert.match(fi.meta.storageKey, /^01FAKE\d+\.jpg$/);
+  assert.equal(fi.mimeType, "image/jpeg");
+  assert.equal(imageState(fi).src, `/_emdash/api/media/file/${fi.meta.storageKey}`, "what the site shows");
   assert.ok(fake.files.get(fi.meta.storageKey).buf.equals(jpegSized(1600, 1000, 7)), "the CMS serves the local bytes");
   assert.equal(readFileSync(r.file("guide"), "utf8"), before, "the mirror file keeps its local reference");
 });

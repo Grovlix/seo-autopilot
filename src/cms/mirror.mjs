@@ -298,6 +298,9 @@ export function draftMatches(draft, { base = {}, version = null, fields = DEFAUL
     if (k === "_slug") { if (draft._slug != null && draft._slug !== slug) return false; continue; }
     if (coverUnresolved && k === fields.image) continue;
     if (k === fields.body) { if (JSON.stringify(normalizeBlocks(draft[k] || [])) !== JSON.stringify(normalizeBlocks(expected[k] || []))) return false; continue; }
+    // The image field is compared as what it shows ({ src, alt }, see imageState), not as the stored object: EmDash normalizes a media value when it saves it
+    // (a local value loses its `src` and gains width, height, mimeType, filename and meta from the media item), so the draft never equals the value that was sent.
+    if (k === fields.image) { if (canon(imageState(draft[k])) !== canon(imageState(expected[k]))) return false; continue; }
     if (canon(draft[k]) !== canon(expected[k])) return false;
   }
   return true;
