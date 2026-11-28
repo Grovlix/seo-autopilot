@@ -13,7 +13,7 @@
 // (plain text, no JSON error). JSON bodies are not checked.
 import { createHash } from "node:crypto";
 
-export function fakeEmDash({ revisions = true, seo = true, schemaReadable = false, previewSecret = false, posts = [], media: mediaSeed = [], mediaScope = true, mediaPage = 50 } = {}) {
+export function fakeEmDash({ revisions = true, seo = true, schemaReadable = false, previewSecret = false, posts = [], media: mediaSeed = [], mediaScope = true, mediaPage = 50, normalizeMedia = true } = {}) {
   let clock = Date.parse("2026-01-01T00:00:00Z");
   let n = 0;
   const now = () => new Date((clock += 1000)).toISOString();
@@ -34,6 +34,33 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
     return item;
   };
   for (const m of mediaSeed) addMedia(m.filename, m.type, m.bytes);
+  // EmDash 0.1.0 normalizeMediaFields (emdash-runtime.ts, media/normalize.ts), run on every content create and update for image fields: a LOCAL value loses its
+  // `src` (derived at display time from meta.storageKey) and gets the missing width, height, filename, mimeType and meta from the media item (the caller's alt
+  // wins); an internal media URL string becomes the local value of that item; any other string becomes { provider: "external", id: "", src }; external is kept.
+  const normalizeImage = (v) => {
+    if (!normalizeMedia || v == null) return v;
+    const known = (o) => Object.fromEntries(Object.entries({ id: typeof o.id === "string" ? o.id : "", provider: o.provider, src: o.src, previewUrl: o.previewUrl, filename: o.filename, mimeType: o.mimeType, width: o.width, height: o.height, alt: o.alt, meta: o.meta && typeof o.meta === "object" && !Array.isArray(o.meta) ? o.meta : undefined }).filter(([, x]) => x !== undefined));
+    if (typeof v === "string") {
+      const pre = "/_emdash/api/media/file/";
+      if (v.startsWith(pre)) { const it = media.find((x) => x.storageKey === v.slice(pre.length)); if (it) return { provider: "local", id: it.id, filename: it.filename, mimeType: it.mimeType, width: it.width, height: it.height, alt: it.alt, meta: { storageKey: it.storageKey } }; }
+      return { provider: "external", id: "", src: v };
+    }
+    if (typeof v !== "object" || Array.isArray(v) || (!("id" in v) && !("src" in v))) return v;
+    const provider = typeof v.provider === "string" ? v.provider : "local";
+    const out = { ...known(v), provider };
+    if (provider === "external") return known(v);
+    delete out.src;
+    const it = out.id ? media.find((x) => x.id === out.id) : null;
+    if (!it) return out;
+    if (out.width == null && it.width != null) out.width = it.width;
+    if (out.height == null && it.height != null) out.height = it.height;
+    if (!out.filename && it.filename) out.filename = it.filename;
+    if (!out.mimeType && it.mimeType) out.mimeType = it.mimeType;
+    if (!out.alt && it.alt) out.alt = it.alt;
+    out.meta = { storageKey: it.storageKey, ...(out.meta || {}) };
+    return out;
+  };
+  const normalizeData = (d) => (d && normalizeMedia && "featured_image" in d ? { ...d, featured_image: normalizeImage(d.featured_image) } : d);
   const withUrl = (it) => ({ ...it, url: `/_emdash/api/media/file/${it.storageKey}` });
   for (const p of posts) {
     const rid = id();
@@ -110,7 +137,7 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
     }
     if (p === "/_emdash/api/content/posts" && method === "POST") {
       const rid = id();
-      const row = { id: rid, type: "posts", slug: body.slug, status: body.status || "draft", data: structuredClone(body.data), authorId: "u1", primaryBylineId: null, createdAt: now(), updatedAt: now(), publishedAt: null, scheduledAt: null, liveRevisionId: null, draftRevisionId: null, version: 1, locale: "en", translationGroup: rid, terms: {} };
+      const row = { id: rid, type: "posts", slug: body.slug, status: body.status || "draft", data: structuredClone(normalizeData(body.data)), authorId: "u1", primaryBylineId: null, createdAt: now(), updatedAt: now(), publishedAt: null, scheduledAt: null, liveRevisionId: null, draftRevisionId: null, version: 1, locale: "en", translationGroup: rid, terms: {} };
       rows.set(rid, row);
       if (seo) seoRows.set(rid, { title: null, description: null, image: null, canonical: null, noIndex: false, ...(body.seo || {}) });
       return ok({ item: view(row), _rev: rev(row) }, 201);
@@ -124,6 +151,7 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
         if (body._rev && body._rev !== rev(r)) return err(409, "CONFLICT", "Content has been modified since last read (version conflict)");
         if (body.seo && !seo) return err(400, "VALIDATION_ERROR");
         if (body.data) {
+          body.data = normalizeData(body.data);
           if (revisions) {
             const baseData = r.draftRevisionId ? revs.get(r.draftRevisionId).data : r.data;
             const merged = { ...baseData, ...structuredClone(body.data), ...(body.slug !== undefined ? { _slug: body.slug } : {}) };
