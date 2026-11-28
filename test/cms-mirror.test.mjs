@@ -83,7 +83,7 @@ test("export writes one file per published post that converts back unchanged", a
   assert.ok(parsed.meta.baseRev);
   // The file states exactly what the CMS holds.
   const live = (await fake.fetch(`${URL_}/_emdash/api/content/posts/first-post`, { headers: { authorization: "x" } }).then((r) => r.json())).data.item;
-  assert.deepEqual(stateOfFile(parsed), stateOfItem(live));
+  assert.deepEqual(stateOfFile(parsed), { ...stateOfItem(live), image: undefined }, "a file without a local cover leaves the CMS image to the CMS (compared in cms-cover.test.mjs)");
   // The project's own front-matter reader (markdown adapter) reads the same file.
   const fm = parseFrontMatter(text);
   assert.equal(fm.title, "First post");
@@ -188,7 +188,7 @@ test("draft keeps the live post unchanged; publish makes the file live; revert p
   copyFileSync(v1, file);
   const r = await run(["publish", "--file", file, "--base", v2, "--revisions-proven"], fake);
   assert.equal(r.code, 0, JSON.stringify(r.report));
-  assert.deepEqual(stateOfItem(structuredClone({ ...fake.find("first-post"), seo: fake.seoRows.get(fake.find("first-post").id) })), stateOfFile(parseMirror(readFileSync(v1, "utf8"))));
+  assert.deepEqual({ ...stateOfItem(structuredClone({ ...fake.find("first-post"), seo: fake.seoRows.get(fake.find("first-post").id) })), image: undefined }, stateOfFile(parseMirror(readFileSync(v1, "utf8"))));
   assert.ok(!fake.log.some((l) => l.path.includes("/revisions/")), "never uses revision restore");
 });
 
