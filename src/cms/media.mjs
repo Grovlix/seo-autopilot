@@ -19,6 +19,11 @@
 // Uploaded items are never deleted: an item uploaded for a post that is then refused stays in the library, unreferenced,
 // and is reused by the next try.
 // Pure helpers plus prepareMedia (network through the client) and rewriteVersion (no network: older file versions).
+//
+// The cover (the post's featured image): with the settings "coverDir" (and "coverUrlPrefix", default "/covers/") a file whose front matter says
+// `image: "/covers/<name>.jpg"` has a LOCAL cover, the file <coverDir>/<name>.jpg. It goes through the same checks, upload (or hash match) and
+// read-back as a body image, and the post's featured image field is set to that media item, with `imageAlt` as its alt text. A file whose `image`
+// is anything else keeps it as a read-only copy of the CMS, as before. The cover is one file per post and not counted in mediaMaxImages.
 
 import { createHash } from "node:crypto";
 import { readFileSync, lstatSync, realpathSync } from "node:fs";
@@ -28,6 +33,7 @@ import { fromMarkdown, normalizeBlocks } from "./portable-text.mjs";
 
 export const MEDIA_TYPES = { "image/jpeg": ["jpg", "jpeg"], "image/png": ["png"], "image/gif": ["gif"], "image/webp": ["webp"], "image/avif": ["avif"] };
 export const DEFAULT_PREFIX = "/media/";
+export const DEFAULT_COVER_PREFIX = "/covers/";
 export const DEFAULT_MAX_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_MAX_IMAGES = 50;
 
@@ -65,7 +71,50 @@ export function mediaOptions(flags, st, settingsFile) {
   const prefix = String(flags["media-url-prefix"] ?? st.mediaUrlPrefix ?? DEFAULT_PREFIX);
   if (!/^\/[^\s()<>]*\/$/.test(prefix)) throw new Error(`mediaUrlPrefix "${prefix}" must start and end with "/" and hold no spaces or brackets`);
   const num = (v, d) => { const n = Number(v ?? d); if (!Number.isInteger(n) || n < 1) throw new Error(`media limit ${v} is not a positive whole number`); return n; };
-  return { dir: isAbsolute(String(raw)) ? String(raw) : resolve(root, String(raw)), prefix, maxBytes: num(st.mediaMaxBytes, DEFAULT_MAX_BYTES), maxImages: num(st.mediaMaxImages, DEFAULT_MAX_IMAGES) };
+  const media = { dir: isAbsolute(String(raw)) ? String(raw) : resolve(root, String(raw)), prefix, maxBytes: num(st.mediaMaxBytes, DEFAULT_MAX_BYTES), maxImages: num(st.mediaMaxImages, DEFAULT_MAX_IMAGES) };
+  // The cover folder is set by the settings file only (like the other media keys it is resolved against the repository that holds the file).
+  const coverRaw = flags["media-dir"] == null ? st.coverDir ?? null : null;
+  if (coverRaw != null && coverRaw !== "") {
+    const cprefix = String(st.coverUrlPrefix ?? DEFAULT_COVER_PREFIX);
+    if (!/^\/[^\s()<>]*\/$/.test(cprefix)) throw new Error(`coverUrlPrefix "${cprefix}" must start and end with "/" and hold no spaces or brackets`);
+    if (cprefix === prefix || cprefix.startsWith(prefix) || prefix.startsWith(cprefix)) throw new Error(`coverUrlPrefix "${cprefix}" and mediaUrlPrefix "${prefix}" must not contain one another`);
+    media.cover = { dir: isAbsolute(String(coverRaw)) ? String(coverRaw) : resolve(root, String(coverRaw)), prefix: cprefix, maxBytes: media.maxBytes, maxImages: 1 };
+  }
+  return media;
+}
+
+/** The local cover reference of a parsed file under the cover prefix, or null (a CMS copy, nothing, or no cover folder in the settings). */
+export function coverRefOf(parsed, media) {
+  const v = parsed?.meta?.image;
+  return media?.cover && typeof v === "string" && v.startsWith(media.cover.prefix) ? v : null;
+}
+
+/** Width and height of a JPEG or PNG from its headers, or null (the CMS media value carries them so a page can reserve the space). */
+export function imageSize(b, type) {
+  try {
+    if (type === "image/png") return b.length >= 24 ? { width: b.readUInt32BE(16), height: b.readUInt32BE(20) } : null;
+    if (type === "image/jpeg") {
+      let i = 2;
+      while (i + 9 < b.length) {
+        if (b[i] !== 0xff) return null;
+        const m = b[i + 1];
+        if (m === 0xff) { i++; continue; }
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { height: b.readUInt16BE(i + 5), width: b.readUInt16BE(i + 7) };
+        i += 2 + b.readUInt16BE(i + 2);
+      }
+    }
+  } catch { /* none */ }
+  return null;
+}
+
+/** The featured image value stored on the post (EmDash MediaValue, src/media/types.ts): the media item, its URL, the alt text and the size. */
+export function coverValue({ item, cmsUrl, bytes, type, alt }) {
+  const size = imageSize(bytes, type);
+  const v = { provider: "local", id: item.id, src: cmsUrl, alt: String(alt ?? ""), filename: item.filename || undefined, mimeType: item.mimeType || type, meta: { storageKey: item.storageKey || cmsUrl.split("/").pop() } };
+  const w = item.width || size?.width, h = item.height || size?.height;
+  if (w) v.width = w;
+  if (h) v.height = h;
+  return JSON.parse(JSON.stringify(v));
 }
 
 const IMAGE_LINE = /^!\[((?:\\.|[^\]\\])*)\]\(([^\s()<>]+)\)$/;
@@ -216,10 +265,13 @@ export async function prepareMedia({ api, parsed, media, dry = false, prefer = n
   const refs = mediaRefsOf(parsed.body, media.prefix);
   if (refs.stray.length) throw new MediaError(`the body points into the media folder (${media.prefix}) outside a whole-line image: ${refs.stray.slice(0, 3).map((s) => JSON.stringify(s)).join(", ")}. Only a line of its own "![alt](${media.prefix}...)" is uploaded; anything else would publish a dead path. Nothing was written.`, "media-ref-form");
   const urls = [...new Set(refs.images)];
-  if (!urls.length) return { parsed, images: [], index: null };
+  const coverRef = coverRefOf(parsed, media);
+  if (!urls.length && !coverRef) return { parsed, images: [], index: null };
   if (urls.length > media.maxImages) throw new MediaError(`${urls.length} different local images; the limit is ${media.maxImages}. Nothing was written.`, "media-too-many");
+  if (coverRef && !(typeof parsed.meta.imageAlt === "string" && parsed.meta.imageAlt.trim())) throw new MediaError(`the cover ${coverRef} needs an "imageAlt" (its alt text) in the front matter. Nothing was written.`, "media-cover-alt");
   // Every file is read and checked before the first request: a bad file stops the post before anything is uploaded.
   const locals = urls.map((u) => readLocal(u, media));
+  if (coverRef) locals.push({ ...readLocal(coverRef, media.cover), cover: true });
   // prefer: an async function giving the CMS URLs the live post uses; called only after every local file passed.
   const index = await mediaIndex(api, { prefer: typeof prefer === "function" ? await prefer() : prefer });
   const rows = [];
@@ -251,10 +303,19 @@ export async function prepareMedia({ api, parsed, media, dry = false, prefer = n
     if (got.status !== 200 || contentHash(got.bytes) !== row.hash) throw new MediaError(`reading back ${row.cmsUrl} (${row.url}) gave HTTP ${got.status}${got.status === 200 ? " with other bytes" : ""}. The post was not written.`, "media-readback-failed", 1);
     row.verified = true;
   }
-  const map = new Map(rows.filter((r) => r.cmsUrl).map((r) => [r.url, r.cmsUrl]));
+  const map = new Map(rows.filter((r, i) => !locals[i].cover && r.cmsUrl).map((r) => [r.url, r.cmsUrl]));
   const body = rewriteBody(parsed.body, map);
   if (!sameButUrls(parsed.body, body, map)) throw new MediaError("rewriting the image URLs would change more than the URLs (a line the converter reads differently); nothing was written", "media-rewrite");
-  return { parsed: { ...parsed, body }, images: rows, index };
+  const out = { ...parsed, body };
+  const ci = locals.findIndex((l) => l.cover);
+  // The cover: the featured image value of the media item that was read back (or, in a dry run, found); kept beside the file's own front matter.
+  if (ci >= 0) {
+    const row = rows[ci];
+    if (!row?.cmsUrl) { row.cover = true; return { parsed: out, images: rows, index }; } // dry run, not uploaded yet: the post keeps no cover value
+    row.cover = true;
+    out.cover = coverValue({ item: index.get(locals[ci].hash), cmsUrl: row.cmsUrl, bytes: locals[ci].bytes, type: locals[ci].type, alt: parsed.meta.imageAlt });
+  }
+  return { parsed: out, images: rows, index };
 }
 
 /**
@@ -265,6 +326,20 @@ export async function prepareMedia({ api, parsed, media, dry = false, prefer = n
  */
 export function rewriteVersion(parsed, { media, index, ref = null }) {
   if (!parsed || !media || !index) return parsed;
+  const withCover = (p) => {
+    const cr = coverRefOf(p, media);
+    if (!cr || p.cover) return p;
+    const rel = cr.slice(media.cover.prefix.length);
+    if (unsafeRel(rel)) return p;
+    let bytes = null;
+    try {
+      bytes = ref == null ? readLocal(cr, media.cover).bytes
+        : execFileSync("git", ["show", "--end-of-options", `${ref}:./${rel}`], { cwd: media.cover.dir, stdio: ["ignore", "pipe", "ignore"], maxBuffer: media.maxBytes + 1024 });
+    } catch { return p; }
+    const item = index.get(contentHash(bytes));
+    const cms = item && itemUrl(item);
+    return cms ? { ...p, cover: coverValue({ item, cmsUrl: cms, bytes, type: sniffType(bytes) || "image/jpeg", alt: p.meta?.imageAlt }) } : p;
+  };
   const map = new Map();
   for (const url of new Set(mediaRefsOf(parsed.body, media.prefix).images)) {
     const rel = url.slice(media.prefix.length);
@@ -278,7 +353,7 @@ export function rewriteVersion(parsed, { media, index, ref = null }) {
     const cms = item && itemUrl(item);
     if (cms) map.set(url, cms);
   }
-  if (!map.size) return parsed;
+  if (!map.size) return withCover(parsed);
   const body = rewriteBody(parsed.body, map);
-  return sameButUrls(parsed.body, body, map) ? { ...parsed, body } : parsed;
+  return withCover(sameButUrls(parsed.body, body, map) ? { ...parsed, body } : parsed);
 }

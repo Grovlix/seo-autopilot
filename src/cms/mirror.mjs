@@ -67,6 +67,19 @@ export function parseMirror(src) {
 const blank = (v) => v === undefined || v === null || v === "";
 const orNull = (v) => (blank(v) ? null : v);
 
+/**
+ * What the image of a post is, for comparing: { src, alt } where src is the media URL (a stored value's own src, else /_emdash/api/media/file/<storageKey or id>),
+ * or null when the post has no image. A bare string value is its own URL.
+ */
+export function imageState(img) {
+  if (!img) return null;
+  if (typeof img === "string") return { src: img, alt: null };
+  if (typeof img !== "object") return null;
+  const key = img.meta?.storageKey || img.id;
+  const src = typeof img.src === "string" && img.src ? img.src : key ? `/_emdash/api/media/file/${key}` : null;
+  return src ? { src, alt: orNull(img.alt) } : null;
+}
+
 function imageOf(img) {
   if (!img || typeof img !== "object") return { src: null, alt: null };
   const src = img.src || img.url || img.$media?.url || img.meta?.storageKey || img.id || null;
@@ -107,6 +120,7 @@ export function readOnlyOf(item, { fields = DEFAULT_FIELDS, categories = [], tag
 export function stateOfItem(item, fields = DEFAULT_FIELDS, data = item.data || {}) {
   const seo = item.seo;
   return {
+    image: imageState(data[fields.image]),
     slug: item.slug ?? null,
     title: data[fields.title] ?? "",
     excerpt: orNull(data[fields.excerpt]),
@@ -119,6 +133,8 @@ export function stateOfFile(parsed) {
   const { meta, body } = parsed;
   const hasSeo = Object.keys(SEO_KEYS).some((k) => k in meta);
   return {
+    // Only a file with a LOCAL cover (parsed.cover, set once src/cms/media.mjs prepareMedia or rewriteVersion resolved it to a media item) manages the image.
+    image: parsed.cover ? imageState(parsed.cover) : undefined,
     slug: meta.slug ?? null,
     title: meta.title ?? "",
     excerpt: orNull(meta.excerpt),
@@ -138,7 +154,8 @@ export function diffState(a, b, parts = ["slug", "title", "excerpt", "body", "se
  * written without SEO keys looked drifted ("seo") against its own live post on every later edit.
  */
 export function partsFor(a, b) {
-  return ["slug", "title", "excerpt", "body", ...(a?.seo && b?.seo ? ["seo"] : [])];
+  // The image counts when the file side (b) manages it: a file with a local cover. A file without one never writes the image, so the CMS's is neither a change nor drift.
+  return ["slug", "title", "excerpt", "body", ...(a?.seo && b?.seo ? ["seo"] : []), ...(b?.image ? ["image"] : [])];
 }
 
 /** Has any SEO field a value (a state's seo object)? */
@@ -163,7 +180,7 @@ export function fileFacts(parsed) {
  * Check one mirror file, alone or against its previous version (base). Returns { errors, warnings, highRisk, facts }.
  * opts: { file, base (parsed or null), slugPattern (RegExp for new posts), siteUrl }.
  */
-export function validateFile(parsed, { file = "", base = null, slugPattern = LATIN_SLUG } = {}) {
+export function validateFile(parsed, { file = "", base = null, slugPattern = LATIN_SLUG, coverPrefix = null } = {}) {
   const errors = [...(parsed.errors || [])];
   const warnings = [];
   const highRisk = [];
@@ -187,9 +204,17 @@ export function validateFile(parsed, { file = "", base = null, slugPattern = LAT
   if (facts.opaque) warnings.push(`${facts.opaque} block(s) kept as <!--ec:block --> JSON (not editable as Markdown)`);
   if (!facts.words) errors.push("the body has no words");
   const addedReadOnly = [];
+  // A LOCAL cover (image under the cover prefix, src/cms/media.mjs) is an edit, not a read-only copy: image and imageAlt may change with it.
+  const localCover = !!(coverPrefix && typeof m.image === "string" && m.image.startsWith(coverPrefix));
+  if (localCover) {
+    if (!/^\/[^\s()<>]*\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:jpe?g|png|webp|avif|gif)$/i.test(m.image) || m.image.includes("..")) errors.push(`image "${m.image}" is not a plain path under ${coverPrefix} with an image extension`);
+    if (typeof m.imageAlt !== "string" || !m.imageAlt.trim()) errors.push(`imageAlt is missing: a local cover needs its alt text`);
+    else if (m.imageAlt.length > 300 || /[\r\n]/.test(m.imageAlt)) errors.push(`imageAlt must be one line of at most 300 characters`);
+  }
   if (base) {
     const b = base.meta;
     for (const k of READ_ONLY) {
+      if (localCover && (k === "image" || k === "imageAlt")) continue;
       if (JSON.stringify(b[k] ?? null) === JSON.stringify(m[k] ?? null)) continue;
       // A read-only key the previous version did not have (a new post's file getting its id, status... from an export
       // or a write-back) is allowed here; draft, publish and discard check it equals the CMS post before any write.
@@ -239,7 +264,7 @@ export function validateSet(entries, opts = {}) {
  */
 export function draftData(parsed, fields = DEFAULT_FIELDS, { previous = null } = {}) {
   const blocks = fromMarkdown(parsed.body, { strike: strikeMarkOf(previous) });
-  return { [fields.title]: parsed.meta.title, [fields.excerpt]: orNull(parsed.meta.excerpt), [fields.body]: preserveBlocks(blocks, previous) };
+  return { [fields.title]: parsed.meta.title, [fields.excerpt]: orNull(parsed.meta.excerpt), [fields.body]: preserveBlocks(blocks, previous), ...(parsed.cover ? { [fields.image]: parsed.cover } : {}) };
 }
 
 /** New blocks, with each one that equals an unused previous block (same normalised form) replaced by that block. */
@@ -264,11 +289,14 @@ const sortDeep = (v) => (Array.isArray(v) ? v.map(sortDeep) : v && typeof v === 
  * post's data, or {} for a new post). version: a parsed mirror file, or null for "no edit at all". slug: the post's slug.
  * Any other difference (another field, another slug, other words) means someone else made the draft.
  */
-export function draftMatches(draft, { base = {}, version = null, fields = DEFAULT_FIELDS, slug } = {}) {
+export function draftMatches(draft, { base = {}, version = null, fields = DEFAULT_FIELDS, slug, coverPrefix = null } = {}) {
   if (!draft || typeof draft !== "object") return false;
   const expected = { ...base, ...(version ? draftData(version, fields) : {}) };
+  // A version with a local cover that was not resolved to a media item (discard reads no media library) cannot say what its image field holds: that one field is not compared.
+  const coverUnresolved = !!(coverPrefix && version && !version.cover && typeof version.meta?.image === "string" && version.meta.image.startsWith(coverPrefix));
   for (const k of new Set([...Object.keys(draft), ...Object.keys(expected)])) {
     if (k === "_slug") { if (draft._slug != null && draft._slug !== slug) return false; continue; }
+    if (coverUnresolved && k === fields.image) continue;
     if (k === fields.body) { if (JSON.stringify(normalizeBlocks(draft[k] || [])) !== JSON.stringify(normalizeBlocks(expected[k] || []))) return false; continue; }
     if (canon(draft[k]) !== canon(expected[k])) return false;
   }

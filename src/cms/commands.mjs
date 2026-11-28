@@ -21,7 +21,7 @@ import { execFileSync } from "node:child_process";
 import { createClient, revisionsSupported, EmDashError } from "./emdash.mjs";
 import { parseMirror, stringifyMirror, itemToMirror, stateOfItem, stateOfFile, diffState, partsFor, sameState, readOnlyOf, CONTENT_PARTS, validateFile, validateSet, draftData, draftMatches, seoPayload, writePlan, DEFAULT_FIELDS, LATIN_SLUG } from "./mirror.mjs";
 import { fromMarkdown, countWords } from "./portable-text.mjs";
-import { mediaOptions, prepareMedia, rewriteVersion, mediaRefsOf, mediaIndex, mediaUrlsIn, readLocal, MediaError, DEFAULT_PREFIX } from "./media.mjs";
+import { mediaOptions, prepareMedia, rewriteVersion, mediaRefsOf, mediaIndex, mediaUrlsIn, readLocal, coverRefOf, MediaError, DEFAULT_PREFIX } from "./media.mjs";
 import { mainScope, visibleText } from "../audit/extract.mjs";
 
 /** A refusal for safety (exit 3). code: a short machine-readable reason ("foreign-draft", "live-changed", ...). */
@@ -196,6 +196,8 @@ function mediaProblems(parsed, media) {
   const urls = [...new Set(refs.images)];
   if (urls.length > media.maxImages) bad.push(`${urls.length} different local images; the limit is ${media.maxImages}`);
   for (const u of urls) { try { readLocal(u, media); } catch (e) { if (e instanceof MediaError) bad.push(e.message); else throw e; } }
+  const cover = coverRefOf(parsed, media);
+  if (cover) { try { readLocal(cover, media.cover); } catch (e) { if (e instanceof MediaError) bad.push(`cover: ${e.message}`); else throw e; } }
   return bad;
 }
 
@@ -230,7 +232,7 @@ export function validateCmd(flags) {
     }
   }
   const all = [...entries, ...others];
-  const v = validateSet(all, { slugPattern: o.slugPattern });
+  const v = validateSet(all, { slugPattern: o.slugPattern, coverPrefix: o.media?.cover?.prefix });
   const results = v.results.filter((_, i) => !all[i].skip).map((r, i) => {
     const e = entries[i];
     const errors = [...r.errors];
@@ -371,14 +373,14 @@ async function loadTarget(api, o, parsed, report, versions, file, dir) {
   }
   if (it.status !== "draft" || it.publishedAt || it.liveRevisionId || it.deletedAt) throw new Refused(`slug "${m.slug}" is already used by a ${it.status} post`, "slug-taken");
   const data = it.draftRevisionId ? (await api.compare(o.collection, it.id))?.draft : it.data;
-  if (!versions.some((v) => draftMatches(data, { version: v, fields: o.fields, slug: m.slug }))) throw new Refused(`an unpublished draft with slug "${m.slug}" already exists and was not made from this file; pick another slug or remove that draft in the CMS`, "foreign-draft");
+  if (!versions.some((v) => draftMatches(data, { coverPrefix: o.media?.cover?.prefix, version: v, fields: o.fields, slug: m.slug }))) throw new Refused(`an unpublished draft with slug "${m.slug}" already exists and was not made from this file; pick another slug or remove that draft in the CMS`, "foreign-draft");
   report.reusedDraft = it.id;
   return got;
 }
 
 /** true when a pending draft is neither "no change" nor one of this file's versions: someone else's. */
 function foreignDraft(o, item, draft, versions) {
-  return ![null, ...versions].some((v) => draftMatches(draft, { base: item.data || {}, version: v, fields: o.fields, slug: item.slug }));
+  return ![null, ...versions].some((v) => draftMatches(draft, { coverPrefix: o.media?.cover?.prefix, base: item.data || {}, version: v, fields: o.fields, slug: item.slug }));
 }
 
 // Re-read the draft right before publishing: a draft saved by someone else after ours would go live with it. This
@@ -387,7 +389,7 @@ async function confirmDraft(api, o, id, parsed) {
   const now = (await api.get(o.collection, id))?.item;
   const pending = now?.draftRevisionId && now.draftRevisionId !== now.liveRevisionId;
   const data = pending ? (await api.compare(o.collection, id))?.draft : now?.data;
-  if (!now || !draftMatches(data, { base: now.data || {}, version: parsed, fields: o.fields, slug: parsed.meta.slug })) {
+  if (!now || !draftMatches(data, { coverPrefix: o.media?.cover?.prefix, base: now.data || {}, version: parsed, fields: o.fields, slug: parsed.meta.slug })) {
     throw new Refused(`the CMS draft of "${parsed.meta.slug}" is not the file any more (someone saved a draft after ours); nothing was published. Check the CMS, then run the publish again`, "draft-changed");
   }
 }
@@ -425,8 +427,8 @@ async function saveDraft(api, o, parsed, report, file, { dir, added = [], baseRe
   // Only the current file may go live. A pending draft equal to an older version of the file (a publish that failed
   // before a revert, say) may be overwritten, never published: it is replaced by the current file first, also when
   // only the SEO fields changed.
-  const pendingIsHead = hasPending && draftMatches(pendingData, { base: item.data || {}, version: parsed, fields: o.fields, slug: item.slug });
-  const content = plan.changes.filter((c) => ["title", "excerpt", "body"].includes(c));
+  const pendingIsHead = hasPending && draftMatches(pendingData, { coverPrefix: o.media?.cover?.prefix, base: item.data || {}, version: parsed, fields: o.fields, slug: item.slug });
+  const content = plan.changes.filter((c) => ["title", "excerpt", "body", "image"].includes(c));
   const needDraft = !pendingIsHead && (content.length > 0 || (hasPending && plan.changes.length > 0));
   if (!needDraft) { report.draftSaved = false; report.draftReason = pendingIsHead ? "the CMS draft already matches the file" : "no content change"; return { item, head, changes: plan.changes, pendingIsHead }; }
   if (hasPending && !content.length) report.draftReason = "a pending draft of an older version was replaced by the current file";
@@ -436,7 +438,7 @@ async function saveDraft(api, o, parsed, report, file, { dir, added = [], baseRe
   // The live post must not have moved; the draft must exist.
   const after = (await api.get(o.collection, item.id)).item;
   if (item.status === "published") {
-    const moved = diffState(live, stateOfItem(after, o.fields), ["slug", "title", "excerpt", "body"]);
+    const moved = diffState(live, stateOfItem(after, o.fields), head.image ? ["slug", "title", "excerpt", "body", "image"] : ["slug", "title", "excerpt", "body"]);
     if (moved.length) { const e = new Error(`DANGER: saving a draft changed the live post (${moved.join(", ")}); restore it from the previous mirror file`); e.exit = 2; throw e; }
     if (!after.draftRevisionId) { const e = new Error("the draft save left no draft revision"); e.exit = 2; throw e; }
   }
@@ -474,7 +476,7 @@ async function checkAdded(api, o, item, parsed, added) {
 }
 
 function checkFile(file, parsed, base, o) {
-  const v = validateFile(parsed, { file, base, slugPattern: o.slugPattern });
+  const v = validateFile(parsed, { file, base, slugPattern: o.slugPattern, coverPrefix: o.media?.cover?.prefix });
   if (v.errors.length) { const e = new Error(`invalid mirror file: ${v.errors.join("; ")}`); e.report = v; throw e; }
   return v;
 }
@@ -489,7 +491,7 @@ async function withMedia(api, o, parsed, report, flags, file) {
   if (!o.media) return { parsed, rw: null };
   checkFolder(o.media.dir);
   const prev = report.base;
-  const prevHasImages = !!prev && mediaRefsOf(prev.body, o.media.prefix).images.length > 0;
+  const prevHasImages = !!prev && (mediaRefsOf(prev.body, o.media.prefix).images.length > 0 || !!coverRefOf(prev, o.media));
   // L1 (R17): the URLs the live post already uses win over another item with the same bytes (best effort: a post that
   // is not there yet, or cannot be read here, simply has none; loadTarget reads it again with all its rules).
   let preferSet = null;
@@ -565,7 +567,7 @@ export async function publishCmd(flags, { fetch: f = globalThis.fetch } = {}) {
     }
   }
   const final = await api.get(o.collection, item.id);
-  const left = diffState(stateOfItem(final.item, o.fields), head, head.seo && "seo" in final.item ? undefined : ["slug", "title", "excerpt", "body"]);
+  const left = diffState(stateOfItem(final.item, o.fields), head, [...(head.seo && "seo" in final.item ? ["slug", "title", "excerpt", "body", "seo"] : ["slug", "title", "excerpt", "body"]), ...(head.image ? ["image"] : [])]);
   report.verified = left.length === 0;
   if (left.length) report.mismatch = left;
   report.status = final.item.status;
@@ -620,12 +622,12 @@ export async function discardCmd(flags, { fetch: f = globalThis.fetch } = {}) {
   // Ours means: exactly what draft would save from THIS file (the closed pull request's head), or no edit at all. Not an
   // older push of the pull request or any other version in history (review R10 F5). EmDash 0.1.0 keeps nothing on a
   // revision that could name the pull request that made it (see docs/cms-mirror.md, "Discard").
-  const isOurs = (d) => [parsed, null].some((ver) => draftMatches(d, { base: item.data || {}, version: ver, fields: o.fields, slug: item.slug }));
+  const isOurs = (d) => [parsed, null].some((ver) => draftMatches(d, { coverPrefix: o.media?.cover?.prefix, base: item.data || {}, version: ver, fields: o.fields, slug: item.slug }));
   if (!isOurs(draft)) throw new Refused(`the pending draft of "${m.slug}" is not this file (the closed pull request's head): someone else's work, or an earlier push of it, left in place; check it in the CMS admin`, "foreign-draft");
   // Refs that must keep their preview (other open pull requests' heads, e.g. a parent this one was stacked on).
   for (const ref of keep) {
     const t = gitVersion(file, ref);
-    if (t != null && !draftMatches(draft, { base: item.data || {}, version: null, fields: o.fields, slug: item.slug }) && draftMatches(draft, { base: item.data || {}, version: parseMirror(t), fields: o.fields, slug: item.slug }))
+    if (t != null && !draftMatches(draft, { coverPrefix: o.media?.cover?.prefix, base: item.data || {}, version: null, fields: o.fields, slug: item.slug }) && draftMatches(draft, { coverPrefix: o.media?.cover?.prefix, base: item.data || {}, version: parseMirror(t), fields: o.fields, slug: item.slug }))
       throw new Refused(`the pending draft of "${m.slug}" is also the file at ${ref} (--keep-refs: another open pull request's preview), so it is left in place`, "kept-ref");
   }
   const live = stateOfItem(item, o.fields);
