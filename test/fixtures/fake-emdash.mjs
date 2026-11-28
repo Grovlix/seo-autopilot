@@ -7,6 +7,10 @@
 // cursor), POST takes multipart "file" and answers an upload of known bytes (same sha1 content hash) with the existing item
 // and deduplicated: true; GET /_emdash/api/media/file/<key> serves the bytes. mediaFail(filename) -> HTTP status makes an
 // upload fail (test helper); mediaScope: false answers every media route 403 INSUFFICIENT_SCOPE (a content-only token).
+// Like Astro's security.checkOrigin (on by default, runs before routing and auth): a POST/PUT/PATCH/DELETE with a form
+// content type (a FormData body, or a content-type of multipart/form-data, application/x-www-form-urlencoded or
+// text/plain) and no Origin header equal to the site's origin gets 403 "Cross-site POST form submissions are forbidden"
+// (plain text, no JSON error). JSON bodies are not checked.
 import { createHash } from "node:crypto";
 
 export function fakeEmDash({ revisions = true, seo = true, schemaReadable = false, previewSecret = false, posts = [], media: mediaSeed = [], mediaScope = true, mediaPage = 50 } = {}) {
@@ -64,6 +68,11 @@ export function fakeEmDash({ revisions = true, seo = true, schemaReadable = fals
     const u = new URL(url);
     const method = init.method || "GET";
     const form = init.body instanceof FormData ? init.body : null;
+    const hdr = (k) => Object.entries(init.headers || {}).find(([n]) => n.toLowerCase() === k)?.[1];
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase())) {
+      const formType = form || /^(multipart\/form-data|application\/x-www-form-urlencoded|text\/plain)/i.test(String(hdr("content-type") || ""));
+      if (formType && hdr("origin") !== u.origin) return new Response("Cross-site POST form submissions are forbidden", { status: 403, headers: { "content-type": "text/plain;charset=UTF-8" } });
+    }
     const body = init.body && !form ? JSON.parse(init.body) : undefined;
     log.push({ method, path: u.pathname + u.search, auth: !!init.headers?.authorization });
     const p = u.pathname;
