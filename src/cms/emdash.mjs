@@ -21,6 +21,11 @@
 //   audio/ and application/pdf up to 50 MB, and returns { item } (201), or { item, deduplicated: true } when a ready item
 //   with the same content hash exists: the same bytes never make a second item. A token needs media:read for GET (and
 //   for the file route when it sends a token) and media:write for POST (src/astro/middleware/auth.ts SCOPE_RULES).
+// - Astro's security.checkOrigin (on by default) answers 403 "Cross-site POST form submissions are forbidden" (plain
+//   text) to a POST/PUT/PATCH/DELETE with a form content type (multipart/form-data, application/x-www-form-urlencoded,
+//   text/plain) whose Origin header is missing or is not the site's own origin. JSON requests are not checked, but
+//   the multipart media upload is, and Node's fetch sends no Origin. So every request with a body carries
+//   Origin: <the configured URL's origin> (path and trailing slash dropped).
 
 export class EmDashError extends Error {
   constructor(status, code, message, path) {
@@ -48,6 +53,7 @@ export function createClient({ url, token, fetch: f = globalThis.fetch, userAgen
     if (token) headers.authorization = `Bearer ${token}`;
     const form = typeof FormData !== "undefined" && body instanceof FormData;
     if (body !== undefined && !form) headers["content-type"] = "application/json";
+    if (body !== undefined) headers.origin = u.origin;
     const res = await f(base + path, { method, headers, body: body === undefined ? undefined : form ? body : JSON.stringify(body) });
     calls.push({ method, path, status: res.status });
     const text = await res.text();
